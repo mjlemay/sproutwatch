@@ -1,0 +1,78 @@
+package dev.hytalemodding.sproutwatch.ui;
+
+import java.util.Locale;
+
+/**
+ * Argument handling for {@code /sproutwatch youtube …} and {@code /sproutwatch twitch …}, kept here
+ * (pure, over SproutwatchActions) so the command classes only pick a usage variant by token count.
+ * Every reply comes from an action, so the API key is only ever echoed masked.
+ */
+public final class ChatSourceCommands {
+
+    public static final String YOUTUBE_USAGE =
+        "Usage: /sproutwatch youtube on|off | handle <@handle> | key <key> | video <link|clear> | hours <1-24>";
+    public static final String TWITCH_USAGE = "Usage: /sproutwatch twitch on|off";
+    public static final String HOURS_HINT =
+        "Enter your stream length in hours (1 to 24). Set this to your longest stream.";
+
+    private ChatSourceCommands() {}
+
+    /** Bare {@code /sproutwatch youtube}: the status lines while enabled, else how to turn it on. */
+    public static String youTubeSummary(StatusSnapshot s) {
+        if (!s.youTube().enabled()) return "YouTube chat is off. " + YOUTUBE_USAGE;
+        return String.join("\n", s.youTubeLine(), s.youTubeChannelLine(), s.youTubeKeyLine(), s.youTubeQuotaLine());
+    }
+
+    /** {@code /sproutwatch youtube on|off}. */
+    public static String youTube(SproutwatchActions a, String state) {
+        Boolean on = onOff(state);
+        return on == null ? YOUTUBE_USAGE : a.setYouTubeEnabled(on);
+    }
+
+    /** {@code /sproutwatch youtube handle|key|video|hours <value>}. */
+    public static String youTube(SproutwatchActions a, String setting, String value) {
+        String which = setting == null ? "" : setting.trim().toLowerCase(Locale.ROOT);
+        return switch (which) {
+            case "handle" -> a.setYouTubeHandle(value);
+            case "key" -> a.setYouTubeKey(value);
+            case "video" -> a.setYouTubeVideo(value != null && value.trim().equalsIgnoreCase("clear") ? "" : value);
+            case "hours" -> streamHours(a, parseHours(value));
+            default -> YOUTUBE_USAGE;
+        };
+    }
+
+    /** Bare {@code /sproutwatch twitch}. */
+    public static String twitchSummary(boolean enabled) {
+        return "Twitch chat is " + (enabled ? "on" : "off") + ". " + TWITCH_USAGE;
+    }
+
+    /** {@code /sproutwatch twitch on|off}. */
+    public static String twitch(SproutwatchActions a, String state) {
+        Boolean on = onOff(state);
+        return on == null ? TWITCH_USAGE : a.setTwitchEnabled(on);
+    }
+
+    /** Stream length from the page or the command: 1 to 24 hours, else {@link #HOURS_HINT}. */
+    public static String streamHours(SproutwatchActions a, Double hours) {
+        if (hours == null || !Double.isFinite(hours) || hours < 1 || hours > 24) return HOURS_HINT;
+        return a.setYouTubeStreamHours(hours);
+    }
+
+    /** Whole hours 1 to 24 only ("6", not "2.5"); null for anything else. */
+    static Double parseHours(String raw) {
+        String s = raw == null ? "" : raw.trim();
+        if (!s.matches("[0-9]{1,2}")) return null;
+        int h = Integer.parseInt(s);
+        return h >= 1 && h <= 24 ? (double) h : null;
+    }
+
+    /** "on"/"off" (also true/false, yes/no), any case; null for anything else. */
+    static Boolean onOff(String raw) {
+        String s = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
+        return switch (s) {
+            case "on", "true", "yes" -> Boolean.TRUE;
+            case "off", "false", "no" -> Boolean.FALSE;
+            default -> null;
+        };
+    }
+}

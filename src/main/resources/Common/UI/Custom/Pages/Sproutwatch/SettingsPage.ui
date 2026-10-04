@@ -1,0 +1,757 @@
+$C = "../../Common.ui";
+
+// Tab bar styles: Hytale's own header-tab 9-patch textures (Common.ui @HeaderTabsStyle) on plain
+// text buttons. The server sets each tab button's Style to one of these two on every tab switch
+// (Value.ref into this document), so the active tab is the gold-bordered one.
+@TabBackground = PatchStyle(TexturePath: "../../Common/HeaderTabBackground.png", Border: 7);
+@TabSelectedBackground = PatchStyle(TexturePath: "../../Common/HeaderTabSelectedBackground.png", Border: 7);
+@TabLabel = $C.@SmallSecondaryButtonLabelStyle;
+@TabLabelHovered = (...$C.@SmallSecondaryButtonLabelStyle, TextColor: $C.@ColorDefault);
+@TabLabelSelected = (...$C.@SmallSecondaryButtonLabelStyle, TextColor: $C.@ColorGoldHighlight);
+
+@TabStyle = TextButtonStyle(
+  Default: (Background: @TabBackground, LabelStyle: @TabLabel),
+  Hovered: (Background: @TabBackground, LabelStyle: @TabLabelHovered),
+  Pressed: (Background: @TabSelectedBackground, LabelStyle: @TabLabelHovered),
+  Disabled: (Background: @TabBackground, LabelStyle: $C.@SmallSecondaryButtonDisabledLabelStyle)
+);
+
+@TabSelectedStyle = TextButtonStyle(
+  Default: (Background: @TabSelectedBackground, LabelStyle: @TabLabelSelected),
+  Hovered: (Background: @TabSelectedBackground, LabelStyle: @TabLabelSelected),
+  Pressed: (Background: @TabSelectedBackground, LabelStyle: @TabLabelSelected),
+  Disabled: (Background: @TabSelectedBackground, LabelStyle: @TabLabelSelected)
+);
+
+// Details value cells: the server sets #ListenerValue.Style to one of these (Value.ref) per listener state.
+@ValuePlain = (...$C.@DefaultLabelStyle, FontSize: 14, VerticalAlignment: Center, Wrap: true);
+@ValueGood = (...$C.@DefaultLabelStyle, FontSize: 14, VerticalAlignment: Center, Wrap: true, TextColor: #7ed957);
+@ValueWarn = (...$C.@DefaultLabelStyle, FontSize: 14, VerticalAlignment: Center, Wrap: true, TextColor: $C.@ColorGoldHighlight);
+@ValueBad = (...$C.@DefaultLabelStyle, FontSize: 14, VerticalAlignment: Center, Wrap: true, TextColor: #e05a4f);
+
+$C.@PageOverlay {
+  LayoutMode: Middle;
+
+  $C.@DecoratedContainer {
+    Anchor: (Width: 720, Height: 680);
+
+    #Title {
+      $C.@Title {
+        @Text = "Sproutwatch settings";
+      }
+    }
+
+    #Content {
+      LayoutMode: Top;
+      Padding: (Full: 12);
+
+      // Tab bar: the server sets every button's Style (selected / not) and every tab group's Visible.
+      Group #TabBar {
+        LayoutMode: Left;
+        Anchor: (Height: 32, Bottom: 8);
+
+        TextButton #TabConnect {
+          Text: "Connect";
+          Style: @TabSelectedStyle;
+          Anchor: (Width: 120, Height: 30, Right: 4);
+        }
+
+        TextButton #TabPen {
+          Text: "Pen";
+          Style: @TabStyle;
+          Anchor: (Width: 120, Height: 30, Right: 4);
+        }
+
+        TextButton #TabDetails {
+          Text: "Details";
+          Style: @TabStyle;
+          Anchor: (Width: 120, Height: 30, Right: 4);
+        }
+
+        TextButton #TabViewers {
+          Text: "Viewers";
+          Style: @TabStyle;
+          Anchor: (Width: 120, Height: 30, Right: 4);
+        }
+
+        TextButton #TabListener {
+          Text: "Listener";
+          Style: @TabStyle;
+          Anchor: (Width: 120, Height: 30);
+        }
+      }
+
+      $C.@PanelSeparatorFancy {
+        @Anchor = (Bottom: 10);
+      }
+
+      // ---------------- Connect tab ----------------
+      Group #ConnectTab {
+        LayoutMode: TopScrolling;
+        ScrollbarStyle: $C.@DefaultScrollbarStyle;
+        FlexWeight: 1;
+        Padding: (Full: 8);
+        Visible: true;
+
+        $C.@Subtitle {
+          @Text = "Chat sources";
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 6);
+
+          $C.@CheckBox #TwitchCheck {
+            Anchor: (Width: 26, Height: 26);
+          }
+
+          Label {
+            Text: "Twitch chat";
+            Anchor: (Left: 11);
+            FlexWeight: 1;
+            Style: (...$C.@DefaultLabelStyle, FontSize: 15, VerticalAlignment: Center, Wrap: true);
+          }
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 12);
+
+          $C.@CheckBox #YouTubeCheck {
+            Anchor: (Width: 26, Height: 26);
+          }
+
+          Label {
+            Text: "YouTube chat";
+            Anchor: (Left: 11);
+            FlexWeight: 1;
+            Style: (...$C.@DefaultLabelStyle, FontSize: 15, VerticalAlignment: Center, Wrap: true);
+          }
+        }
+
+        $C.@Subtitle {
+          @Text = "Twitch Channel";
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 12);
+
+          $C.@TextField #ChannelField {
+            @Anchor = (Width: 300, Right: 8);
+            PlaceholderText: "twitch channel name";
+          }
+
+          $C.@TextButton #SaveChannelButton {
+            @Text = "Save";
+            @Anchor = (Width: 120);
+          }
+
+          $C.@CancelTextButton #RemoveChannelButton {
+            @Text = "Remove";
+            @Anchor = (Width: 120);
+            Visible: false;
+          }
+        }
+
+        // YouTube: the key field is always sent empty; its placeholder shows only the masked saved key.
+        $C.@Subtitle {
+          @Text = "YouTube Channel Details";
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 6);
+
+          $C.@TextField #YouTubeHandleField {
+            @Anchor = (Width: 300, Right: 8);
+            PlaceholderText: "@yourhandle";
+          }
+
+          $C.@TextButton #SaveYouTubeHandleButton {
+            @Text = "Save";
+            @Anchor = (Width: 120);
+          }
+
+          $C.@CancelTextButton #RemoveYouTubeHandleButton {
+            @Text = "Remove";
+            @Anchor = (Width: 120);
+            Visible: false;
+          }
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 6);
+
+          // Plain TextField (styled like $C.@TextField) so PasswordChar sits on the element exactly as in
+          // the vanilla client's JoinViaCodePopup.ui: typed characters show as "*".
+          TextField #YouTubeKeyField {
+            Style: $C.@DefaultInputFieldStyle;
+            PlaceholderStyle: $C.@DefaultInputFieldPlaceholderStyle;
+            Background: $C.@InputBoxBackground;
+            Anchor: (Width: 300, Right: 8, Height: 38);
+            Padding: (Horizontal: 10);
+            PlaceholderText: "API key";
+            PasswordChar: "*";
+          }
+
+          $C.@TextButton #SaveYouTubeKeyButton {
+            @Text = "Save";
+            @Anchor = (Width: 120);
+          }
+
+          $C.@CancelTextButton #RemoveYouTubeKeyButton {
+            @Text = "Remove";
+            @Anchor = (Width: 120);
+            Visible: false;
+          }
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 6);
+
+          $C.@TextField #YouTubeVideoField {
+            @Anchor = (Width: 300, Right: 8);
+            PlaceholderText: "stream link (optional; save empty to clear)";
+          }
+
+          $C.@TextButton #SaveYouTubeVideoButton {
+            @Text = "Save";
+            @Anchor = (Width: 120);
+          }
+
+          $C.@CancelTextButton #RemoveYouTubeVideoButton {
+            @Text = "Remove";
+            @Anchor = (Width: 120);
+            Visible: false;
+          }
+        }
+
+        Label {
+          Text: "Free API key: Google Cloud Console > APIs and Services > enable YouTube Data API v3 > Credentials > API key.";
+          Anchor: (Bottom: 12);
+          Style: (...$C.@DefaultLabelStyle, FontSize: 13, Wrap: true);
+        }
+
+        $C.@Subtitle {
+          @Text = "Max viewer sprouts in the pen (min 1)";
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 12);
+
+          $C.@NumberField #MaxField {
+            @Anchor = (Width: 140, Right: 8);
+            Format: (MaxDecimalPlaces: 0, Step: 1);
+          }
+
+          $C.@TextButton #SaveMaxButton {
+            @Text = "Update";
+            @Anchor = (Width: 120);
+          }
+        }
+      }
+
+      // ---------------- Details tab (live) ----------------
+      Group #DetailsTab {
+        LayoutMode: TopScrolling;
+        ScrollbarStyle: $C.@DefaultScrollbarStyle;
+        FlexWeight: 1;
+        Padding: (Full: 8);
+        Visible: false;
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Height: 28);
+          Padding: (Horizontal: 6);
+          Background: (Color: #000000(0.15));
+
+          Label {
+            Text: "Channel";
+            Anchor: (Width: 170);
+            Style: (...$C.@DefaultLabelStyle, FontSize: 14, TextColor: $C.@ColorDefaultLabel, VerticalAlignment: Center);
+          }
+
+          Label #ChannelValue {
+            Text: "";
+            FlexWeight: 1;
+            Style: @ValuePlain;
+          }
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Height: 28);
+          Padding: (Horizontal: 6);
+
+          Label {
+            Text: "Listener";
+            Anchor: (Width: 170);
+            Style: (...$C.@DefaultLabelStyle, FontSize: 14, TextColor: $C.@ColorDefaultLabel, VerticalAlignment: Center);
+          }
+
+          Label #ListenerValue {
+            Text: "";
+            FlexWeight: 1;
+            Style: @ValuePlain;
+          }
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Height: 28);
+          Padding: (Horizontal: 6);
+          Background: (Color: #000000(0.15));
+
+          Label {
+            Text: "Twitch feed";
+            Anchor: (Width: 170);
+            Style: (...$C.@DefaultLabelStyle, FontSize: 14, TextColor: $C.@ColorDefaultLabel, VerticalAlignment: Center);
+          }
+
+          Label #FeedValue {
+            Text: "";
+            FlexWeight: 1;
+            Style: @ValuePlain;
+          }
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Height: 28);
+          Padding: (Horizontal: 6);
+
+          Label {
+            Text: "YouTube quota";
+            Anchor: (Width: 170);
+            Style: (...$C.@DefaultLabelStyle, FontSize: 14, TextColor: $C.@ColorDefaultLabel, VerticalAlignment: Center);
+          }
+
+          Label #YouTubeQuotaValue {
+            Text: "";
+            FlexWeight: 1;
+            Style: @ValuePlain;
+          }
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Height: 28);
+          Padding: (Horizontal: 6);
+          Background: (Color: #000000(0.15));
+
+          Label {
+            Text: "Persist";
+            Anchor: (Width: 170);
+            Style: (...$C.@DefaultLabelStyle, FontSize: 14, TextColor: $C.@ColorDefaultLabel, VerticalAlignment: Center);
+          }
+
+          Label #PersistValue {
+            Text: "";
+            FlexWeight: 1;
+            Style: @ValuePlain;
+          }
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Height: 28);
+          Padding: (Horizontal: 6);
+
+          Label {
+            Text: "Seen in chat";
+            Anchor: (Width: 170);
+            Style: (...$C.@DefaultLabelStyle, FontSize: 14, TextColor: $C.@ColorDefaultLabel, VerticalAlignment: Center);
+          }
+
+          Label #RosterValue {
+            Text: "";
+            FlexWeight: 1;
+            Style: @ValuePlain;
+          }
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Height: 28);
+          Padding: (Horizontal: 6);
+          Background: (Color: #000000(0.15));
+
+          Label {
+            Text: "Queue";
+            Anchor: (Width: 170);
+            Style: (...$C.@DefaultLabelStyle, FontSize: 14, TextColor: $C.@ColorDefaultLabel, VerticalAlignment: Center);
+          }
+
+          Label #QueueValue {
+            Text: "";
+            FlexWeight: 1;
+            Style: @ValuePlain;
+          }
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Height: 28);
+          Padding: (Horizontal: 6);
+
+          Label {
+            Text: "Filter";
+            Anchor: (Width: 170);
+            Style: (...$C.@DefaultLabelStyle, FontSize: 14, TextColor: $C.@ColorDefaultLabel, VerticalAlignment: Center);
+          }
+
+          Label #FilterValue {
+            Text: "";
+            FlexWeight: 1;
+            Style: @ValuePlain;
+          }
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Height: 28);
+          Padding: (Horizontal: 6);
+          Background: (Color: #000000(0.15));
+
+          Label {
+            Text: "Pen";
+            Anchor: (Width: 170);
+            Style: (...$C.@DefaultLabelStyle, FontSize: 14, TextColor: $C.@ColorDefaultLabel, VerticalAlignment: Center);
+          }
+
+          Label #PenCountValue {
+            Text: "";
+            FlexWeight: 1;
+            Style: @ValuePlain;
+          }
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Height: 28);
+          Padding: (Horizontal: 6);
+
+          Label {
+            Text: "Retired";
+            Anchor: (Width: 170);
+            Style: (...$C.@DefaultLabelStyle, FontSize: 14, TextColor: $C.@ColorDefaultLabel, VerticalAlignment: Center);
+          }
+
+          Label #RetiredValue {
+            Text: "";
+            FlexWeight: 1;
+            Style: @ValuePlain;
+          }
+        }
+      }
+
+      // ---------------- Viewers tab ----------------
+      Group #ViewersTab {
+        LayoutMode: TopScrolling;
+        ScrollbarStyle: $C.@DefaultScrollbarStyle;
+        FlexWeight: 1;
+        Padding: (Full: 8);
+        Visible: false;
+
+        $C.@Subtitle {
+          @Text = "Who gets a sprout";
+        }
+
+        // Filter toggle: tab-styled twin buttons, the server marks the active one and shows only its list.
+        Group {
+          LayoutMode: Left;
+          Anchor: (Height: 32, Bottom: 6);
+
+          TextButton #FilterIgnoreButton {
+            Text: "Ignore list";
+            Style: @TabSelectedStyle;
+            Anchor: (Width: 140, Height: 30, Right: 4);
+          }
+
+          TextButton #FilterAllowButton {
+            Text: "Allow list";
+            Style: @TabStyle;
+            Anchor: (Width: 140, Height: 30);
+          }
+        }
+
+        Label #FilterLabel {
+          Text: "";
+          Anchor: (Bottom: 12);
+          Style: (...$C.@DefaultLabelStyle, FontSize: 14, Wrap: true);
+        }
+
+        Group #AllowSection {
+          LayoutMode: Top;
+          Visible: false;
+
+          $C.@Subtitle {
+            @Text = "Allow list";
+          }
+
+          Label #AllowEmptyLabel {
+            Text: "Allow list is empty: nobody gets a sprout until you add someone.";
+            Anchor: (Bottom: 4);
+            Style: (...$C.@DefaultLabelStyle, FontSize: 14);
+            Visible: true;
+          }
+
+          Group #AllowList {
+            LayoutMode: TopScrolling;
+            ScrollbarStyle: $C.@DefaultScrollbarStyle;
+            Anchor: (Height: 220, Bottom: 6);
+            Background: (Color: #000000(0.15));
+            Padding: (Full: 6);
+          }
+
+          Group {
+            LayoutMode: Left;
+            Anchor: (Bottom: 4);
+
+            $C.@TextField #AllowField {
+              @Anchor = (Right: 8);
+              FlexWeight: 1;
+              PlaceholderText: "Twitch name, or yt:@handle / YouTube link";
+            }
+
+            $C.@SecondaryTextButton #AddAllowButton {
+              @Text = "Add";
+              @Anchor = (Width: 120);
+            }
+          }
+        }
+
+        Group #IgnoreSection {
+          LayoutMode: Top;
+          Visible: true;
+
+          $C.@Subtitle {
+            @Text = "Ignore list (the channel login is always ignored)";
+          }
+
+          Group #IgnoreList {
+            LayoutMode: TopScrolling;
+            ScrollbarStyle: $C.@DefaultScrollbarStyle;
+            Anchor: (Height: 220, Bottom: 6);
+            Background: (Color: #000000(0.15));
+            Padding: (Full: 6);
+          }
+
+          Group {
+            LayoutMode: Left;
+            Anchor: (Bottom: 4);
+
+            $C.@TextField #IgnoreField {
+              @Anchor = (Right: 8);
+              FlexWeight: 1;
+              PlaceholderText: "Twitch name, or yt:@handle / YouTube link";
+            }
+
+            $C.@SecondaryTextButton #AddIgnoreButton {
+              @Text = "Add";
+              @Anchor = (Width: 120);
+            }
+          }
+        }
+
+        // Shared by both lists (only one section shows): input rules, then the last YouTube lookup's outcome.
+        Label #ListInputHint {
+          Text: "Plain names and @names are Twitch. For YouTube use yt:@handle, a youtube.com link or a UC... channel ID.";
+          Anchor: (Bottom: 4);
+          Style: (...$C.@DefaultLabelStyle, FontSize: 13, Wrap: true);
+        }
+
+        Label #LookupLabel {
+          Text: "";
+          Anchor: (Bottom: 12);
+          Style: (...$C.@DefaultLabelStyle, FontSize: 14, Wrap: true);
+        }
+      }
+
+      // ---------------- Listener tab ----------------
+      Group #ListenerTab {
+        LayoutMode: TopScrolling;
+        ScrollbarStyle: $C.@DefaultScrollbarStyle;
+        FlexWeight: 1;
+        Padding: (Full: 8);
+        Visible: false;
+
+        $C.@Subtitle {
+          @Text = "Start / stop";
+        }
+
+        // Twin buttons in one slot; the server shows exactly one (Start when stopped, Stop when running).
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 16);
+
+          $C.@TextButton #StartButton {
+            @Text = "Start listener";
+            @Anchor = (Width: 200);
+          }
+
+          $C.@SecondaryTextButton #ConnectingButton {
+            @Text = "Connecting...";
+            @Anchor = (Width: 200);
+            Visible: false;
+          }
+
+          $C.@CancelTextButton #StopButton {
+            @Text = "Stop listener";
+            @Anchor = (Width: 200);
+            Visible: false;
+          }
+
+          Label #RunLabel {
+            Text: "";
+            Anchor: (Left: 11);
+            FlexWeight: 1;
+            Style: (...$C.@DefaultLabelStyle, FontSize: 15, VerticalAlignment: Center, Wrap: true);
+          }
+        }
+
+        $C.@Subtitle {
+          @Text = "Persist";
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 16);
+
+          $C.@CheckBox #PersistCheck {
+            Anchor: (Width: 26, Height: 26);
+          }
+
+          Label #PersistCheckLabel {
+            Text: "";
+            Anchor: (Left: 11);
+            FlexWeight: 1;
+            Style: (...$C.@DefaultLabelStyle, FontSize: 15, VerticalAlignment: Center, Wrap: true);
+          }
+        }
+
+        $C.@Subtitle {
+          @Text = "Auto-start on boot";
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 16);
+
+          $C.@CheckBox #AutoStartCheck {
+            Anchor: (Width: 26, Height: 26);
+          }
+
+          Label #AutoStartCheckLabel {
+            Text: "";
+            Anchor: (Left: 11);
+            FlexWeight: 1;
+            Style: (...$C.@DefaultLabelStyle, FontSize: 15, VerticalAlignment: Center, Wrap: true);
+          }
+        }
+
+        $C.@Subtitle {
+          @Text = "Tick interval (seconds, min 5)";
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 12);
+
+          $C.@NumberField #IntervalField {
+            @Anchor = (Width: 140, Right: 8);
+            Format: (MaxDecimalPlaces: 0, Step: 1);
+          }
+
+          $C.@TextButton #SaveIntervalButton {
+            @Text = "Save";
+            @Anchor = (Width: 120);
+          }
+        }
+      }
+
+      // ---------------- Pen tab ----------------
+      Group #PenTab {
+        LayoutMode: TopScrolling;
+        ScrollbarStyle: $C.@DefaultScrollbarStyle;
+        FlexWeight: 1;
+        Padding: (Full: 8);
+        Visible: false;
+
+        $C.@Subtitle {
+          @Text = "Creatures (changing clears the pen)";
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 16);
+
+          $C.@DropdownBox #CreatureDropdown {}
+        }
+
+        $C.@Subtitle {
+          @Text = "Pen prefab (saved on change)";
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 16);
+
+          $C.@DropdownBox #PrefabDropdown {}
+        }
+
+        $C.@Subtitle {
+          @Text = "Placement";
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 12);
+
+          $C.@TextButton #PlaceButton {
+            @Text = "Place pen here";
+            @Anchor = (Width: 200, Right: 8);
+          }
+
+          $C.@CancelTextButton #ClearButton {
+            @Text = "Clear sprouts";
+            @Anchor = (Width: 200);
+          }
+        }
+
+        $C.@Subtitle {
+          @Text = "Go live";
+        }
+
+        Label #BeginCaption {
+          Text: "Close and bring viewers to the pen.";
+          Anchor: (Bottom: 6);
+          Style: (...$C.@DefaultLabelStyle, FontSize: 14, Wrap: true);
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 6);
+
+          $C.@TextButton #BeginButton {
+            @Text = "Wrangle Viewers";
+            @Anchor = (Width: 240);
+          }
+        }
+      }
+
+      // Result of the last action (all tabs).
+      Label #MessageLabel {
+        Text: "";
+        Anchor: (Top: 8, Height: 40);
+        Style: (...$C.@DefaultLabelStyle, FontSize: 14, TextColor: #E8A93B, Wrap: true);
+      }
+    }
+  }
+}
+
+$C.@BackButton {}

@@ -1,0 +1,19 @@
+$C = "../../Common.ui";
+
+// One allow/ignore list entry. The server fills #Login.Text, binds #RemoveButton with the login,
+// and hides the button on the fixed channel row.
+Group {
+  LayoutMode: Left;
+  Anchor: (Height: 30, Bottom: 2);
+
+  Label #Login {
+    Text: "";
+    Style: (...$C.@DefaultLabelStyle, FontSize: 14, VerticalAlignment: Center);
+    FlexWeight: 1;
+  }
+
+  $C.@SmallSecondaryTextButton #RemoveButton {
+    @Text = "Remove";
+    Anchor: (Width: 96, Height: 26);
+  }
+}

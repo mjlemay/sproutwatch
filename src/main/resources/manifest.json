@@ -1,0 +1,27 @@
+{
+    "Group": "Mertie",
+    "Name": "sproutwatch",
+    "Version": "0.1.0",
+    "Description": "Twitch viewers become baby Kweebecs in a pen with a fixed 4:3 landscape camera",
+    "Authors": [
+        {
+            "Name": "Mertie",
+            "Email": "mjlemay@gmail.com",
+            "Url": "https://thinklikemike.com"
+        }
+    ],
+    "Website": "",
+    "ServerVersion": ">=0.5.3 <0.7.0",
+    "Dependencies": {
+        "Hytale:AssetModule": "*"
+    },
+    "OptionalDependencies": {
+        
+    },
+    "DisabledByDefault": false,
+    "Main": "dev.hytalemodding.sproutwatch.SproutwatchPlugin",
+    "IncludesAssetPack": true,
+    "UpdateChecker": {
+        "CurseForge": ""
+    }
+}

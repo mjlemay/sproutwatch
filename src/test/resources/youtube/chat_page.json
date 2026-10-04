@@ -1,0 +1,142 @@
+{
+  "kind": "youtube#liveChatMessageListResponse",
+  "etag": "ETAG",
+  "pollingIntervalMillis": 1901,
+  "pageInfo": {
+    "totalResults": 5,
+    "resultsPerPage": 5
+  },
+  "nextPageToken": "NEXTTOKEN",
+  "items": [
+    {
+      "kind": "youtube#liveChatMessage",
+      "etag": "etag0",
+      "id": "MSG0",
+      "snippet": {
+        "type": "textMessageEvent",
+        "liveChatId": "LIVECHATID",
+        "authorChannelId": "UCaaaaaaaaaaaaaaaaaaaaa1",
+        "publishedAt": "2026-10-03T12:00:00.000000+00:00",
+        "hasDisplayContent": true,
+        "displayMessage": "hello from youtube",
+        "textMessageDetails": {
+          "messageText": "hello from youtube"
+        }
+      },
+      "authorDetails": {
+        "channelId": "UCaaaaaaaaaaaaaaaaaaaaa1",
+        "channelUrl": "http://www.youtube.com/channel/UCaaaaaaaaaaaaaaaaaaaaa1",
+        "displayName": "Viewer One",
+        "profileImageUrl": "https://example.invalid/avatar.png",
+        "isVerified": false,
+        "isChatOwner": false,
+        "isChatSponsor": false,
+        "isChatModerator": false
+      }
+    },
+    {
+      "kind": "youtube#liveChatMessage",
+      "etag": "etag1",
+      "id": "MSG1",
+      "snippet": {
+        "type": "textMessageEvent",
+        "liveChatId": "LIVECHATID",
+        "authorChannelId": "UCbbbbbbbbbbbbbbbbbbbbb2",
+        "publishedAt": "2026-10-03T12:00:01.000000+00:00",
+        "hasDisplayContent": true,
+        "displayMessage": "!sprout",
+        "textMessageDetails": {
+          "messageText": "!sprout"
+        }
+      },
+      "authorDetails": {
+        "channelId": "UCbbbbbbbbbbbbbbbbbbbbb2",
+        "channelUrl": "http://www.youtube.com/channel/UCbbbbbbbbbbbbbbbbbbbbb2",
+        "displayName": "Viewer Two",
+        "profileImageUrl": "https://example.invalid/avatar.png",
+        "isVerified": false,
+        "isChatOwner": false,
+        "isChatSponsor": false,
+        "isChatModerator": false
+      }
+    },
+    {
+      "kind": "youtube#liveChatMessage",
+      "etag": "etag2",
+      "id": "MSG2",
+      "snippet": {
+        "type": "textMessageEvent",
+        "liveChatId": "LIVECHATID",
+        "authorChannelId": "UCccccccccccccccccccccc3",
+        "publishedAt": "2026-10-03T12:00:02.000000+00:00",
+        "hasDisplayContent": true,
+        "displayMessage": "this is so cozy",
+        "textMessageDetails": {
+          "messageText": "this is so cozy"
+        }
+      },
+      "authorDetails": {
+        "channelId": "UCccccccccccccccccccccc3",
+        "channelUrl": "http://www.youtube.com/channel/UCccccccccccccccccccccc3",
+        "displayName": "Viewer Three",
+        "profileImageUrl": "https://example.invalid/avatar.png",
+        "isVerified": false,
+        "isChatOwner": false,
+        "isChatSponsor": false,
+        "isChatModerator": false
+      }
+    },
+    {
+      "kind": "youtube#liveChatMessage",
+      "etag": "etag3",
+      "id": "MSG3",
+      "snippet": {
+        "type": "textMessageEvent",
+        "liveChatId": "LIVECHATID",
+        "authorChannelId": "UCaaaaaaaaaaaaaaaaaaaaa1",
+        "publishedAt": "2026-10-03T12:00:03.000000+00:00",
+        "hasDisplayContent": true,
+        "displayMessage": "!SPROUT ",
+        "textMessageDetails": {
+          "messageText": "!SPROUT "
+        }
+      },
+      "authorDetails": {
+        "channelId": "UCaaaaaaaaaaaaaaaaaaaaa1",
+        "channelUrl": "http://www.youtube.com/channel/UCaaaaaaaaaaaaaaaaaaaaa1",
+        "displayName": "Viewer One",
+        "profileImageUrl": "https://example.invalid/avatar.png",
+        "isVerified": false,
+        "isChatOwner": false,
+        "isChatSponsor": false,
+        "isChatModerator": false
+      }
+    },
+    {
+      "kind": "youtube#liveChatMessage",
+      "etag": "etag4",
+      "id": "MSG4",
+      "snippet": {
+        "type": "textMessageEvent",
+        "liveChatId": "LIVECHATID",
+        "authorChannelId": "UCddddddddddddddddddddd4",
+        "publishedAt": "2026-10-03T12:00:04.000000+00:00",
+        "hasDisplayContent": true,
+        "displayMessage": "hi chat 👋",
+        "textMessageDetails": {
+          "messageText": "hi chat 👋"
+        }
+      },
+      "authorDetails": {
+        "channelId": "UCddddddddddddddddddddd4",
+        "channelUrl": "http://www.youtube.com/channel/UCddddddddddddddddddddd4",
+        "displayName": "Viewer Four",
+        "profileImageUrl": "https://example.invalid/avatar.png",
+        "isVerified": false,
+        "isChatOwner": false,
+        "isChatSponsor": false,
+        "isChatModerator": false
+      }
+    }
+  ]
+}

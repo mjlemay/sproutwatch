@@ -1,0 +1,17 @@
+.gradle/
+build/
+out/
+run/
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.vscode
+.DS_Store
+
+# Local secrets (YouTube API key for dev spikes; streamers enter their key in the settings page)
+.sproutwatch-yt-key
+*.key

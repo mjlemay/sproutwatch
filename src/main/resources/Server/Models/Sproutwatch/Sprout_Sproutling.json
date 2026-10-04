@@ -1,0 +1,114 @@
+{
+  "Parent": "Kweebec_Sproutling",
+  "DefaultAttachments": [
+    {
+      "Model": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Eyebrows.blockymodel",
+      "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Eyebrows_Textures/Kweebec_Young.png"
+    },
+    {
+      "Model": "NPC/Intelligent/Kweebec_Sproutling/Models/Attachments/Cosmetics/Head/Mouth.blockymodel",
+      "Texture": "NPC/Intelligent/Kweebec_Sproutling/Models/Attachments/Cosmetics/Head/Mouth_Texture.png"
+    },
+    {
+      "Model": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Eyes.blockymodel",
+      "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Eyes_Textures/Kweebec_Young.png"
+    }
+  ],
+  "RandomAttachmentSets": {
+    "Hair": {
+      "null": {
+        "Weight": 2
+      },
+      "Bud": {
+        "Model": "NPC/Intelligent/Kweebec_Sproutling/Models/Attachments/Cosmetics/Head/Bud.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sproutling/Models/Attachments/Cosmetics/Head/Bud_Texture.png",
+        "Weight": 3
+      },
+      "Leaves_Green": {
+        "Model": "NPC/Sproutwatch/Hats/Leaves.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Haircuts/Leaves_Green.png",
+        "Weight": 1
+      },
+      "Leaves_Oak": {
+        "Model": "NPC/Sproutwatch/Hats/Leaves.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Haircuts/Leaves_Oak.png",
+        "Weight": 1
+      },
+      "Leaves_Nettle": {
+        "Model": "NPC/Sproutwatch/Hats/Leaves_Nettle.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Haircuts/Leaves_Nettle_Texture.png",
+        "Weight": 1
+      },
+      "Leaves_RockPlant": {
+        "Model": "NPC/Sproutwatch/Hats/Leaves_RockPlant.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Haircuts/Leaves_RockPlant_Texture.png",
+        "Weight": 1
+      },
+      "Leaves_Fern": {
+        "Model": "NPC/Sproutwatch/Hats/Leaves_Fern.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Haircuts/Leaves_Fern_Texture.png",
+        "Weight": 1
+      },
+      "Leaves_BowlCut": {
+        "Model": "NPC/Sproutwatch/Hats/Leaves_BowlCut.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Haircuts/Leaves_BowlCut_Texture.png",
+        "Weight": 1
+      },
+      "Leaves_Spiral": {
+        "Model": "NPC/Sproutwatch/Hats/Leaves_Spiral.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Haircuts/Leaves_Spiral_Texture.png",
+        "Weight": 1
+      },
+      "Leaves_Ivy": {
+        "Model": "NPC/Sproutwatch/Hats/Leaves_Ivy.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Haircuts/Leaves_Ivy_Texture.png",
+        "Weight": 1
+      },
+      "Leaves_Pigtails": {
+        "Model": "NPC/Sproutwatch/Hats/Leaves_Pigtails.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Haircuts/Leaves_Pigtails_Texture.png",
+        "Weight": 1
+      },
+      "Flower_Pink": {
+        "Model": "NPC/Sproutwatch/Hats/Flower.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Haircuts/Flower_Pink.png",
+        "Weight": 1
+      },
+      "Flower_Crysanthemum": {
+        "Model": "NPC/Sproutwatch/Hats/Flower_Crysanthemum.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Haircuts/Flower_Crysanthemum_Texture.png",
+        "Weight": 1
+      },
+      "Flower_Delphinium": {
+        "Model": "NPC/Sproutwatch/Hats/Flower_Delphinium.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Haircuts/Flower_Delphinium_Texture.png",
+        "Weight": 1
+      },
+      "Flower_Trifolium": {
+        "Model": "NPC/Sproutwatch/Hats/Flower_Trifolium.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Head/Haircuts/Flower_Trifolium_Texture.png",
+        "Weight": 1
+      }
+    },
+    "Outfit": {
+      "null": {
+        "Weight": 2
+      },
+      "Loin_Cloth": {
+        "Model": "NPC/Intelligent/Kweebec_Sproutling/Models/Attachments/Cosmetics/Chest/Loin_Cloth_Leaves.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sproutling/Models/Attachments/Cosmetics/Chest/Loin_Cloth_Leaves_Texture.png",
+        "Weight": 4
+      },
+      "Shirt": {
+        "Model": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Chest/Shirt.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Chest/Shirt_Texture.png",
+        "Weight": 2
+      },
+      "Dress": {
+        "Model": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Chest/Dress.blockymodel",
+        "Texture": "NPC/Intelligent/Kweebec_Sapling/Models/Attachments/Cosmetics/Chest/Dress_Texture.png",
+        "Weight": 1
+      }
+    }
+  }
+}
