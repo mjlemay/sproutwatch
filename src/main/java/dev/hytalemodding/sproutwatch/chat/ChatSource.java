@@ -5,11 +5,11 @@ package dev.hytalemodding.sproutwatch.chat;
  * {@link dev.hytalemodding.sproutwatch.twitch.ChatRoster}. Each source owns its own background
  * thread; the plugin starts, stops and reports on all enabled sources together.
  *
- * <p>{@link #getState()} is a short human-readable string shown on the settings page and in
- * {@code /sproutwatch status}. The page colours it by prefix: {@code connected…} is good,
+ * {@link #getState()} is a short human-readable string shown on the settings page and in
+ * {@code /sproutwatch status}. The page colors it by prefix: {@code connected…} is good,
  * {@code connecting…} is a warning (still trying), {@code reconnecting…} is bad.
  *
- * <p>Life cycle: a source may be one-shot ({@code TwitchMembershipClient} throws on a second
+ * Life cycle: a source may be one-shot ({@code TwitchMembershipClient} throws on a second
  * {@link #start()}) or restartable ({@code YouTubeChatSource} begins a fresh run). Callers must not
  * rely on either: the plugin constructs a fresh source per Start and never reuses one after
  * {@link #stop()}. A source may end on its own (e.g. {@code chat ended}); it then reports

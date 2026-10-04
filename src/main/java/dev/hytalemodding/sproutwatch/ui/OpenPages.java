@@ -53,8 +53,8 @@ public final class OpenPages {
             boolean keep;
             try {
                 keep = e.getValue().refreshStatus();
-            } catch (RuntimeException ex) {
-                logger.log(Level.WARNING, "Sproutwatch settings page refresh failed for " + e.getKey() + "; dropping it", ex);
+            } catch (RuntimeException exception) {
+                logger.log(Level.WARNING, "Sproutwatch settings page refresh failed for " + e.getKey() + "; dropping it", exception);
                 keep = false;
             }
             if (!keep) pages.remove(e.getKey(), e.getValue());

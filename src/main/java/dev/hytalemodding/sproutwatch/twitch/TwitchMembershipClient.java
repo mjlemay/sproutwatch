@@ -24,14 +24,14 @@ import java.util.logging.Logger;
  * survives 60 s). Requests twitch.tv/membership so JOIN/PART/NAMES arrive; if Twitch never ACKs
  * it, only chatters who speak will ever appear, which is warned once per connection.
  * One-shot: construct a new client per start; stop() is terminal.
- * Forked from Subinator's TwitchChatClient (same transport, proven on 0.6.3).
+ * Plain IRC-over-TLS transport, verified on 0.6.3.
  */
 public final class TwitchMembershipClient implements ChatSource {
 
-    private static final long CONNECT_TIMEOUT_MS = 10_000;
-    private static final long READ_TIMEOUT_MS = 600_000; // Twitch pings ~every 5 min
-    private static final long MAX_BACKOFF_MS = 300_000;
-    private static final long HEALTHY_CONNECTION_MS = 60_000;
+    private static final long CONNECT_TIMEOUT_MILLIS = 10_000;
+    private static final long READ_TIMEOUT_MILLIS = 600_000; // Twitch pings ~every 5 min
+    private static final long MAX_BACKOFF_MILLIS = 300_000;
+    private static final long HEALTHY_CONNECTION_MILLIS = 60_000;
 
     private final String channel;
     private final ChatRoster roster;
@@ -39,7 +39,7 @@ public final class TwitchMembershipClient implements ChatSource {
     private final SocketFactory socketFactory;
     private final String host;
     private final int port;
-    private final long initialBackoffMs;
+    private final long initialBackoffMillis;
     private final AtomicLong eventCount = new AtomicLong();
 
     private volatile boolean running;
@@ -48,7 +48,7 @@ public final class TwitchMembershipClient implements ChatSource {
     private volatile String state = "stopped";
     /** Called on every state change (any thread); the plugin uses it to refresh open settings pages. */
     private volatile Runnable onStateChange;
-    private volatile boolean membershipAcked;
+    private volatile boolean membershipAcknowledged;
     private boolean started;
 
     @Override
@@ -63,8 +63,8 @@ public final class TwitchMembershipClient implements ChatSource {
         if (hook == null) return;
         try {
             hook.run();
-        } catch (RuntimeException e) {
-            logger.log(Level.WARNING, "Sproutwatch state-change hook failed", e);
+        } catch (RuntimeException exception) {
+            logger.log(Level.WARNING, "Sproutwatch state-change hook failed", exception);
         }
     }
 
@@ -74,14 +74,14 @@ public final class TwitchMembershipClient implements ChatSource {
     }
 
     TwitchMembershipClient(String channel, ChatRoster roster, Logger logger,
-                           SocketFactory socketFactory, String host, int port, long initialBackoffMs) {
+                           SocketFactory socketFactory, String host, int port, long initialBackoffMillis) {
         this.channel = SproutwatchConfig.normalizeChannel(channel);
         this.roster = roster;
         this.logger = logger;
         this.socketFactory = socketFactory;
         this.host = host;
         this.port = port;
-        this.initialBackoffMs = initialBackoffMs;
+        this.initialBackoffMillis = initialBackoffMillis;
     }
 
     @Override
@@ -102,12 +102,12 @@ public final class TwitchMembershipClient implements ChatSource {
         running = false;
         setState("stopped");
         closeSocket();
-        Thread t = thread;
-        if (t != null) {
-            t.interrupt();
+        Thread worker = thread;
+        if (worker != null) {
+            worker.interrupt();
             try {
-                t.join(500);
-            } catch (InterruptedException ie) {
+                worker.join(500);
+            } catch (InterruptedException interruption) {
                 Thread.currentThread().interrupt();
             }
         }
@@ -120,29 +120,29 @@ public final class TwitchMembershipClient implements ChatSource {
     public String getState() { return state; }
     public String getChannel() { return channel; }
     public long getEventCount() { return eventCount.get(); }
-    public boolean isMembershipAcked() { return membershipAcked; }
+    public boolean isMembershipAcknowledged() { return membershipAcknowledged; }
     public int getRosterSize() { return roster.size(); }
 
     private void runLoop() {
-        long backoffMs = initialBackoffMs;
+        long backoffMillis = initialBackoffMillis;
         try {
             while (running) {
                 long startedAt = System.currentTimeMillis();
                 try {
                     connectAndRead();
-                } catch (IOException | RuntimeException e) {
+                } catch (IOException | RuntimeException exception) {
                     if (!running) break;
                     setState("reconnecting");
-                    logger.warning("Twitch connection lost (" + e.getMessage() + "); retrying in " + (backoffMs / 1000) + "s");
+                    logger.warning("Twitch connection lost (" + exception.getMessage() + "); retrying in " + (backoffMillis / 1000) + "s");
                 }
                 if (!running) break;
-                long connectedMs = System.currentTimeMillis() - startedAt;
-                backoffMs = connectedMs >= HEALTHY_CONNECTION_MS
-                        ? initialBackoffMs
-                        : Math.min(backoffMs * 2, MAX_BACKOFF_MS);
+                long connectedMillis = System.currentTimeMillis() - startedAt;
+                backoffMillis = connectedMillis >= HEALTHY_CONNECTION_MILLIS
+                        ? initialBackoffMillis
+                        : Math.min(backoffMillis * 2, MAX_BACKOFF_MILLIS);
                 try {
-                    Thread.sleep(backoffMs);
-                } catch (InterruptedException ie) {
+                    Thread.sleep(backoffMillis);
+                } catch (InterruptedException interruption) {
                     Thread.currentThread().interrupt();
                     break;
                 }
@@ -157,20 +157,20 @@ public final class TwitchMembershipClient implements ChatSource {
     }
 
     private void connectAndRead() throws IOException {
-        Socket s = socketFactory.createSocket();
+        Socket newSocket = socketFactory.createSocket();
         try {
-            s.connect(new InetSocketAddress(host, port), (int) CONNECT_TIMEOUT_MS);
-            socket = s;
-            s.setSoTimeout((int) READ_TIMEOUT_MS);
+            newSocket.connect(new InetSocketAddress(host, port), (int) CONNECT_TIMEOUT_MILLIS);
+            socket = newSocket;
+            newSocket.setSoTimeout((int) READ_TIMEOUT_MILLIS);
             if (!running) return;
 
-            membershipAcked = false; // per connection
+            membershipAcknowledged = false; // per connection
             boolean warnedNoMembership = false;
             int preAckLines = 0;
             try (BufferedReader in = new BufferedReader(
-                     new InputStreamReader(s.getInputStream(), StandardCharsets.UTF_8));
+                     new InputStreamReader(newSocket.getInputStream(), StandardCharsets.UTF_8));
                  PrintWriter out = new PrintWriter(
-                     new OutputStreamWriter(s.getOutputStream(), StandardCharsets.UTF_8), true)) {
+                     new OutputStreamWriter(newSocket.getOutputStream(), StandardCharsets.UTF_8), true)) {
 
                 out.println("CAP REQ :twitch.tv/membership twitch.tv/commands");
                 out.println("NICK justinfan" + ThreadLocalRandom.current().nextInt(10_000, 100_000));
@@ -184,9 +184,9 @@ public final class TwitchMembershipClient implements ChatSource {
                         out.println("PONG" + line.substring(4));
                         continue;
                     }
-                    if (!membershipAcked) {
+                    if (!membershipAcknowledged) {
                         if (line.contains(" CAP ") && line.contains(" ACK ") && line.contains("twitch.tv/membership")) {
-                            membershipAcked = true;
+                            membershipAcknowledged = true;
                             continue;
                         }
                         preAckLines++;
@@ -200,22 +200,22 @@ public final class TwitchMembershipClient implements ChatSource {
                     eventCount.incrementAndGet();
                     try {
                         roster.apply(event, System.currentTimeMillis());
-                    } catch (RuntimeException e) {
-                        logger.log(Level.WARNING, "Roster update failed", e);
+                    } catch (RuntimeException exception) {
+                        logger.log(Level.WARNING, "Roster update failed", exception);
                     }
                 }
             }
         } finally {
-            if (socket == s) socket = null;
-            try { s.close(); } catch (IOException ignored) {}
+            if (socket == newSocket) socket = null;
+            try { newSocket.close(); } catch (IOException ignored) {}
         }
     }
 
     private void closeSocket() {
-        Socket s = socket;
+        Socket current = socket;
         socket = null;
-        if (s != null) {
-            try { s.close(); } catch (IOException ignored) {}
+        if (current != null) {
+            try { current.close(); } catch (IOException ignored) {}
         }
     }
 }

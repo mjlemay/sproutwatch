@@ -5,7 +5,7 @@ import java.util.Locale;
 /**
  * What lives in the pen (config "Creatures", the Pen tab dropdown). Each preset is a role list in the
  * Roles format: entries equally likely, "|" groups pick one member. Kweebecs uses the configured
- * Roles so customisations survive; the animal presets are fixed vanilla Livestock roles.
+ * Roles so customizations survive; the animal presets are fixed vanilla Livestock roles.
  */
 public enum CreaturePreset {
     KWEEBECS("kweebecs", "Kweebecs", null),

@@ -58,7 +58,7 @@ class YouTubeChatSourceTest {
     private static final String CHAT = "LIVECHAT1";
     /** 18:00 UTC = 11:00 PDT; the quota resets at 07:00 UTC the next day. */
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-03T18:00:00Z"), ZoneOffset.UTC);
-    private static final long UNTIL_RESET_MS = Duration.ofHours(13).toMillis();
+    private static final long UNTIL_RESET_MILLIS = Duration.ofHours(13).toMillis();
 
     private static final List<String> FIXTURE_KEYS = List.of(
             "yt:UCaaaaaaaaaaaaaaaaaaaaa1", "yt:UCbbbbbbbbbbbbbbbbbbbbb2", "yt:UCccccccccccccccccccccc3",
@@ -86,7 +86,7 @@ class YouTubeChatSourceTest {
     private final List<String> logs = new CopyOnWriteArrayList<>();
     private final List<String> warnings = new CopyOnWriteArrayList<>();
     private volatile Thread poller;
-    /** Extra per-test behaviour run inside the state-change hook. */
+    /** Extra per-test behavior run inside the state-change hook. */
     private volatile Runnable hookExtra = () -> {};
     private Clock sourceClock = CLOCK;
 
@@ -116,9 +116,9 @@ class YouTubeChatSourceTest {
 
     // ---- fake server ----
 
-    private void handle(HttpExchange ex) throws IOException {
-        String path = ex.getRequestURI().getRawPath().substring("/youtube/v3/".length());
-        requests.add(new Req(path, decode(ex.getRequestURI().getRawQuery())));
+    private void handle(HttpExchange exchange) throws IOException {
+        String path = exchange.getRequestURI().getRawPath().substring("/youtube/v3/".length());
+        requests.add(new Req(path, decode(exchange.getRequestURI().getRawQuery())));
         Reply r;
         synchronized (script) {
             Deque<Reply> q = script.get(path);
@@ -131,21 +131,21 @@ class YouTubeChatSourceTest {
         if (r.delayMillis() > 0) {
             try {
                 Thread.sleep(r.delayMillis());
-            } catch (InterruptedException e) {
+            } catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
             }
         }
         byte[] b = r.body().getBytes(StandardCharsets.UTF_8);
-        ex.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
         try {
-            ex.sendResponseHeaders(r.status(), b.length);
-            try (OutputStream out = ex.getResponseBody()) {
+            exchange.sendResponseHeaders(r.status(), b.length);
+            try (OutputStream out = exchange.getResponseBody()) {
                 out.write(b);
             }
         } catch (IOException ignored) {
             // client gave up (stop during an in-flight call)
         } finally {
-            ex.close();
+            exchange.close();
         }
     }
 
@@ -190,7 +190,7 @@ class YouTubeChatSourceTest {
         return "{\"error\":{\"code\":%d,\"message\":\"m\",\"errors\":[{\"reason\":\"%s\"}]}}".formatted(code, reason);
     }
 
-    private static String msg(String channelId, String name, String text) {
+    private static String chatMessage(String channelId, String name, String text) {
         String author = name == null ? ""
                 : ",\"authorDetails\":{\"channelId\":\"%s\",\"displayName\":\"%s\"}".formatted(channelId, name);
         return "{\"snippet\":{\"type\":\"textMessageEvent\",\"authorChannelId\":\"%s\",\"displayMessage\":\"%s\"}%s}"
@@ -269,17 +269,17 @@ class YouTubeChatSourceTest {
             try {
                 latch.await();
                 break;
-            } catch (InterruptedException e) {
+            } catch (InterruptedException exception) {
                 interrupted = true;
             }
         }
         if (interrupted) Thread.currentThread().interrupt();
     }
 
-    private static void awaitDeath(Thread t) throws InterruptedException {
-        assertNotNull(t, "poller thread not captured");
-        t.join(5_000);
-        assertFalse(t.isAlive(), "poller thread still alive");
+    private static void awaitDeath(Thread thread) throws InterruptedException {
+        assertNotNull(thread, "poller thread not captured");
+        thread.join(5_000);
+        assertFalse(thread.isAlive(), "poller thread still alive");
     }
 
     private void awaitChatReads(int n) throws InterruptedException {
@@ -343,7 +343,7 @@ class YouTubeChatSourceTest {
     @Test
     void laterPageIsAppliedInOrder() throws Exception {
         scriptHandleLookup();
-        ok("liveChat/messages", page("T1", 1000, msg("UCbacklog", "Old Timer", "!sprout")));
+        ok("liveChat/messages", page("T1", 1000, chatMessage("UCbacklog", "Old Timer", "!sprout")));
         ok("liveChat/messages", fixture());
         start("@Mertie", null);
         awaitParked();
@@ -383,7 +383,7 @@ class YouTubeChatSourceTest {
         names.put(key, "Stale Name");
         scriptHandleLookup();
         ok("liveChat/messages", page("T1", 1000));
-        ok("liveChat/messages", page("T2", 1000, msg("UCnoname", null, "hi")));
+        ok("liveChat/messages", page("T2", 1000, chatMessage("UCnoname", null, "hi")));
         start("@Mertie", null);
         awaitParked();
 
@@ -414,7 +414,7 @@ class YouTubeChatSourceTest {
         assertEquals("quota exhausted (resets 07:00)", source.getState());
         assertTrue(source.isRunning(), "waits for the reset instead of stopping");
         assertEquals(List.of(), paths());
-        assertTrue(sleeps.get(0) >= UNTIL_RESET_MS, "sleep " + sleeps.get(0));
+        assertTrue(sleeps.get(0) >= UNTIL_RESET_MILLIS, "sleep " + sleeps.get(0));
     }
 
     @Test
@@ -422,13 +422,13 @@ class YouTubeChatSourceTest {
         scriptHandleLookup();
         ok("liveChat/messages", page("T1", 1000));
         on("liveChat/messages", 403, error(403, "quotaExceeded"));
-        ok("liveChat/messages", page("T2", 1000, msg("UCbacklog", "Old", "!sprout")));
-        ok("liveChat/messages", page("T3", 1000, msg("UCnew", "New", "hi")));
+        ok("liveChat/messages", page("T2", 1000, chatMessage("UCbacklog", "Old", "!sprout")));
+        ok("liveChat/messages", page("T3", 1000, chatMessage("UCnew", "New", "hi")));
         start("@Mertie", null);
         awaitParked();
 
         assertTrue(states.contains("quota exhausted (resets 07:00)"), states.toString());
-        assertTrue(sleeps.stream().anyMatch(s -> s >= UNTIL_RESET_MS), sleeps.toString());
+        assertTrue(sleeps.stream().anyMatch(s -> s >= UNTIL_RESET_MILLIS), sleeps.toString());
         List<Req> reads = chatReads();
         assertEquals(4, reads.size());
         assertEquals("T1", reads.get(1).params().get("pageToken"));
@@ -455,7 +455,7 @@ class YouTubeChatSourceTest {
         scriptHandleLookup();
         ok("liveChat/messages", page("T1", 1000));
         ok("liveChat/messages", "{\"pollingIntervalMillis\":1000,\"offlineAt\":\"2026-10-03T19:00:00Z\",\"items\":["
-                + msg("UClast", "Last", "bye") + "]}");
+                + chatMessage("UClast", "Last", "bye") + "]}");
         start("@Mertie", null);
         awaitEnded();
 
@@ -501,9 +501,9 @@ class YouTubeChatSourceTest {
     @Test
     void rejectedOnceRestartsFromAFreshFirstPageSkippingBacklog() throws Exception {
         scriptHandleLookup();
-        ok("liveChat/messages", page("T1", 1000, msg("UColdA", "A", "!sprout")));
+        ok("liveChat/messages", page("T1", 1000, chatMessage("UColdA", "A", "!sprout")));
         on("liveChat/messages", 400, error(400, "invalidPageToken"));
-        ok("liveChat/messages", page("T2", 1000, msg("UColdB", "B", "!sprout")));
+        ok("liveChat/messages", page("T2", 1000, chatMessage("UColdB", "B", "!sprout")));
         ok("liveChat/messages", fixture());
         start("@Mertie", null);
         awaitParked();
@@ -580,8 +580,8 @@ class YouTubeChatSourceTest {
 
         long t0 = System.nanoTime();
         source.stop();
-        long tookMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0);
-        assertTrue(tookMs < 1_000, "stop took " + tookMs + " ms");
+        long tookMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0);
+        assertTrue(tookMillis < 1_000, "stop took " + tookMillis + " ms");
         assertFalse(source.isRunning());
         assertEquals(YouTubeChatSource.STOPPED, source.getState());
         assertEquals(YouTubeChatSource.STOPPED, states.get(states.size() - 1));
@@ -609,8 +609,8 @@ class YouTubeChatSourceTest {
         roster = new ChatRoster(flaky, () -> "!sprout", new SproutQueue());
         scriptHandleLookup();
         ok("liveChat/messages", page("T1", 1000));
-        ok("liveChat/messages", page("T2", 1000, msg("UCfirst", "First", "hi"), msg("UCsecond", "Second", "!sprout")));
-        ok("liveChat/messages", page("T3", 1000, msg("UCthird", "Third", "hey")));
+        ok("liveChat/messages", page("T2", 1000, chatMessage("UCfirst", "First", "hi"), chatMessage("UCsecond", "Second", "!sprout")));
+        ok("liveChat/messages", page("T3", 1000, chatMessage("UCthird", "Third", "hey")));
         start("@Mertie", null);
         awaitParked();
 
@@ -624,7 +624,7 @@ class YouTubeChatSourceTest {
     @Test
     void stopThatTimesOutOnABlockedHookNeverAppliesLate() throws Exception {
         // The plugin's hook can block on a lock that stop()'s caller holds. stop() must give up
-        // after JOIN_MS, and once the plugin has cleared the roster nothing may land in it.
+        // after JOIN_MILLIS, and once the plugin has cleared the roster nothing may land in it.
         CountDownLatch hookBlocked = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         AtomicInteger connected = new AtomicInteger();
@@ -638,21 +638,21 @@ class YouTubeChatSourceTest {
         scriptVideo();
         ok("liveChat/messages", page("T1", 1000));
         on("liveChat/messages", 503, "{}");
-        ok("liveChat/messages", page("T2", 1000, msg("UCearly", "Early", "!sprout")));
-        ok("liveChat/messages", page("T3", 1000, msg("UClate", "Late", "!sprout")));
+        ok("liveChat/messages", page("T2", 1000, chatMessage("UCearly", "Early", "!sprout")));
+        ok("liveChat/messages", page("T3", 1000, chatMessage("UClate", "Late", "!sprout")));
         start("", VIDEO);
         assertTrue(hookBlocked.await(5, TimeUnit.SECONDS));
-        Thread t = poller;
+        Thread thread = poller;
 
         long t0 = System.nanoTime();
         source.stop();
-        long tookMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0);
-        assertTrue(tookMs >= YouTubeChatSource.JOIN_MS - 50 && tookMs < 1_100 + 200, "stop took " + tookMs + " ms");
+        long tookMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0);
+        assertTrue(tookMillis >= YouTubeChatSource.JOIN_MILLIS - 50 && tookMillis < 1_100 + 200, "stop took " + tookMillis + " ms");
         assertTrue(warnings.stream().anyMatch(w -> w.contains("did not end")), warnings.toString());
         roster.clear();
         names.clear();
         release.countDown();
-        awaitDeath(t);
+        awaitDeath(thread);
 
         assertEquals(0, roster.size(), "nothing applied after stop");
         assertEquals(0, roster.queue().size());
@@ -665,19 +665,19 @@ class YouTubeChatSourceTest {
         scriptVideo();
         ok("liveChat/messages", page("T1", 1000));
         synchronized (script) {
-            script.get("liveChat/messages").add(new Reply(200, page("T2", 1000, msg("UCslow", "Slow", "!sprout")), 3_000));
+            script.get("liveChat/messages").add(new Reply(200, page("T2", 1000, chatMessage("UCslow", "Slow", "!sprout")), 3_000));
         }
         sourceClock = CLOCK;
         start("", VIDEO);
         awaitChatReads(2);
         Thread.sleep(50); // let the poller block in the HTTP call
-        Thread t = poller;
+        Thread thread = poller;
 
         long t0 = System.nanoTime();
         source.stop();
-        long tookMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0);
-        assertTrue(tookMs < 1_000, "stop took " + tookMs + " ms");
-        awaitDeath(t);
+        long tookMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0);
+        assertTrue(tookMillis < 1_000, "stop took " + tookMillis + " ms");
+        awaitDeath(thread);
         assertEquals(0, roster.size());
         assertEquals(YouTubeChatSource.STOPPED, source.getState());
     }
@@ -714,8 +714,8 @@ class YouTubeChatSourceTest {
         assertEquals(YouTubeChatSource.CHAT_ENDED, source.getState());
 
         scriptVideo();
-        ok("liveChat/messages", page("R1", 1000, msg("UCbacklog", "Old", "!sprout")));
-        ok("liveChat/messages", page("R2", 1000, msg("UCnew", "New", "!sprout")));
+        ok("liveChat/messages", page("R1", 1000, chatMessage("UCbacklog", "Old", "!sprout")));
+        ok("liveChat/messages", page("R2", 1000, chatMessage("UCnew", "New", "!sprout")));
         source.start();
         awaitParked();
 
@@ -733,8 +733,8 @@ class YouTubeChatSourceTest {
         ok("liveChat/messages", page("T1", 1000));
         on("liveChat/messages", 404, error(404, "notFound"));
         scriptVideo();
-        ok("liveChat/messages", page("T2", 1000, msg("UCbacklog", "Old", "hi")));
-        ok("liveChat/messages", page("T3", 1000, msg("UCnew", "New", "hi")));
+        ok("liveChat/messages", page("T2", 1000, chatMessage("UCbacklog", "Old", "hi")));
+        ok("liveChat/messages", page("T3", 1000, chatMessage("UCnew", "New", "hi")));
         start("", VIDEO);
         awaitParked();
 
@@ -762,7 +762,7 @@ class YouTubeChatSourceTest {
         };
         scriptVideo();
         ok("liveChat/messages", page("T1", 1000));
-        for (int i = 0; i < 3; i++) ok("liveChat/messages", page("T2", 1000, msg("UCa", "A", "hi")));
+        for (int i = 0; i < 3; i++) ok("liveChat/messages", page("T2", 1000, chatMessage("UCa", "A", "hi")));
         start("", VIDEO);
         awaitParked();
 

@@ -25,7 +25,7 @@ import java.util.logging.Logger;
 
 /**
  * Every TickSeconds: resolve the pen world, hop onto its thread, mark every pen entry whose
- * login is still in the roster as seen now, reconcile, despawn the stale (or, with PersistSprouts,
+ * viewer key is still in the roster as seen now, reconcile, despawn the stale (or, with PersistSprouts,
  * the longest-gone sprout when the pen is full), spawn one newcomer.
  * Owns a daemon scheduler and marshals onto the world via world.execute (a world.scheduleAfter
  * chain would die silently on world unload; this keeps polling and recovers). Every tick body is
@@ -38,10 +38,10 @@ public final class PenTicker {
     private final PenRegistry registry;
     private final SproutSpawner spawner;
     private final Logger logger;
-    private final ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor(r -> {
-        Thread t = new Thread(r, "sproutwatch-tick");
-        t.setDaemon(true);
-        return t;
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread thread = new Thread(r, "sproutwatch-tick");
+        thread.setDaemon(true);
+        return thread;
     });
     private ScheduledFuture<?> future;
     private volatile Consumer<World> onWorldReady;
@@ -69,10 +69,10 @@ public final class PenTicker {
 
     /** (Re)arms the schedule with the current TickSeconds. Idempotent. */
     public synchronized void start() {
-        if (exec.isShutdown()) return;
+        if (scheduler.isShutdown()) return;
         stop();
-        int s = config.get().getTickSeconds();
-        future = exec.scheduleAtFixedRate(this::dispatch, s, s, TimeUnit.SECONDS);
+        int tickSeconds = config.get().getTickSeconds();
+        future = scheduler.scheduleAtFixedRate(this::dispatch, tickSeconds, tickSeconds, TimeUnit.SECONDS);
     }
 
     public synchronized void stop() {
@@ -89,7 +89,7 @@ public final class PenTicker {
     /** Plugin shutdown: releases the scheduler thread. */
     public synchronized void shutdown() {
         stop();
-        exec.shutdownNow();
+        scheduler.shutdownNow();
     }
 
     /**
@@ -120,20 +120,20 @@ public final class PenTicker {
                 TickOutcome outcome = tickOnWorldThread(world);
                 if (then != null) then.accept(outcome);
             });
-        } catch (Throwable t) {
-            logger.log(Level.SEVERE, "Sproutwatch tick dispatch failed", t);
+        } catch (Throwable throwable) {
+            logger.log(Level.SEVERE, "Sproutwatch tick dispatch failed", throwable);
         }
     }
 
     /** Null when no pen is placed, the UUID is malformed, or the world is not loaded. */
-    public static World resolveWorld(SproutwatchConfig cfg) {
-        String id = cfg.getPenWorld();
+    public static World resolveWorld(SproutwatchConfig config) {
+        String id = config.getPenWorld();
         if (id.isEmpty()) return null;
         try {
-            Universe u = Universe.get();
-            if (u == null) return null;
-            return u.getWorld(UUID.fromString(id));
-        } catch (IllegalArgumentException e) {
+            Universe universe = Universe.get();
+            if (universe == null) return null;
+            return universe.getWorld(UUID.fromString(id));
+        } catch (IllegalArgumentException exception) {
             return null;
         }
     }
@@ -141,7 +141,7 @@ public final class PenTicker {
     TickOutcome tickOnWorldThread(World world) {
         TickOutcome outcome = new TickOutcome(Optional.empty(), false);
         try {
-            SproutwatchConfig cfg = config.get();
+            SproutwatchConfig currentConfig = config.get();
             long now = System.currentTimeMillis();
 
             // Drop entries whose entity is already gone (missed PenDespawnSystem eviction, e.g. plugin
@@ -152,8 +152,8 @@ public final class PenTicker {
             for (PenRegistry.Entry e : registry.snapshot()) {
                 Ref<EntityStore> ref = e.ref();
                 if (ref == null || !ref.isValid() || (e.worldUuid() != null && !e.worldUuid().equals(here))) {
-                    registry.remove(e.login());
-                    logger.fine("Sproutwatch: dropping sprout entry for " + e.login() + " (entity gone or in another world)");
+                    registry.remove(e.viewerKey());
+                    logger.fine("Sproutwatch: dropping sprout entry for " + e.viewerKey() + " (entity gone or in another world)");
                 }
             }
 
@@ -166,47 +166,47 @@ public final class PenTicker {
 
             // Retired viewers (a player killed their sprout; entry already dropped on death) are not eligible to respawn.
             Map<String, Long> eligible = new HashMap<>(live);
-            eligible.keySet().removeAll(registry.retiredLogins());
+            eligible.keySet().removeAll(registry.retiredViewers());
             // Viewer filter: in allow mode only AllowUsers may get a sprout. The ignore list has already
-            // been applied by ChatRoster (ignored logins never enter the roster), so it always wins.
-            if (cfg.isAllowMode()) eligible.keySet().retainAll(cfg.allowedLogins());
-            // Presence is refreshed only for ELIGIBLE logins: a viewer who was ignored or dropped off the
+            // been applied by ChatRoster (ignored viewer keys never enter the roster), so it always wins.
+            if (currentConfig.isAllowMode()) eligible.keySet().retainAll(currentConfig.allowedViewers());
+            // Presence is refreshed only for ELIGIBLE viewer keys: a viewer who was ignored or dropped off the
             // allow list while in chat stops being touched, so their sprout ages out after GraceSeconds.
             // Invariant: the same `now` passed to touch must be passed to reconcile; its strict `<` cutoff relies on it for grace 0.
-            for (String login : eligible.keySet()) registry.touch(login, now);
-            // The queue is a priority over first-seen order: the first queued login that is eligible
+            for (String viewerKey : eligible.keySet()) registry.touch(viewerKey, now);
+            // The queue is a priority over first-seen order: the first queued viewer key that is eligible
             // and not yet in the pen spawns next; otherwise the earliest-seen eligible viewer does.
             // PersistSprouts: grace is ignored; at the cap the sprout whose viewer has been gone the
             // longest (smallest untouched lastSeen) is replaced by the candidate, one swap per tick.
-            boolean persist = cfg.isPersistSprouts();
+            boolean persist = currentConfig.isPersistSprouts();
             PenPlan plan = PenReconciler.reconcile(
                 eligible, registry.lastSeenMap(), roster.queue().snapshot(),
-                cfg.getMaxSprouts(), cfg.getGraceSeconds() * 1000L, now, persist, roster.guests(),
-                roster.lastActiveMap(), cfg.getQuietSeconds() * 1000L);
+                currentConfig.getMaxSprouts(), currentConfig.getGraceSeconds() * 1000L, now, persist, roster.guests(),
+                roster.lastActiveMap(), currentConfig.getQuietSeconds() * 1000L);
 
-            for (String login : plan.despawn()) {
-                PenRegistry.Entry e = registry.remove(login);
-                if (e == null) continue;
-                Ref<EntityStore> ref = e.ref();
+            for (String viewerKey : plan.despawn()) {
+                PenRegistry.Entry entry = registry.remove(viewerKey);
+                if (entry == null) continue;
+                Ref<EntityStore> ref = entry.ref();
                 if (ref != null && ref.isValid()) {
                     try {
                         ref.getStore().removeEntity(ref, RemoveReason.REMOVE);
-                    } catch (Exception ex) {
-                        logger.log(Level.WARNING, "Sproutwatch: failed to despawn sprout for " + login, ex);
+                    } catch (Exception exception) {
+                        logger.log(Level.WARNING, "Sproutwatch: failed to despawn sprout for " + viewerKey, exception);
                         continue;
                     }
                 }
                 logger.info(persist
-                    ? "Sproutwatch: " + login + " replaced to make room (viewer gone or no longer eligible)"
-                    : "Sproutwatch: " + login + " no longer eligible (left chat, ignored, or not allowed); sprout despawned");
+                    ? "Sproutwatch: " + viewerKey + " replaced to make room (viewer gone or no longer eligible)"
+                    : "Sproutwatch: " + viewerKey + " no longer eligible (left chat, ignored, or not allowed); sprout despawned");
             }
             // A queue entry is consumed only by a successful spawn, so a failed attempt (no free
             // spot, role missing) keeps the viewer at the front for the next tick.
             boolean spawned = false;
             if (plan.spawn().isPresent()) {
-                String login = plan.spawn().get();
-                spawned = spawner.spawn(world, login);
-                if (spawned) roster.queue().remove(login);
+                String viewerKey = plan.spawn().get();
+                spawned = spawner.spawn(world, viewerKey);
+                if (spawned) roster.queue().remove(viewerKey);
             }
             outcome = new TickOutcome(plan.spawn(), spawned);
 
@@ -214,12 +214,12 @@ public final class PenTicker {
             if (after != null) {
                 try {
                     after.run();
-                } catch (Exception e) {
-                    logger.log(Level.WARNING, "Sproutwatch after-tick hook failed", e);
+                } catch (Exception exception) {
+                    logger.log(Level.WARNING, "Sproutwatch after-tick hook failed", exception);
                 }
             }
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Sproutwatch tick failed", e);
+        } catch (Exception exception) {
+            logger.log(Level.WARNING, "Sproutwatch tick failed", exception);
         }
         return outcome;
     }

@@ -33,7 +33,7 @@ public record PenBounds(int minX, int floorY, int minZ, int sizeX, int sizeZ, in
         return new Vector3d(centerX(), feetY(), centerZ());
     }
 
-    /** Centre of a uniformly random interior block, at feet level. */
+    /** Center of a uniformly random interior block, at feet level. */
     public Vector3d randomPoint(Random random) {
         double x = minX + random.nextInt(sizeX) + 0.5;
         double z = minZ + random.nextInt(sizeZ) + 0.5;

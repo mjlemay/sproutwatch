@@ -10,11 +10,9 @@ import java.util.regex.Pattern;
 /**
  * Pure, null-safe parsers for user-supplied YouTube references. None of them throw.
  *
- * <ul>
- *   <li>Handle ({@code @Name} or a channel URL): used to auto-detect the live stream on Start.</li>
- *   <li>Video ID / link: the "paste a link" override that targets one specific stream.</li>
- *   <li>Channel ID ({@code UC...}): used for allow/ignore entries later.</li>
- * </ul>
+ * - Handle ({@code @Name} or a channel URL): used to auto-detect the live stream on Start.
+ * - Video ID / link: the "paste a link" override that targets one specific stream.
+ * - Channel ID ({@code UC...}): used for allow/ignore entries later.
  */
 public final class YouTubeRef {
 

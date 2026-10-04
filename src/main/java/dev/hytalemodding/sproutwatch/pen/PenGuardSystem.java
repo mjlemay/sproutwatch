@@ -26,7 +26,7 @@ import java.util.logging.Logger;
 /**
  * Keeps mobs off the pen and pen creatures off players (see {@link #decide}). When an NPC (not a sprout) hits a player or a viewer sprout that is at
  * the pen (PenBounds.inGuardZone: interior plus a few blocks, which covers the chair), the hit is
- * cancelled and the attacker is removed. Arrows count: Damage$ProjectileSource extends
+ * canceled and the attacker is removed. Arrows count: Damage$ProjectileSource extends
  * EntitySource and getRef() is the shooter. Everywhere else combat is untouched. A
  * DamageEventSystem in DamageModule's filter group, like the engine's spawn protection; removal
  * goes through the CommandBuffer because this runs inside the store's write lock.
@@ -70,26 +70,26 @@ public final class PenGuardSystem extends DamageEventSystem {
 
     /** The victim stands in the pen's guard zone, in the pen world. */
     private boolean atPen(int index, ArchetypeChunk<EntityStore> chunk, Store<EntityStore> store) {
-        SproutwatchConfig cfg = config.get();
-        if (!cfg.isPenSet()) return false;
-        if (!cfg.getPenWorld().equals(String.valueOf(store.getExternalData().getWorld().getWorldConfig().getUuid()))) return false;
-        TransformComponent t = chunk.getComponent(index, TransformComponent.getComponentType());
-        if (t == null) return false;
-        Vector3d p = t.getPosition();
-        return PenBounds.fromConfig(cfg).inGuardZone(p.x, p.y, p.z);
+        SproutwatchConfig currentConfig = config.get();
+        if (!currentConfig.isPenSet()) return false;
+        if (!currentConfig.getPenWorld().equals(String.valueOf(store.getExternalData().getWorld().getWorldConfig().getUuid()))) return false;
+        TransformComponent transform = chunk.getComponent(index, TransformComponent.getComponentType());
+        if (transform == null) return false;
+        Vector3d position = transform.getPosition();
+        return PenBounds.fromConfig(currentConfig).inGuardZone(position.x, position.y, position.z);
     }
 
     @Override
     public void handle(int index, @Nonnull ArchetypeChunk<EntityStore> chunk, @Nonnull Store<EntityStore> store,
                        @Nonnull CommandBuffer<EntityStore> commandBuffer, @Nonnull Damage damage) {
         try {
-            if (damage.isCancelled() || !(damage.getSource() instanceof Damage.EntitySource src)) return;
-            Ref<EntityStore> attacker = src.getRef();
+            if (damage.isCancelled() || !(damage.getSource() instanceof Damage.EntitySource source)) return;
+            Ref<EntityStore> attacker = source.getRef();
             if (attacker == null || !attacker.isValid()) return;
             boolean attackerIsNpc = commandBuffer.getComponent(attacker, NPCEntity.getComponentType()) != null;
-            boolean attackerIsSprout = registry.findByRef(attacker) != null;
+            boolean attackerIsSprout = registry.findByReference(attacker) != null;
             boolean victimIsPlayer = chunk.getComponent(index, PlayerRef.getComponentType()) != null;
-            boolean victimIsSprout = registry.findByRef(chunk.getReferenceTo(index)) != null;
+            boolean victimIsSprout = registry.findByReference(chunk.getReferenceTo(index)) != null;
             Verdict verdict = decide(attackerIsNpc, attackerIsSprout, victimIsPlayer, victimIsSprout, atPen(index, chunk, store));
             if (verdict == Verdict.NONE) return;
 
@@ -100,8 +100,8 @@ public final class PenGuardSystem extends DamageEventSystem {
                 logger.info("Sproutwatch: removed " + (npc == null ? "a mob" : npc.getRoleName()) + " that attacked "
                     + (victimIsPlayer ? "a player" : "a sprout") + " at the pen");
             }
-        } catch (RuntimeException e) {
-            logger.log(Level.WARNING, "Sproutwatch pen guard failed", e);
+        } catch (RuntimeException exception) {
+            logger.log(Level.WARNING, "Sproutwatch pen guard failed", exception);
         }
     }
 }

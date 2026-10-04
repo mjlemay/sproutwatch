@@ -10,27 +10,25 @@ import java.util.Objects;
 /**
  * Paces YouTube live-chat reads so a whole stream fits in the free daily API quota.
  *
- * <p>YouTube suggests polling about every 2 s ({@code pollingIntervalMillis}); at 2 units per read
+ * YouTube suggests polling about every 2 s ({@code pollingIntervalMillis}); at 2 units per read
  * that would spend ~86,000 units a day against a free quota of 10,000. The pacer spreads what is
  * left of today's chat budget over the planned stream time that is left (the configured stream
  * length minus the time since this pacer was created), but never over less than one hour, so a
  * stream that runs past its plan slows down instead of running dry. It never polls faster than
  * YouTube asks or than once a second, and never sleeps past the daily refill.
  *
- * <ul>
- *   <li>{@link #COST_PER_POLL} = 2: measured 2026-10-03 on the Cloud Console quota page, a chat read
+ * - {@link #COST_PER_POLL} = 2: measured 2026-10-03 on the Cloud Console quota page, a chat read
  *       costs 1 or 2 units; budgeting the upper bound keeps us safe.
- *   <li>{@link #RESERVE} = 200: kept back from the chat budget to cover the start-up lookups
+ * - {@link #RESERVE} = 200: kept back from the chat budget to cover the start-up lookups
  *       (channels / search / videos), so a spent chat budget never blocks finding the stream again.
- *   <li>Google resets the quota at midnight Pacific time, so the "quota day" is a {@link LocalDate}
+ * - Google resets the quota at midnight Pacific time, so the "quota day" is a {@link LocalDate}
  *       in {@link #QUOTA_ZONE} (DST-safe: 23 h and 25 h days are handled by the zone rules).
- * </ul>
  *
- * <p>Usage lives in memory only. To survive a plugin restart the caller persists {@link
+ * Usage lives in memory only. To survive a plugin restart the caller persists {@link
  * #quotaDay()} and {@link #usedToday()} from a {@link #setUsageListener usage listener} and hands
  * them back via {@link #restore} on start (see {@link QuotaStore}).
  *
- * <p>Thread-safe: the poller thread records calls while the settings page reads usage.
+ * Thread-safe: the poller thread records calls while the settings page reads usage.
  */
 public final class QuotaPacer {
     public static final int DAILY_QUOTA = 10_000;
@@ -135,10 +133,10 @@ public final class QuotaPacer {
     }
 
     private void fireUsage() {
-        Runnable l = usageListener;
-        if (l == null) return;
+        Runnable listener = usageListener;
+        if (listener == null) return;
         try {
-            l.run();
+            listener.run();
         } catch (RuntimeException ignored) {
             // the listener owns its failures; recording usage must never fail because of it
         }

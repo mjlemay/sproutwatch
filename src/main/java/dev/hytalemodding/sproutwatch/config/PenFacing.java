@@ -19,12 +19,12 @@ public enum PenFacing {
         return name().toLowerCase(Locale.ROOT);
     }
 
-    /** Case-insensitive parse; anything unrecognised (including null) is NORTH. */
+    /** Case-insensitive parse; anything unrecognized (including null) is NORTH. */
     public static PenFacing parse(String s) {
         if (s == null) return NORTH;
         try {
             return valueOf(s.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException exception) {
             return NORTH;
         }
     }

@@ -73,11 +73,11 @@ class YouTubeApiTest {
         }
     }
 
-    private void handle(HttpExchange ex) throws IOException {
-        String path = ex.getRequestURI().getRawPath().substring("/youtube/v3/".length());
-        String raw = ex.getRequestURI().getRawQuery();
-        requests.add(new Req(path, raw, decode(raw), ex.getRequestHeaders().getFirst("Accept"),
-                ex.getRequestHeaders().getFirst("X-Goog-Api-Key")));
+    private void handle(HttpExchange exchange) throws IOException {
+        String path = exchange.getRequestURI().getRawPath().substring("/youtube/v3/".length());
+        String raw = exchange.getRequestURI().getRawQuery();
+        requests.add(new Req(path, raw, decode(raw), exchange.getRequestHeaders().getFirst("Accept"),
+                exchange.getRequestHeaders().getFirst("X-Goog-Api-Key")));
         Reply r = replies.getOrDefault(path, new Reply(404, "{\"error\":{\"code\":404,\"message\":\"nope\",\"errors\":[]}}"));
         if (r.delayMillis() > 0) {
             try {
@@ -87,18 +87,18 @@ class YouTubeApiTest {
             }
         }
         byte[] b = r.body().getBytes(StandardCharsets.UTF_8);
-        ex.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
         try {
-            ex.sendResponseHeaders(r.status(), b.length == 0 ? -1 : b.length);
+            exchange.sendResponseHeaders(r.status(), b.length == 0 ? -1 : b.length);
             if (b.length > 0) {
-                try (OutputStream out = ex.getResponseBody()) {
+                try (OutputStream out = exchange.getResponseBody()) {
                     out.write(b);
                 }
             }
         } catch (IOException ignored) {
             // client gave up (timeout test)
         } finally {
-            ex.close();
+            exchange.close();
         }
     }
 
@@ -135,8 +135,8 @@ class YouTubeApiTest {
         }
     }
 
-    private static YtException.Kind kindOf(Executable call) {
-        return assertThrows(YtException.class, call).kind();
+    private static YouTubeException.Kind kindOf(Executable call) {
+        return assertThrows(YouTubeException.class, call).kind();
     }
 
     // ---- channels ----
@@ -166,9 +166,9 @@ class YouTubeApiTest {
     @Test
     void handleNotFound() {
         reply("channels", 200, "{\"kind\":\"youtube#channelListResponse\",\"pageInfo\":{\"totalResults\":0}}");
-        assertEquals(YtException.Kind.NOT_FOUND, kindOf(() -> api().channelIdForHandle("@ghost")));
+        assertEquals(YouTubeException.Kind.NOT_FOUND, kindOf(() -> api().channelIdForHandle("@ghost")));
         reply("channels", 200, "{\"items\":[]}");
-        assertEquals(YtException.Kind.NOT_FOUND, kindOf(() -> api().channelIdForHandle("@ghost")));
+        assertEquals(YouTubeException.Kind.NOT_FOUND, kindOf(() -> api().channelIdForHandle("@ghost")));
     }
 
     @Test
@@ -245,15 +245,15 @@ class YouTubeApiTest {
     void activeLiveChatIdAbsentIsChatEnded() {
         reply("videos", 200, """
                 {"items":[{"id":"vid1","liveStreamingDetails":{"actualStartTime":"2026-10-03T18:30:00Z","actualEndTime":"2026-10-03T20:00:00Z"}}]}""");
-        assertEquals(YtException.Kind.CHAT_ENDED, kindOf(() -> api().activeLiveChatId("vid1")));
+        assertEquals(YouTubeException.Kind.CHAT_ENDED, kindOf(() -> api().activeLiveChatId("vid1")));
         reply("videos", 200, "{\"items\":[{\"id\":\"vid1\"}]}");
-        assertEquals(YtException.Kind.CHAT_ENDED, kindOf(() -> api().activeLiveChatId("vid1")));
+        assertEquals(YouTubeException.Kind.CHAT_ENDED, kindOf(() -> api().activeLiveChatId("vid1")));
     }
 
     @Test
     void activeLiveChatIdNoItemsIsNotFound() {
         reply("videos", 200, "{\"items\":[]}");
-        assertEquals(YtException.Kind.NOT_FOUND, kindOf(() -> api().activeLiveChatId("nope")));
+        assertEquals(YouTubeException.Kind.NOT_FOUND, kindOf(() -> api().activeLiveChatId("nope")));
     }
 
     // ---- liveChat/messages ----
@@ -290,41 +290,41 @@ class YouTubeApiTest {
 
     static Stream<Arguments> errors() {
         return Stream.of(
-                Arguments.of(403, error(403, "quotaExceeded", "The request cannot be completed because you have exceeded your quota."), YtException.Kind.QUOTA_EXCEEDED),
-                Arguments.of(403, error(403, "dailyLimitExceeded", "Daily Limit Exceeded"), YtException.Kind.QUOTA_EXCEEDED),
-                Arguments.of(403, error(403, "rateLimitExceeded", "Rate Limit Exceeded"), YtException.Kind.TRANSIENT),
-                Arguments.of(403, error(403, "userRateLimitExceeded", "User Rate Limit Exceeded"), YtException.Kind.TRANSIENT),
-                Arguments.of(429, "", YtException.Kind.TRANSIENT),
-                Arguments.of(429, "{\"error\":{\"code\":429,\"status\":\"RESOURCE_EXHAUSTED\"}}", YtException.Kind.TRANSIENT),
-                Arguments.of(429, error(429, "quotaExceeded", "x"), YtException.Kind.TRANSIENT),
-                Arguments.of(408, error(408, "keyInvalid", "x"), YtException.Kind.TRANSIENT),
-                Arguments.of(408, "", YtException.Kind.TRANSIENT),
-                Arguments.of(400, error(400, "keyInvalid", "Bad Request"), YtException.Kind.KEY_INVALID),
-                Arguments.of(400, error(400, "badRequest", "API key not valid. Please pass a valid API key."), YtException.Kind.KEY_INVALID),
-                Arguments.of(403, error(403, "forbidden", "The request is missing a valid API key."), YtException.Kind.KEY_INVALID),
-                Arguments.of(301, "", YtException.Kind.REJECTED),
-                Arguments.of(302, "<html>moved</html>", YtException.Kind.REJECTED),
-                Arguments.of(200, deep(100_000), YtException.Kind.TRANSIENT),
-                Arguments.of(400, deep(100_000), YtException.Kind.REJECTED),
-                Arguments.of(403, error(403, "accessNotConfigured", "YouTube Data API v3 has not been used"), YtException.Kind.KEY_INVALID),
-                Arguments.of(403, error(403, "ipRefererBlocked", "Requests from this referer are blocked"), YtException.Kind.KEY_INVALID),
-                Arguments.of(403, error(403, "liveChatEnded", "The live chat is no longer live."), YtException.Kind.CHAT_ENDED),
-                Arguments.of(403, error(403, "liveChatDisabled", "Live chat is not enabled"), YtException.Kind.CHAT_ENDED),
-                Arguments.of(404, error(404, "liveChatNotFound", "The live chat could not be found"), YtException.Kind.CHAT_ENDED),
-                Arguments.of(404, error(404, "notFound", "Not Found"), YtException.Kind.NOT_FOUND),
-                Arguments.of(404, "", YtException.Kind.NOT_FOUND),
-                Arguments.of(500, error(500, "backendError", "Backend Error"), YtException.Kind.TRANSIENT),
-                Arguments.of(503, "<html>Service Unavailable</html>", YtException.Kind.TRANSIENT),
-                Arguments.of(400, error(400, "invalidPageToken", "bad token"), YtException.Kind.REJECTED),
-                Arguments.of(400, error(400, "badRequest", "Invalid value for part"), YtException.Kind.REJECTED),
-                Arguments.of(400, "garbage{{", YtException.Kind.REJECTED),
-                Arguments.of(200, "garbage{{", YtException.Kind.TRANSIENT),
-                Arguments.of(200, "", YtException.Kind.TRANSIENT));
+                Arguments.of(403, error(403, "quotaExceeded", "The request cannot be completed because you have exceeded your quota."), YouTubeException.Kind.QUOTA_EXCEEDED),
+                Arguments.of(403, error(403, "dailyLimitExceeded", "Daily Limit Exceeded"), YouTubeException.Kind.QUOTA_EXCEEDED),
+                Arguments.of(403, error(403, "rateLimitExceeded", "Rate Limit Exceeded"), YouTubeException.Kind.TRANSIENT),
+                Arguments.of(403, error(403, "userRateLimitExceeded", "User Rate Limit Exceeded"), YouTubeException.Kind.TRANSIENT),
+                Arguments.of(429, "", YouTubeException.Kind.TRANSIENT),
+                Arguments.of(429, "{\"error\":{\"code\":429,\"status\":\"RESOURCE_EXHAUSTED\"}}", YouTubeException.Kind.TRANSIENT),
+                Arguments.of(429, error(429, "quotaExceeded", "x"), YouTubeException.Kind.TRANSIENT),
+                Arguments.of(408, error(408, "keyInvalid", "x"), YouTubeException.Kind.TRANSIENT),
+                Arguments.of(408, "", YouTubeException.Kind.TRANSIENT),
+                Arguments.of(400, error(400, "keyInvalid", "Bad Request"), YouTubeException.Kind.KEY_INVALID),
+                Arguments.of(400, error(400, "badRequest", "API key not valid. Please pass a valid API key."), YouTubeException.Kind.KEY_INVALID),
+                Arguments.of(403, error(403, "forbidden", "The request is missing a valid API key."), YouTubeException.Kind.KEY_INVALID),
+                Arguments.of(301, "", YouTubeException.Kind.REJECTED),
+                Arguments.of(302, "<html>moved</html>", YouTubeException.Kind.REJECTED),
+                Arguments.of(200, deep(100_000), YouTubeException.Kind.TRANSIENT),
+                Arguments.of(400, deep(100_000), YouTubeException.Kind.REJECTED),
+                Arguments.of(403, error(403, "accessNotConfigured", "YouTube Data API v3 has not been used"), YouTubeException.Kind.KEY_INVALID),
+                Arguments.of(403, error(403, "ipRefererBlocked", "Requests from this referer are blocked"), YouTubeException.Kind.KEY_INVALID),
+                Arguments.of(403, error(403, "liveChatEnded", "The live chat is no longer live."), YouTubeException.Kind.CHAT_ENDED),
+                Arguments.of(403, error(403, "liveChatDisabled", "Live chat is not enabled"), YouTubeException.Kind.CHAT_ENDED),
+                Arguments.of(404, error(404, "liveChatNotFound", "The live chat could not be found"), YouTubeException.Kind.CHAT_ENDED),
+                Arguments.of(404, error(404, "notFound", "Not Found"), YouTubeException.Kind.NOT_FOUND),
+                Arguments.of(404, "", YouTubeException.Kind.NOT_FOUND),
+                Arguments.of(500, error(500, "backendError", "Backend Error"), YouTubeException.Kind.TRANSIENT),
+                Arguments.of(503, "<html>Service Unavailable</html>", YouTubeException.Kind.TRANSIENT),
+                Arguments.of(400, error(400, "invalidPageToken", "bad token"), YouTubeException.Kind.REJECTED),
+                Arguments.of(400, error(400, "badRequest", "Invalid value for part"), YouTubeException.Kind.REJECTED),
+                Arguments.of(400, "garbage{{", YouTubeException.Kind.REJECTED),
+                Arguments.of(200, "garbage{{", YouTubeException.Kind.TRANSIENT),
+                Arguments.of(200, "", YouTubeException.Kind.TRANSIENT));
     }
 
     @ParameterizedTest
     @MethodSource("errors")
-    void errorMapping(int status, String body, YtException.Kind expected) {
+    void errorMapping(int status, String body, YouTubeException.Kind expected) {
         reply("liveChat/messages", status, body);
         reply("channels", status, body);
         reply("videos", status, body);
@@ -340,14 +340,14 @@ class YouTubeApiTest {
     void connectionRefusedIsTransient() {
         YouTubeApi api = api();
         server.stop(0);
-        assertEquals(YtException.Kind.TRANSIENT, kindOf(() -> api.chatPage("CHAT1", null)));
+        assertEquals(YouTubeException.Kind.TRANSIENT, kindOf(() -> api.chatPage("CHAT1", null)));
     }
 
     @Test
     void timeoutIsTransient() {
         replies.put("channels", new Reply(200, "{\"items\":[{\"id\":\"UCabc\"}]}", 2000));
         YouTubeApi api = new YouTubeApi(KEY, base, HttpClient.newHttpClient(), Duration.ofMillis(200));
-        assertEquals(YtException.Kind.TRANSIENT, kindOf(() -> api.channelIdForHandle("@x")));
+        assertEquals(YouTubeException.Kind.TRANSIENT, kindOf(() -> api.channelIdForHandle("@x")));
     }
 
     /** JSON nested {@code depth} objects deep (stack-overflow bait for recursive parsers). */
@@ -359,16 +359,16 @@ class YouTubeApiTest {
     void forbiddenWithoutKeyMentionIsChatEndedForChatAndRejectedElsewhere() {
         String body = error(403, "forbidden", "The caller does not have permission");
         for (String path : List.of("channels", "videos", "search", "liveChat/messages")) reply(path, 403, body);
-        assertEquals(YtException.Kind.CHAT_ENDED, kindOf(() -> api().chatPage("CHAT1", "t")));
-        assertEquals(YtException.Kind.REJECTED, kindOf(() -> api().channelIdForHandle("@x")));
-        assertEquals(YtException.Kind.REJECTED, kindOf(() -> api().activeLiveChatId("v")));
-        assertEquals(YtException.Kind.REJECTED, kindOf(() -> api().liveVideoId("UC")));
+        assertEquals(YouTubeException.Kind.CHAT_ENDED, kindOf(() -> api().chatPage("CHAT1", "t")));
+        assertEquals(YouTubeException.Kind.REJECTED, kindOf(() -> api().channelIdForHandle("@x")));
+        assertEquals(YouTubeException.Kind.REJECTED, kindOf(() -> api().activeLiveChatId("v")));
+        assertEquals(YouTubeException.Kind.REJECTED, kindOf(() -> api().liveVideoId("UC")));
     }
 
     @Test
     void forbiddenMentioningApiKeyIsKeyInvalid() {
         reply("liveChat/messages", 403, error(403, "forbidden", "Requests with this API KEY are blocked"));
-        assertEquals(YtException.Kind.KEY_INVALID, kindOf(() -> api().chatPage("CHAT1", null)));
+        assertEquals(YouTubeException.Kind.KEY_INVALID, kindOf(() -> api().chatPage("CHAT1", null)));
     }
 
     @Test
@@ -382,31 +382,31 @@ class YouTubeApiTest {
     void severalLiveVideosStillFailOnNonTransientVideosError() {
         reply("search", 200, "{\"items\":[{\"id\":{\"videoId\":\"a\"}},{\"id\":{\"videoId\":\"b\"}}]}");
         reply("videos", 403, error(403, "quotaExceeded", "q"));
-        assertEquals(YtException.Kind.QUOTA_EXCEEDED, kindOf(() -> api().liveVideoId("UCabc")));
+        assertEquals(YouTubeException.Kind.QUOTA_EXCEEDED, kindOf(() -> api().liveVideoId("UCabc")));
     }
 
     @Test
     void bodyStallAfterHeadersTimesOut() {
-        server.createContext("/stall/v3/", ex -> {
+        server.createContext("/stall/v3/", exchange -> {
             try {
-                ex.sendResponseHeaders(200, 1000);
-                OutputStream out = ex.getResponseBody();
+                exchange.sendResponseHeaders(200, 1000);
+                OutputStream out = exchange.getResponseBody();
                 out.write("{\"items\":[".getBytes(StandardCharsets.UTF_8));
                 out.flush();
                 Thread.sleep(3000);
             } catch (IOException | InterruptedException ignored) {
                 // client gave up
             } finally {
-                ex.close();
+                exchange.close();
             }
         });
         String stallBase = "http://127.0.0.1:" + server.getAddress().getPort() + "/stall/v3";
         YouTubeApi api = new YouTubeApi(KEY, stallBase, HttpClient.newHttpClient(), Duration.ofMillis(300));
         long t0 = System.nanoTime();
-        YtException e = assertThrows(YtException.class, () -> api.channelIdForHandle("@x"));
+        YouTubeException exception = assertThrows(YouTubeException.class, () -> api.channelIdForHandle("@x"));
         long ms = (System.nanoTime() - t0) / 1_000_000;
-        assertEquals(YtException.Kind.TRANSIENT, e.kind());
-        assertTrue(e.getMessage().contains("timeout"), e.getMessage());
+        assertEquals(YouTubeException.Kind.TRANSIENT, exception.kind());
+        assertTrue(exception.getMessage().contains("timeout"), exception.getMessage());
         assertTrue(ms < 1500, "took " + ms + " ms");
     }
 
@@ -414,10 +414,10 @@ class YouTubeApiTest {
     void oversizedBodyIsTransientWithoutEcho() {
         String big = "{\"items\":[{\"id\":\"" + "x".repeat(3 * 1024 * 1024) + "\"}]}";
         reply("channels", 200, big);
-        YtException e = assertThrows(YtException.class, () -> api().channelIdForHandle("@x"));
-        assertEquals(YtException.Kind.TRANSIENT, e.kind());
-        assertTrue(e.getMessage().contains("response too large"), e.getMessage());
-        assertFalse(e.getMessage().contains("xxxx"));
+        YouTubeException exception = assertThrows(YouTubeException.class, () -> api().channelIdForHandle("@x"));
+        assertEquals(YouTubeException.Kind.TRANSIENT, exception.kind());
+        assertTrue(exception.getMessage().contains("response too large"), exception.getMessage());
+        assertFalse(exception.getMessage().contains("xxxx"));
     }
 
     @Test
@@ -451,31 +451,31 @@ class YouTubeApiTest {
                 new Reply(400, error(400, KEY, echo)),
                 new Reply(400, error(400, "weird", echo)),
                 new Reply(200, "garbage " + echo));
-        List<YtException.Kind> seen = new ArrayList<>();
+        List<YouTubeException.Kind> seen = new ArrayList<>();
         for (Reply r : cases) {
             for (String path : List.of("channels", "videos", "search", "liveChat/messages")) replies.put(path, r);
             for (Executable call : List.<Executable>of(
                     () -> api().channelIdForHandle("@" + KEY),
                     () -> api().activeLiveChatId(KEY),
                     () -> api().chatPage(KEY, KEY))) {
-                YtException e = assertThrows(YtException.class, call);
-                seen.add(e.kind());
-                assertNoKey(e);
+                YouTubeException exception = assertThrows(YouTubeException.class, call);
+                seen.add(exception.kind());
+                assertNoKey(exception);
             }
         }
         // Network failure path too.
         YouTubeApi api = api();
         server.stop(0);
-        YtException e = assertThrows(YtException.class, () -> api.chatPage("c", null));
-        seen.add(e.kind());
-        assertNoKey(e);
+        YouTubeException exception = assertThrows(YouTubeException.class, () -> api.chatPage("c", null));
+        seen.add(exception.kind());
+        assertNoKey(exception);
 
-        assertTrue(seen.containsAll(List.of(YtException.Kind.values())), "every kind exercised: " + seen);
+        assertTrue(seen.containsAll(List.of(YouTubeException.Kind.values())), "every kind exercised: " + seen);
         assertFalse(api.toString().contains(KEY), api.toString());
     }
 
-    private static void assertNoKey(Throwable e) {
-        for (Throwable t = e; t != null; t = t.getCause()) {
+    private static void assertNoKey(Throwable exception) {
+        for (Throwable t = exception; t != null; t = t.getCause()) {
             assertFalse(String.valueOf(t.getMessage()).contains(KEY), t.getMessage());
             assertFalse(t.toString().contains(KEY), t.toString());
         }

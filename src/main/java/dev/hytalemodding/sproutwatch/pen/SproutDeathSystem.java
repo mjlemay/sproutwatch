@@ -22,14 +22,14 @@ import java.util.logging.Logger;
 /**
  * Reacts to a sprout's death. The rule: a sprout killed by anything that is not a player (a
  * monster, fall, void...) is forgotten at once so its viewer respawns on the next tick; a sprout
- * killed by a <em>player</em> retires its viewer, who gets no sprout again while they stay in chat
+ * killed by a player retires its viewer, who gets no sprout again while they stay in chat
  * (PenRegistry.retainRetired un-retires them when they drop out of the roster; /sproutwatch clear
  * also resets). Either way the registry entry is removed here, on death, which frees the cap slot
  * immediately instead of waiting for the corpse to be removed (PenDespawnSystem then finds nothing
  * for this ref, which is fine).
- * <p>
- * Same shape as Subinator's BossDeathSystem: an OnDeathSystem with a match-everything query
- * (membership is decided by the registry), ordered after the engine's ClearEntityEffects. The
+ *
+ * An OnDeathSystem with a match-everything query
+ * (the registry decides membership), ordered after the engine's ClearEntityEffects. The
  * killer check is the one vanilla DeathSystems.PlayerKilledPlayer does: the death's Damage source
  * is an EntitySource whose ref carries a PlayerRef component. Runs inside the store's write lock:
  * only reads (store.getComponent) and registry calls happen here, never a store mutation.
@@ -60,8 +60,8 @@ public final class SproutDeathSystem extends DeathSystems.OnDeathSystem {
                                  Store<EntityStore> store, CommandBuffer<EntityStore> commandBuffer) {
         if (registry.isEmpty()) return; // no sprouts live: every death is someone else's
         try {
-            PenRegistry.Entry e = registry.removeByRef(ref); // frees the slot now
-            if (e == null) return; // not a sprout
+            PenRegistry.Entry entry = registry.removeByReference(ref); // frees the slot now
+            if (entry == null) return; // not a sprout
             PlayerRef attacker = null;
             Damage deathInfo = component.getDeathInfo();
             if (deathInfo != null && deathInfo.getSource() instanceof Damage.EntitySource entitySource) {
@@ -71,16 +71,16 @@ public final class SproutDeathSystem extends DeathSystems.OnDeathSystem {
                 }
             }
             if (attacker != null) {
-                registry.retire(e.login());
-                logger.info("Sproutwatch: " + e.login() + "'s sprout was killed by " + attacker.getUsername()
+                registry.retire(entry.viewerKey());
+                logger.info("Sproutwatch: " + entry.viewerKey() + "'s sprout was killed by " + attacker.getUsername()
                     + "; retired until they leave chat");
             } else {
-                logger.info("Sproutwatch: " + e.login() + "'s sprout died (" + String.valueOf(component.getDeathCause())
+                logger.info("Sproutwatch: " + entry.viewerKey() + "'s sprout died (" + String.valueOf(component.getDeathCause())
                     + "); respawning next tick");
             }
-        } catch (Exception ex) {
+        } catch (Exception exception) {
             if (warned.compareAndSet(false, true)) {
-                logger.log(Level.WARNING, "Sproutwatch death handling failed", ex);
+                logger.log(Level.WARNING, "Sproutwatch death handling failed", exception);
             }
         }
     }

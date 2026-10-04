@@ -12,7 +12,7 @@ import java.util.Map;
  * String, boolean)}); youTube never carries the raw API key.
  */
 public record StatusSnapshot(
-    String listenerState, boolean listenerRunning, boolean feedAcked,
+    String listenerState, boolean listenerRunning, boolean feedAcknowledged,
     String channel, int rosterSize, int queueSize, String queueCommand, boolean allowMode, int allowCount, int ignoreCount,
     int penCount, int cap, int retiredCount, int tickSeconds, int graceSeconds, int quietSeconds, boolean tickerRunning,
     boolean persist, boolean autoStart,
@@ -32,7 +32,7 @@ public record StatusSnapshot(
 
     /** Twitch-only form (no per-source states, YouTube off), kept for callers that predate YouTube. */
     public StatusSnapshot(
-        String listenerState, boolean listenerRunning, boolean feedAcked,
+        String listenerState, boolean listenerRunning, boolean feedAcknowledged,
         String channel, int rosterSize, int queueSize, String queueCommand, boolean allowMode, int allowCount, int ignoreCount,
         int penCount, int cap, int retiredCount, int tickSeconds, int graceSeconds, int quietSeconds, boolean tickerRunning,
         boolean persist, boolean autoStart,
@@ -40,7 +40,7 @@ public record StatusSnapshot(
         String penWorldName, String penWorldId,
         boolean chairSet, int chairX, int chairY, int chairZ,
         String prefabName) {
-        this(listenerState, listenerRunning, feedAcked, channel, rosterSize, queueSize, queueCommand, allowMode, allowCount,
+        this(listenerState, listenerRunning, feedAcknowledged, channel, rosterSize, queueSize, queueCommand, allowMode, allowCount,
             ignoreCount, penCount, cap, retiredCount, tickSeconds, graceSeconds, quietSeconds, tickerRunning, persist,
             autoStart, penSet, penX, penY, penZ, penSizeX, penSizeZ, penFacing, penWorldName, penWorldId, chairSet,
             chairX, chairY, chairZ, prefabName, Map.of(), YouTubeStatus.OFF);
@@ -85,7 +85,7 @@ public record StatusSnapshot(
     }
 
     /**
-     * The API key as it may be shown: first 4 + "…" + last 4 for keys of 12+ characters, else "set";
+     * The API key as it may be shown: first 4 + "..." + last 4 for keys of 12+ characters, else "set";
      * "not set" when blank. Never the whole key.
      */
     public static String maskedKey(String key) {
@@ -100,15 +100,15 @@ public record StatusSnapshot(
      * its own, e.g. "chat ended"); one not started shows "stopped" when it is enabled and configured,
      * and is left out otherwise.
      * @param twitchState the started Twitch source's state, or null when none is started
-     * @param ytState     the started YouTube source's state, or null when none is started
+     * @param youTubeState     the started YouTube source's state, or null when none is started
      */
     public static Map<String, String> sourceStates(String twitchState, boolean twitchConfigured,
-                                                   String ytState, boolean ytConfigured) {
+                                                   String youTubeState, boolean youTubeConfigured) {
         Map<String, String> m = new LinkedHashMap<>();
         if (twitchState != null) m.put(TWITCH, twitchState);
         else if (twitchConfigured) m.put(TWITCH, "stopped");
-        if (ytState != null) m.put(YOUTUBE, ytState);
-        else if (ytConfigured) m.put(YOUTUBE, "stopped");
+        if (youTubeState != null) m.put(YOUTUBE, youTubeState);
+        else if (youTubeConfigured) m.put(YOUTUBE, "stopped");
         return m;
     }
 
@@ -131,7 +131,7 @@ public record StatusSnapshot(
     /** The status command prints this only while the listener runs; the page always shows it. */
     public String feedLine() {
         if (!listenerRunning) return "Twitch JOIN/PART feed: n/a (listener stopped)";
-        return "Twitch JOIN/PART feed: " + (feedAcked
+        return "Twitch JOIN/PART feed: " + (feedAcknowledged
             ? "on"
             : "OFF (Twitch did not grant membership; only viewers who chat will appear)");
     }
@@ -238,8 +238,8 @@ public record StatusSnapshot(
         if (sourceStates.isEmpty()) return toneFor(listenerState);
         String worst = "ValueGood";
         for (String state : sourceStates.values()) {
-            String t = toneFor(state);
-            if (TONE_RANK.indexOf(t) > TONE_RANK.indexOf(worst)) worst = t;
+            String tone = toneFor(state);
+            if (TONE_RANK.indexOf(tone) > TONE_RANK.indexOf(worst)) worst = tone;
         }
         return worst;
     }
@@ -269,10 +269,10 @@ public record StatusSnapshot(
     }
 
     public static String toneFor(String state) {
-        String s = state == null ? "" : state;
-        if (s.startsWith("connected")) return "ValueGood";
-        if (s.startsWith("connecting")) return "ValueWarn";
-        if (s.startsWith("reconnecting")) return "ValueBad";
+        String normalized = state == null ? "" : state;
+        if (normalized.startsWith("connected")) return "ValueGood";
+        if (normalized.startsWith("connecting")) return "ValueWarn";
+        if (normalized.startsWith("reconnecting")) return "ValueBad";
         return "ValuePlain";
     }
 

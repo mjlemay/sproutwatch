@@ -59,20 +59,20 @@ public class SproutwatchCommand extends AbstractCommand {
 
     /** Bare {@code /sproutwatch}: same as {@code /sproutwatch settings}. */
     @Override
-    protected CompletableFuture<Void> execute(@Nonnull CommandContext ctx) {
-        openSettings(plugin, ctx);
+    protected CompletableFuture<Void> execute(@Nonnull CommandContext context) {
+        openSettings(plugin, context);
         return CompletableFuture.completedFuture(null);
     }
 
     /** Opens the settings page for the sending player (console gets "Run this in game"). */
-    static void openSettings(SproutwatchPlugin plugin, CommandContext ctx) {
-        if (!ctx.isPlayer()) {
-            ctx.sendMessage(Message.raw("Run this in game as a player."));
+    static void openSettings(SproutwatchPlugin plugin, CommandContext context) {
+        if (!context.isPlayer()) {
+            context.sendMessage(Message.raw("Run this in game as a player."));
             return;
         }
-        PlayerRef sender = ctx.senderAs(PlayerRef.class);
+        PlayerRef sender = context.senderAs(PlayerRef.class);
         if (sender == null) {
-            ctx.sendMessage(Message.raw("Could not resolve the sending player."));
+            context.sendMessage(Message.raw("Could not resolve the sending player."));
             return;
         }
         // openCustomPage must run on the player's world thread (the page builds from there).
@@ -85,15 +85,15 @@ public class SproutwatchCommand extends AbstractCommand {
                 if (player == null) return;
                 player.getPageManager().openCustomPage(ref, store,
                     new SproutwatchSettingsPage(sender, plugin.getActions(), plugin.getOpenPages(), plugin.getBridgeLogger()));
-            } catch (RuntimeException e) {
-                plugin.getBridgeLogger().log(Level.WARNING, "Sproutwatch settings page failed to open", e);
-                sender.sendMessage(Message.raw("Could not open the settings page: " + e.getMessage() + " (see server log)"));
+            } catch (RuntimeException exception) {
+                plugin.getBridgeLogger().log(Level.WARNING, "Sproutwatch settings page failed to open", exception);
+                sender.sendMessage(Message.raw("Could not open the settings page: " + exception.getMessage() + " (see server log)"));
             }
         });
         switch (q) {
             case QUEUED -> { }
-            case NOT_LOADED -> ctx.sendMessage(Message.raw("Your world is not loaded."));
-            case REJECTED -> ctx.sendMessage(Message.raw("Your world is unloading; try again."));
+            case NOT_LOADED -> context.sendMessage(Message.raw("Your world is not loaded."));
+            case REJECTED -> context.sendMessage(Message.raw("Your world is unloading; try again."));
         }
     }
 
@@ -114,11 +114,11 @@ public class SproutwatchCommand extends AbstractCommand {
             requirePermission(permission);
         }
 
-        void reply(CommandContext ctx, String text) {
-            ctx.sendMessage(Message.raw(text));
+        void reply(CommandContext context, String text) {
+            context.sendMessage(Message.raw(text));
         }
 
-        SproutwatchConfig cfg() {
+        SproutwatchConfig config() {
             return plugin.getConfigHolder().get();
         }
 
@@ -127,18 +127,18 @@ public class SproutwatchCommand extends AbstractCommand {
          * gets it as a chat message from their world thread, like place's result (straight to the context
          * when that world is not loaded or rejects the task); the console directly.
          */
-        Consumer<String> laterReply(CommandContext ctx) {
-            PlayerRef sender = ctx.isPlayer() ? ctx.senderAs(PlayerRef.class) : null;
-            if (sender == null) return text -> ctx.sendMessage(Message.raw(text));
+        Consumer<String> laterReply(CommandContext context) {
+            PlayerRef sender = context.isPlayer() ? context.senderAs(PlayerRef.class) : null;
+            if (sender == null) return text -> context.sendMessage(Message.raw(text));
             return text -> {
                 ActionsHost.WorldQueue q = plugin.runOnPlayerWorld(sender, world -> sender.sendMessage(Message.raw(text)));
-                if (q != ActionsHost.WorldQueue.QUEUED) ctx.sendMessage(Message.raw(text));   // world gone: best effort
+                if (q != ActionsHost.WorldQueue.QUEUED) context.sendMessage(Message.raw(text));   // world gone: best effort
             };
         }
 
         /** List entries as the streamer reads them: Twitch logins, "@handle (YouTube)" for YouTube keys. */
         String displayList(Set<String> keys) {
-            SproutwatchConfig c = cfg();
+            SproutwatchConfig c = config();
             return keys.stream().map(c::entryDisplay).collect(Collectors.joining(", "));
         }
 
@@ -147,21 +147,21 @@ public class SproutwatchCommand extends AbstractCommand {
         }
 
         /** The sending player, or null (with a reply) when run from console. */
-        PlayerRef player(CommandContext ctx) {
-            if (!ctx.isPlayer()) {
-                reply(ctx, "Run this in game as a player.");
+        PlayerRef player(CommandContext context) {
+            if (!context.isPlayer()) {
+                reply(context, "Run this in game as a player.");
                 return null;
             }
-            PlayerRef p = ctx.senderAs(PlayerRef.class);
-            if (p == null) reply(ctx, "Could not resolve the sending player.");
-            return p;
+            PlayerRef player = context.senderAs(PlayerRef.class);
+            if (player == null) reply(context, "Could not resolve the sending player.");
+            return player;
         }
 
-        abstract void run(CommandContext ctx);
+        abstract void run(CommandContext context);
 
         @Override
-        protected final CompletableFuture<Void> execute(@Nonnull CommandContext ctx) {
-            run(ctx);
+        protected final CompletableFuture<Void> execute(@Nonnull CommandContext context) {
+            run(context);
             return CompletableFuture.completedFuture(null);
         }
     }
@@ -174,8 +174,8 @@ public class SproutwatchCommand extends AbstractCommand {
             nameArg = withRequiredArg("name", "Twitch channel name", ArgTypes.STRING);
         }
 
-        @Override void run(CommandContext ctx) {
-            reply(ctx, actions().setChannel(ctx.get(nameArg)));
+        @Override void run(CommandContext context) {
+            reply(context, actions().setChannel(context.get(nameArg)));
         }
     }
 
@@ -184,8 +184,8 @@ public class SproutwatchCommand extends AbstractCommand {
             super(plugin, "start", "Start watching chat and filling the pen", permission);
         }
 
-        @Override void run(CommandContext ctx) {
-            reply(ctx, actions().startListener());
+        @Override void run(CommandContext context) {
+            reply(context, actions().startListener());
         }
     }
 
@@ -194,8 +194,8 @@ public class SproutwatchCommand extends AbstractCommand {
             super(plugin, "stop", "Stop watching chat (sprouts stay until clear)", permission);
         }
 
-        @Override void run(CommandContext ctx) {
-            reply(ctx, actions().stopListener());
+        @Override void run(CommandContext context) {
+            reply(context, actions().stopListener());
         }
     }
 
@@ -204,20 +204,20 @@ public class SproutwatchCommand extends AbstractCommand {
             super(plugin, "status", "Show listener, roster and pen status", permission);
         }
 
-        @Override void run(CommandContext ctx) {
-            reply(ctx, actions().statusReport());
+        @Override void run(CommandContext context) {
+            reply(context, actions().statusReport());
         }
     }
 
     private static final class PlaceCommand extends Sub {
         PlaceCommand(SproutwatchPlugin plugin, String permission) {
-            super(plugin, "place", "Paste the pen prefab centred on you and save it", permission);
+            super(plugin, "place", "Paste the pen prefab centered on you and save it", permission);
         }
 
-        @Override void run(CommandContext ctx) {
-            PlayerRef sender = player(ctx);
+        @Override void run(CommandContext context) {
+            PlayerRef sender = player(context);
             if (sender == null) return;
-            reply(ctx, actions().place(sender));
+            reply(context, actions().place(sender));
         }
     }
 
@@ -226,8 +226,8 @@ public class SproutwatchCommand extends AbstractCommand {
             super(plugin, "clear", "Remove every sprout in the pen", permission);
         }
 
-        @Override void run(CommandContext ctx) {
-            reply(ctx, actions().clear());
+        @Override void run(CommandContext context) {
+            reply(context, actions().clear());
         }
     }
 
@@ -237,15 +237,15 @@ public class SproutwatchCommand extends AbstractCommand {
             addUsageVariant(new CameraTuneVariant(plugin, permission));
         }
 
-        @Override void run(CommandContext ctx) {
-            PlayerRef sender = player(ctx);
+        @Override void run(CommandContext context) {
+            PlayerRef sender = player(context);
             if (sender == null) return;
-            if (!cfg().isPenSet()) {
-                reply(ctx, "No pen placed yet. Run /sproutwatch place first.");
+            if (!config().isPenSet()) {
+                reply(context, "No pen placed yet. Run /sproutwatch place first.");
                 return;
             }
             boolean on = plugin.getCameraService().toggleManual(sender);
-            reply(ctx, on ? "Pen camera on. Run /sproutwatch camera again to reset." : "Pen camera off.");
+            reply(context, on ? "Pen camera on. Run /sproutwatch camera again to reset." : "Pen camera off.");
         }
     }
 
@@ -262,16 +262,16 @@ public class SproutwatchCommand extends AbstractCommand {
             fovArg = withRequiredArg("fov", "Field of view in degrees", ArgTypes.DOUBLE);
         }
 
-        @Override void run(CommandContext ctx) {
-            SproutwatchConfig c = cfg();
+        @Override void run(CommandContext context) {
+            SproutwatchConfig c = config();
             if (!c.isPenSet()) {
-                reply(ctx, "No pen placed yet. Run /sproutwatch place first.");
+                reply(context, "No pen placed yet. Run /sproutwatch place first.");
                 return;
             }
-            c.setCamera(ctx.get(heightArg), ctx.get(backArg), ctx.get(fovArg));
+            c.setCamera(context.get(heightArg), context.get(backArg), context.get(fovArg));
             plugin.saveConfig();
             plugin.getCameraService().refresh(Universe.get().getPlayers());
-            reply(ctx, "Camera height " + c.getCameraHeight() + ", back " + c.getCameraBack() + ", fov " + c.getCameraFov() + ".");
+            reply(context, "Camera height " + c.getCameraHeight() + ", back " + c.getCameraBack() + ", fov " + c.getCameraFov() + ".");
         }
     }
 
@@ -283,8 +283,8 @@ public class SproutwatchCommand extends AbstractCommand {
             secondsArg = withRequiredArg("seconds", "Tick interval in seconds", ArgTypes.INTEGER);
         }
 
-        @Override void run(CommandContext ctx) {
-            reply(ctx, actions().setTickSeconds(ctx.get(secondsArg)));
+        @Override void run(CommandContext context) {
+            reply(context, actions().setTickSeconds(context.get(secondsArg)));
         }
     }
 
@@ -292,71 +292,71 @@ public class SproutwatchCommand extends AbstractCommand {
         private final RequiredArg<String> loginArg;
 
         TestCommand(SproutwatchPlugin plugin, String permission) {
-            super(plugin, "test", "Fake viewers: /sproutwatch test <login> [now|remove] | test list", permission);
-            loginArg = withRequiredArg("login", "Fake viewer login", ArgTypes.STRING);
+            super(plugin, "test", "Fake viewers: /sproutwatch test <user> [now|remove] | test list", permission);
+            loginArg = withRequiredArg("user", "Fake viewer user name", ArgTypes.STRING);
             addUsageVariant(new TestNowVariant(plugin, permission));
         }
 
-        @Override void run(CommandContext ctx) {
-            String login = ctx.get(loginArg);
+        @Override void run(CommandContext context) {
+            String login = context.get(loginArg);
             if ("list".equalsIgnoreCase(login)) {
                 Set<String> guests = plugin.getRoster().guests();
-                reply(ctx, guests.isEmpty()
-                    ? "No test viewers. Add one with /sproutwatch test <login> [now]."
+                reply(context, guests.isEmpty()
+                    ? "No test viewers. Add one with /sproutwatch test <user> [now]."
                     : "Test viewers (" + guests.size() + "): " + String.join(", ", new java.util.TreeSet<>(guests))
-                        + ". They give up their spot first when the pen is full; Clear or 'test <login> remove' drops them.");
+                        + ". They give up their spot first when the pen is full; Clear or 'test <user> remove' drops them.");
                 return;
             }
-            applyTest(plugin, this, ctx, login, false);
+            applyTest(plugin, this, context, login, false);
         }
     }
 
-    /** {@code /sproutwatch test <login> now|remove}: forced tick, or drop the test viewer. */
+    /** {@code /sproutwatch test <user> now|remove}: forced tick, or drop the test viewer. */
     private static final class TestNowVariant extends Sub {
         private final RequiredArg<String> loginArg;
         private final RequiredArg<String> whenArg;
 
         TestNowVariant(SproutwatchPlugin plugin, String permission) {
-            super(plugin, "Pretend <login> is in chat and tick immediately, or remove a test viewer", permission);
-            loginArg = withRequiredArg("login", "Fake viewer login", ArgTypes.STRING);
+            super(plugin, "Pretend <user> is in chat and tick immediately, or remove a test viewer", permission);
+            loginArg = withRequiredArg("user", "Fake viewer user name", ArgTypes.STRING);
             whenArg = withRequiredArg("when", "'now' or 'remove'", ArgTypes.STRING);
         }
 
-        @Override void run(CommandContext ctx) {
-            String when = ctx.get(whenArg);
+        @Override void run(CommandContext context) {
+            String when = context.get(whenArg);
             if ("remove".equalsIgnoreCase(when)) {
-                reply(ctx, actions().removeGuest(ctx.get(loginArg)));
+                reply(context, actions().removeGuest(context.get(loginArg)));
                 return;
             }
             if (!"now".equalsIgnoreCase(when)) {
-                reply(ctx, "Usage: /sproutwatch test <login> [now|remove] | test list");
+                reply(context, "Usage: /sproutwatch test <user> [now|remove] | test list");
                 return;
             }
-            applyTest(plugin, this, ctx, ctx.get(loginArg), true);
+            applyTest(plugin, this, context, context.get(loginArg), true);
         }
     }
 
     /** Shared body of {@code test} and its {@code now} variant. */
-    static void applyTest(SproutwatchPlugin plugin, Sub cmd, CommandContext ctx, String rawLogin, boolean now) {
-        if (!cmd.cfg().isPenSet()) {
-            cmd.reply(ctx, "No pen placed yet. Run /sproutwatch place first.");
+    static void applyTest(SproutwatchPlugin plugin, Sub subcommand, CommandContext context, String rawLogin, boolean now) {
+        if (!subcommand.config().isPenSet()) {
+            subcommand.reply(context, "No pen placed yet. Run /sproutwatch place first.");
             return;
         }
         String login = rawLogin == null ? "" : SproutwatchConfig.normalizeChannel(rawLogin);
         if (login.isEmpty()) {
-            cmd.reply(ctx, "Give a login, e.g. /sproutwatch test alice now");
+            subcommand.reply(context, "Give a user name, e.g. /sproutwatch test alice now");
             return;
         }
-        if (cmd.cfg().ignoredLogins().contains(login)) {
-            cmd.reply(ctx, login + " is on the ignore list (or is the channel itself); remove them first.");
+        if (subcommand.config().ignoredViewers().contains(login)) {
+            subcommand.reply(context, login + " is on the ignore list (or is the channel itself); remove them first.");
             return;
         }
-        if (!cmd.cfg().passesFilter(login)) {
-            cmd.reply(ctx, login + " is not on the allow list; /sproutwatch allow add " + login + " or /sproutwatch filter ignore.");
+        if (!subcommand.config().passesFilter(login)) {
+            subcommand.reply(context, login + " is not on the allow list; /sproutwatch allow add " + login + " or /sproutwatch filter ignore.");
             return;
         }
         if (plugin.getRegistry().isRetired(login)) {
-            cmd.reply(ctx, login + " was retired (a player killed their sprout); they get one again after leaving and rejoining chat, or after /sproutwatch clear.");
+            subcommand.reply(context, login + " was retired (a player killed their sprout); they get one again after leaving and rejoining chat, or after /sproutwatch clear.");
             return;
         }
         // firstSeen 0L: PenReconciler spawns the smallest firstSeen first, so the test login jumps ahead of
@@ -367,32 +367,32 @@ public class SproutwatchCommand extends AbstractCommand {
         plugin.getRoster().addGuest(login, 0L);
         if (now) {
             if (plugin.getRegistry().contains(login)) {
-                cmd.reply(ctx, login + " is already in the pen.");
+                subcommand.reply(context, login + " is already in the pen.");
                 return;
             }
             int size = plugin.getRegistry().size();
-            int max = cmd.cfg().getMaxSprouts();
+            int max = subcommand.config().getMaxSprouts();
             if (size >= max) {
-                cmd.reply(ctx, "Pen is full (" + size + "/" + max + "); run /sproutwatch clear or raise MaxSprouts.");
+                subcommand.reply(context, "Pen is full (" + size + "/" + max + "); run /sproutwatch clear or raise MaxSprouts.");
                 return;
             }
-            if (PenTicker.resolveWorld(cmd.cfg()) == null) {
-                cmd.reply(ctx, "Pen world is not loaded; nothing to tick.");
+            if (PenTicker.resolveWorld(subcommand.config()) == null) {
+                subcommand.reply(context, "Pen world is not loaded; nothing to tick.");
                 return;
             }
             // The tick runs later on the pen world thread; the spawner fails quietly when the pen has no
             // validated free spot, so the real outcome comes back as a second line (console: the log).
-            PlayerRef sender = ctx.isPlayer() ? ctx.senderAs(PlayerRef.class) : null;
+            PlayerRef sender = context.isPlayer() ? context.senderAs(PlayerRef.class) : null;
             plugin.getTicker().tickNow(outcome -> {
                 String text = outcome.testReply(login);
                 if (sender != null) sender.sendMessage(Message.raw(text));
                 else plugin.getBridgeLogger().info("Sproutwatch: " + text);
             });
-            cmd.reply(ctx, login + " added as a test viewer; ticking now.");
+            subcommand.reply(context, login + " added as a test viewer; ticking now.");
         } else if (plugin.getTicker().isRunning()) {
-            cmd.reply(ctx, login + " added as a test viewer; spawns on the next tick.");
+            subcommand.reply(context, login + " added as a test viewer; spawns on the next tick.");
         } else {
-            cmd.reply(ctx, login + " added as a test viewer; run /sproutwatch start (or add 'now').");
+            subcommand.reply(context, login + " added as a test viewer; run /sproutwatch start (or add 'now').");
         }
     }
 
@@ -403,8 +403,8 @@ public class SproutwatchCommand extends AbstractCommand {
             addUsageVariant(new FilterSetVariant(plugin, permission));
         }
 
-        @Override void run(CommandContext ctx) {
-            reply(ctx, actions().snapshot().filterLine());
+        @Override void run(CommandContext context) {
+            reply(context, actions().snapshot().filterLine());
         }
     }
 
@@ -416,158 +416,158 @@ public class SproutwatchCommand extends AbstractCommand {
             modeArg = withRequiredArg("mode", "allow | ignore", ArgTypes.STRING);
         }
 
-        @Override void run(CommandContext ctx) {
-            String mode = ctx.get(modeArg);
-            if ("allow".equalsIgnoreCase(mode)) reply(ctx, actions().setFilter(true));
-            else if ("ignore".equalsIgnoreCase(mode)) reply(ctx, actions().setFilter(false));
-            else reply(ctx, "Usage: /sproutwatch filter [allow|ignore]");
+        @Override void run(CommandContext context) {
+            String mode = context.get(modeArg);
+            if ("allow".equalsIgnoreCase(mode)) reply(context, actions().setFilter(true));
+            else if ("ignore".equalsIgnoreCase(mode)) reply(context, actions().setFilter(false));
+            else reply(context, "Usage: /sproutwatch filter [allow|ignore]");
         }
     }
 
-    /** {@code /sproutwatch allow list | add <login> | remove <login>}: AllowUsers (used in allow mode). */
+    /** {@code /sproutwatch allow list | add <user> | remove <user>}: AllowUsers (used in allow mode). */
     private static final class AllowCommand extends Sub {
-        private static final String USAGE = "Usage: /sproutwatch allow list | add <login> | remove <login>";
+        private static final String USAGE = "Usage: /sproutwatch allow list | add <user> | remove <user>";
         private final RequiredArg<String> actionArg;
 
         AllowCommand(SproutwatchPlugin plugin, String permission) {
-            super(plugin, "allow", "Allow list: /sproutwatch allow list | add <login> | remove <login> (applies in allow mode)", permission);
+            super(plugin, "allow", "Allow list: /sproutwatch allow list | add <user> | remove <user> (applies in allow mode)", permission);
             actionArg = withRequiredArg("action", "list", ArgTypes.STRING);
             addUsageVariant(new AllowEditVariant(plugin, permission));
         }
 
-        @Override void run(CommandContext ctx) {
-            if (!"list".equalsIgnoreCase(ctx.get(actionArg))) {
-                reply(ctx, USAGE);
+        @Override void run(CommandContext context) {
+            if (!"list".equalsIgnoreCase(context.get(actionArg))) {
+                reply(context, USAGE);
                 return;
             }
-            Set<String> allow = cfg().allowedLogins();
-            reply(ctx, allow.isEmpty()
-                ? (cfg().isAllowMode() ? "Allow list is empty: nobody gets a sprout until you add someone." : "Allow list is empty (not in use: filter is the ignore list).")
+            Set<String> allow = config().allowedViewers();
+            reply(context, allow.isEmpty()
+                ? (config().isAllowMode() ? "Allow list is empty: nobody gets a sprout until you add someone." : "Allow list is empty (not in use: filter is the ignore list).")
                 : "Allow list (" + allow.size() + "): " + displayList(allow));
         }
     }
 
-    /** {@code /sproutwatch allow add|remove <login>}. */
+    /** {@code /sproutwatch allow add|remove <user>}. */
     private static final class AllowEditVariant extends Sub {
         private final RequiredArg<String> actionArg;
-        private final RequiredArg<String> loginArg;
+        private final RequiredArg<String> viewerArg;
 
         AllowEditVariant(SproutwatchPlugin plugin, String permission) {
-            super(plugin, "Add or remove a login on the allow list", permission);
+            super(plugin, "Add or remove a user on the allow list", permission);
             actionArg = withRequiredArg("action", "add or remove", ArgTypes.STRING);
-            loginArg = withRequiredArg("login", "Twitch name, or yt:@handle / YouTube link / UC... ID", ArgTypes.STRING);
+            viewerArg = withRequiredArg("user", "Twitch name, or yt:@handle / YouTube link / UC... ID", ArgTypes.STRING);
         }
 
-        @Override void run(CommandContext ctx) {
-            String action = ctx.get(actionArg);
-            String login = ctx.get(loginArg);
+        @Override void run(CommandContext context) {
+            String action = context.get(actionArg);
+            String viewer = context.get(viewerArg);
             if ("add".equalsIgnoreCase(action)) {
-                reply(ctx, actions().addAllow(login, laterReply(ctx)));
+                reply(context, actions().addAllow(viewer, laterReply(context)));
             } else if ("remove".equalsIgnoreCase(action)) {
-                reply(ctx, actions().removeAllow(login, laterReply(ctx)));
+                reply(context, actions().removeAllow(viewer, laterReply(context)));
             } else {
-                reply(ctx, AllowCommand.USAGE);
+                reply(context, AllowCommand.USAGE);
             }
         }
     }
 
-    /** {@code /sproutwatch ignore list | add <login> | remove <login>}: IgnoreUsers (read live by the roster). */
+    /** {@code /sproutwatch ignore list | add <user> | remove <user>}: IgnoreUsers (read live by the roster). */
     private static final class IgnoreCommand extends Sub {
-        private static final String USAGE = "Usage: /sproutwatch ignore list | add <login> | remove <login>";
+        private static final String USAGE = "Usage: /sproutwatch ignore list | add <user> | remove <user>";
         private final RequiredArg<String> actionArg;
 
         IgnoreCommand(SproutwatchPlugin plugin, String permission) {
-            super(plugin, "ignore", "Ignore list: /sproutwatch ignore list | add <login> | remove <login>", permission);
+            super(plugin, "ignore", "Ignore list: /sproutwatch ignore list | add <user> | remove <user>", permission);
             actionArg = withRequiredArg("action", "list", ArgTypes.STRING);
             addUsageVariant(new IgnoreEditVariant(plugin, permission));
         }
 
-        @Override void run(CommandContext ctx) {
-            if (!"list".equalsIgnoreCase(ctx.get(actionArg))) {
-                reply(ctx, USAGE);
+        @Override void run(CommandContext context) {
+            if (!"list".equalsIgnoreCase(context.get(actionArg))) {
+                reply(context, USAGE);
                 return;
             }
-            // ignoredLogins() always includes the channel login itself (the streamer never gets a sprout).
-            Set<String> ignored = cfg().ignoredLogins();
-            reply(ctx, ignored.isEmpty()
+            // ignoredViewers() always includes the channel login itself (the streamer never gets a sprout).
+            Set<String> ignored = config().ignoredViewers();
+            reply(context, ignored.isEmpty()
                 ? "Ignore list is empty."
                 : "Ignore list (" + ignored.size() + ", includes the channel): " + displayList(ignored));
         }
     }
 
-    /** {@code /sproutwatch ignore add|remove <login>}. */
+    /** {@code /sproutwatch ignore add|remove <user>}. */
     private static final class IgnoreEditVariant extends Sub {
         private final RequiredArg<String> actionArg;
-        private final RequiredArg<String> loginArg;
+        private final RequiredArg<String> viewerArg;
 
         IgnoreEditVariant(SproutwatchPlugin plugin, String permission) {
-            super(plugin, "Add or remove a login on the ignore list", permission);
+            super(plugin, "Add or remove a user on the ignore list", permission);
             actionArg = withRequiredArg("action", "add or remove", ArgTypes.STRING);
-            loginArg = withRequiredArg("login", "Twitch name, or yt:@handle / YouTube link / UC... ID", ArgTypes.STRING);
+            viewerArg = withRequiredArg("user", "Twitch name, or yt:@handle / YouTube link / UC... ID", ArgTypes.STRING);
         }
 
-        @Override void run(CommandContext ctx) {
-            String action = ctx.get(actionArg);
-            String login = ctx.get(loginArg);
+        @Override void run(CommandContext context) {
+            String action = context.get(actionArg);
+            String viewer = context.get(viewerArg);
             if ("add".equalsIgnoreCase(action)) {
-                reply(ctx, actions().addIgnore(login, laterReply(ctx)));
+                reply(context, actions().addIgnore(viewer, laterReply(context)));
             } else if ("remove".equalsIgnoreCase(action)) {
-                reply(ctx, actions().removeIgnore(login, laterReply(ctx)));
+                reply(context, actions().removeIgnore(viewer, laterReply(context)));
             } else {
-                reply(ctx, IgnoreCommand.USAGE);
+                reply(context, IgnoreCommand.USAGE);
             }
         }
     }
 
-    /** {@code /sproutwatch queue list | clear | remove <login>}: the "!sprout" priority queue (in memory). */
+    /** {@code /sproutwatch queue list | clear | remove <user>}: the "!sprout" priority queue (in memory). */
     private static final class QueueCommand extends Sub {
-        private static final String USAGE = "Usage: /sproutwatch queue list | clear | remove <login>";
+        private static final String USAGE = "Usage: /sproutwatch queue list | clear | remove <user>";
         private final RequiredArg<String> actionArg;
 
         QueueCommand(SproutwatchPlugin plugin, String permission) {
-            super(plugin, "queue", "!sprout queue: /sproutwatch queue list | clear | remove <login>", permission);
+            super(plugin, "queue", "!sprout queue: /sproutwatch queue list | clear | remove <user>", permission);
             actionArg = withRequiredArg("action", "list or clear", ArgTypes.STRING);
             addUsageVariant(new QueueRemoveVariant(plugin, permission));
         }
 
-        @Override void run(CommandContext ctx) {
-            String action = ctx.get(actionArg);
+        @Override void run(CommandContext context) {
+            String action = context.get(actionArg);
             if ("list".equalsIgnoreCase(action)) {
                 List<String> q = plugin.getQueue().snapshot();
-                reply(ctx, q.isEmpty() ? "Queue is empty." : "Queue (" + q.size() + "): " + String.join(", ", q));
+                reply(context, q.isEmpty() ? "Queue is empty." : "Queue (" + q.size() + "): " + String.join(", ", q));
             } else if ("clear".equalsIgnoreCase(action)) {
                 int n = plugin.getQueue().size();
                 plugin.getQueue().clear();
-                reply(ctx, "Queue cleared (" + n + " removed).");
+                reply(context, "Queue cleared (" + n + " removed).");
             } else {
-                reply(ctx, USAGE);
+                reply(context, USAGE);
             }
         }
     }
 
-    /** {@code /sproutwatch queue remove <login>}. */
+    /** {@code /sproutwatch queue remove <user>}. */
     private static final class QueueRemoveVariant extends Sub {
         private final RequiredArg<String> actionArg;
         private final RequiredArg<String> loginArg;
 
         QueueRemoveVariant(SproutwatchPlugin plugin, String permission) {
-            super(plugin, "Drop a login from the !sprout queue", permission);
+            super(plugin, "Drop a user from the !sprout queue", permission);
             actionArg = withRequiredArg("action", "remove", ArgTypes.STRING);
-            loginArg = withRequiredArg("login", "Twitch login", ArgTypes.STRING);
+            loginArg = withRequiredArg("user", "Twitch user name", ArgTypes.STRING);
         }
 
-        @Override void run(CommandContext ctx) {
-            if (!"remove".equalsIgnoreCase(ctx.get(actionArg))) {
-                reply(ctx, QueueCommand.USAGE);
+        @Override void run(CommandContext context) {
+            if (!"remove".equalsIgnoreCase(context.get(actionArg))) {
+                reply(context, QueueCommand.USAGE);
                 return;
             }
-            String login = SproutwatchConfig.normalizeChannel(ctx.get(loginArg));
+            String login = SproutwatchConfig.normalizeChannel(context.get(loginArg));
             if (login.isEmpty()) {
-                reply(ctx, "Invalid login.");
+                reply(context, "Invalid user name.");
                 return;
             }
             boolean removed = plugin.getQueue().remove(login);
-            reply(ctx, removed ? "Removed " + login + " from the queue." : login + " is not queued.");
+            reply(context, removed ? "Removed " + login + " from the queue." : login + " is not queued.");
         }
     }
 
@@ -584,8 +584,8 @@ public class SproutwatchCommand extends AbstractCommand {
             addUsageVariant(new PersistSetVariant(plugin, permission));
         }
 
-        @Override void run(CommandContext ctx) {
-            reply(ctx, actions().setPersist(!cfg().isPersistSprouts()));
+        @Override void run(CommandContext context) {
+            reply(context, actions().setPersist(!config().isPersistSprouts()));
         }
     }
 
@@ -598,14 +598,14 @@ public class SproutwatchCommand extends AbstractCommand {
             stateArg = withRequiredArg("state", "on or off", ArgTypes.STRING);
         }
 
-        @Override void run(CommandContext ctx) {
-            String state = ctx.get(stateArg);
+        @Override void run(CommandContext context) {
+            String state = context.get(stateArg);
             if ("on".equalsIgnoreCase(state)) {
-                reply(ctx, actions().setPersist(true));
+                reply(context, actions().setPersist(true));
             } else if ("off".equalsIgnoreCase(state)) {
-                reply(ctx, actions().setPersist(false));
+                reply(context, actions().setPersist(false));
             } else {
-                reply(ctx, PersistCommand.USAGE);
+                reply(context, PersistCommand.USAGE);
             }
         }
     }
@@ -613,7 +613,7 @@ public class SproutwatchCommand extends AbstractCommand {
     /**
      * {@code /sproutwatch youtube [on|off | handle <h> | key <k> | video <link|clear> | hours <n>]}; parsing
      * and replies in ChatSourceCommands (the key is only ever echoed masked). The engine's
-     * CommandManager logs every command's full text ("&lt;player&gt; executed command: …"), so
+     * CommandManager logs every command's full text ({@code <player> executed command: ...}), so
      * {@code youtube key} puts the key in the server log; the Connect tab's key field does not, and
      * the description says so. Ops: never run the server with JDK HttpClient header logging
      * ({@code -Djdk.httpclient.HttpClient.log=headers|all}) while a key is configured: the key is sent
@@ -627,8 +627,8 @@ public class SproutwatchCommand extends AbstractCommand {
             addUsageVariant(new YouTubeSetVariant(plugin, permission));
         }
 
-        @Override void run(CommandContext ctx) {
-            reply(ctx, ChatSourceCommands.youTubeSummary(actions().snapshot()));
+        @Override void run(CommandContext context) {
+            reply(context, ChatSourceCommands.youTubeSummary(actions().snapshot()));
         }
     }
 
@@ -641,8 +641,8 @@ public class SproutwatchCommand extends AbstractCommand {
             stateArg = withRequiredArg("state", "on or off", ArgTypes.STRING);
         }
 
-        @Override void run(CommandContext ctx) {
-            reply(ctx, ChatSourceCommands.youTube(actions(), ctx.get(stateArg)));
+        @Override void run(CommandContext context) {
+            reply(context, ChatSourceCommands.youTube(actions(), context.get(stateArg)));
         }
     }
 
@@ -658,8 +658,8 @@ public class SproutwatchCommand extends AbstractCommand {
             valueArg = withRequiredArg("value", "@handle, API key, stream link or 'clear', hours 1-24", ArgTypes.STRING);
         }
 
-        @Override void run(CommandContext ctx) {
-            reply(ctx, ChatSourceCommands.youTube(actions(), ctx.get(settingArg), ctx.get(valueArg)));
+        @Override void run(CommandContext context) {
+            reply(context, ChatSourceCommands.youTube(actions(), context.get(settingArg), context.get(valueArg)));
         }
     }
 
@@ -670,8 +670,8 @@ public class SproutwatchCommand extends AbstractCommand {
             addUsageVariant(new TwitchToggleVariant(plugin, permission));
         }
 
-        @Override void run(CommandContext ctx) {
-            reply(ctx, ChatSourceCommands.twitchSummary(cfg().isTwitchEnabled()));
+        @Override void run(CommandContext context) {
+            reply(context, ChatSourceCommands.twitchSummary(config().isTwitchEnabled()));
         }
     }
 
@@ -684,8 +684,8 @@ public class SproutwatchCommand extends AbstractCommand {
             stateArg = withRequiredArg("state", "on or off", ArgTypes.STRING);
         }
 
-        @Override void run(CommandContext ctx) {
-            reply(ctx, ChatSourceCommands.twitch(actions(), ctx.get(stateArg)));
+        @Override void run(CommandContext context) {
+            reply(context, ChatSourceCommands.twitch(actions(), context.get(stateArg)));
         }
     }
 
@@ -695,8 +695,8 @@ public class SproutwatchCommand extends AbstractCommand {
             super(plugin, "settings", "Open the Sproutwatch settings page", permission);
         }
 
-        @Override void run(CommandContext ctx) {
-            openSettings(plugin, ctx);
+        @Override void run(CommandContext context) {
+            openSettings(plugin, context);
         }
     }
 }

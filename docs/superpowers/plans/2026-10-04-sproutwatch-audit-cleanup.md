@@ -274,3 +274,6 @@ return from another thread.
 (Append dated entries here as tiers are approved, started and finished.)
 
 - 2026-10-04: backlog written; awaiting Mertie's review.
+- 2026-10-04: Tier 3 pass A (3.1, 3.2, 3.5) done: 532 tests.
+- 2026-10-04: Tier 3 pass B (3.3, 3.4) done: 532 tests.
+- 2026-10-04: Tier 3 reviewed (identifier-only diff confirmed; only literal change "centred" -> "centered"); review fixes applied (ChatRoster command local, SproutQueue/PenDespawnSystem/PenRegistry/SproutSpawner comments, remaining British spellings incl. test names); 532 tests; deployed; headless boot clean. Waiting for Mertie to commit Tier 3 before Tier 1.

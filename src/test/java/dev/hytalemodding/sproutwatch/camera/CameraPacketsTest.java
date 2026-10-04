@@ -14,8 +14,8 @@ class CameraPacketsTest {
         // the seated head keeps the look the player had when clicking the seat. SeatLook fixes it instead,
         // so the camera packet keeps the engine defaults for those fields.
         PenCamera cam = new PenCamera(new Vector3d(16, 80, 10), new Vector3d(16, 65, 28));
-        SetServerCamera p = CameraPackets.penCamera(cam, 45, false);
-        assertEquals(MouseInputType.LookAtTarget, p.cameraSettings.mouseInputType);
-        assertEquals(com.hypixel.hytale.protocol.ApplyLookType.LocalPlayerLookOrientation, p.cameraSettings.applyLookType);
+        SetServerCamera packet = CameraPackets.penCamera(cam, 45, false);
+        assertEquals(MouseInputType.LookAtTarget, packet.cameraSettings.mouseInputType);
+        assertEquals(com.hypixel.hytale.protocol.ApplyLookType.LocalPlayerLookOrientation, packet.cameraSettings.applyLookType);
     }
 }

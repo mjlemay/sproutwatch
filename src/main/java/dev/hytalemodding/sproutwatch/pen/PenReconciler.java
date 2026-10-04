@@ -9,16 +9,16 @@ import java.util.Set;
 
 /**
  * Pure diff between chat and pen.
- *   roster: login -> firstSeen (ordering only; presence = key present)
- *   pen:    login -> lastSeen  (PenTicker sets this to now for every eligible login still in the roster)
+ *   roster: viewer key -> firstSeen (ordering only; presence = key present)
+ *   pen:    viewer key -> lastSeen  (PenTicker sets this to now for every eligible viewer key still in the roster)
  * Default (persist off):
- *   despawn = pen logins whose lastSeen is older than graceMillis.
- *   spawn   = if the pen has room after despawns: the first login in priority (the "!sprout" queue,
- *             FIFO) that is in the roster and not in the pen; otherwise the roster login not in the
- *             pen with the smallest firstSeen (ties by login), so nobody waits forever.
+ *   despawn = pen viewer keys whose lastSeen is older than graceMillis.
+ *   spawn   = if the pen has room after despawns: the first viewer key in priority (the "!sprout" queue,
+ *             FIFO) that is in the roster and not in the pen; otherwise the roster viewer key not in the
+ *             pen with the smallest firstSeen (ties by viewer key), so nobody waits forever.
  * Persist on: grace is ignored and sprouts outlive their viewer. The spawn candidate is chosen the
- * same way; below the cap it simply spawns. At the cap, the pen login NOT in the roster with the
- * smallest lastSeen (the viewer gone the longest; ties by login) is despawned to make room, one swap
+ * same way; below the cap it simply spawns. At the cap, the pen viewer key NOT in the roster with the
+ * smallest lastSeen (the viewer gone the longest; ties by viewer key) is despawned to make room, one swap
  * per tick. If every sprout's viewer is still present, nothing happens and the candidate waits.
  */
 public final class PenReconciler {
@@ -43,7 +43,7 @@ public final class PenReconciler {
     }
 
     /**
-     * {@code guests} are /sproutwatch test logins: present, but at the cap (persist) a guest in the pen
+     * {@code guests} are /sproutwatch test viewer keys: present, but at the cap (persist) a guest in the pen
      * is replaced before any longest-gone absent viewer, and never to make room for another guest.
      */
     public static PenPlan reconcile(Map<String, Long> roster, Map<String, Long> pen, List<String> priority,
@@ -115,8 +115,8 @@ public final class PenReconciler {
     /**
      * Which sprouts to remove right now so the pen holds at most {@code cap}: absent viewers' sprouts
      * first (viewer gone the longest first), then present viewers' sprouts newest arrival first; ties
-     * by login. Used when MaxSprouts is lowered below the pen count. {@code pen} is login -> lastSeen,
-     * {@code roster} is login -> firstSeen (present viewers).
+     * by viewer key. Used when MaxSprouts is lowered below the pen count. {@code pen} is viewer key -> lastSeen,
+     * {@code roster} is viewer key -> firstSeen (present viewers).
      */
     public static List<String> trim(Map<String, Long> pen, Map<String, Long> roster, int cap) {
         return trim(pen, roster, cap, Set.of());
@@ -141,10 +141,10 @@ public final class PenReconciler {
         return List.copyOf(victims.subList(0, surplus));
     }
 
-    /** First eligible priority login, else the earliest-seen roster login not yet in the pen. */
+    /** First eligible priority viewer key, else the earliest-seen roster viewer key not yet in the pen. */
     private static Optional<String> candidate(Map<String, Long> roster, Map<String, Long> pen, List<String> priority) {
-        for (String login : priority) {
-            if (roster.containsKey(login) && !pen.containsKey(login)) return Optional.of(login);
+        for (String viewerKey : priority) {
+            if (roster.containsKey(viewerKey) && !pen.containsKey(viewerKey)) return Optional.of(viewerKey);
         }
         return roster.entrySet().stream()
             .filter(e -> !pen.containsKey(e.getKey()))

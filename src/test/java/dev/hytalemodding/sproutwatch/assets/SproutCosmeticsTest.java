@@ -18,16 +18,16 @@ class SproutCosmeticsTest {
 
     private static final Path MODELS = Path.of("src/main/resources/Server/Models/Sproutwatch");
     private static final Path ROLES = Path.of("src/main/resources/Server/NPC/Roles/Sproutwatch");
-    private static final List<String> COLOURS = List.of("Red", "Orange", "Pink", "Yellow", "Green", "Brown");
+    private static final List<String> COLORS = List.of("Red", "Orange", "Pink", "Yellow", "Green", "Brown");
 
-    private static BsonDocument read(Path p) throws IOException {
-        return BsonDocument.parse(Files.readString(p));
+    private static BsonDocument read(Path path) throws IOException {
+        return BsonDocument.parse(Files.readString(path));
     }
 
     private static List<BsonDocument> sproutModels() throws IOException {
         List<BsonDocument> out = new java.util.ArrayList<>();
         out.add(read(MODELS.resolve("Sprout_Sproutling.json")));
-        for (String c : COLOURS) out.add(read(MODELS.resolve("Sprout_Sapling_" + c + ".json")));
+        for (String c : COLORS) out.add(read(MODELS.resolve("Sprout_Sapling_" + c + ".json")));
         return out;
     }
 
@@ -72,8 +72,8 @@ class SproutCosmeticsTest {
         }
     }
 
-    @Test void eachSaplingColourRoleUsesTheModsModel() throws IOException {
-        for (String c : COLOURS) {
+    @Test void eachSaplingColorRoleUsesTheModsModel() throws IOException {
+        for (String c : COLORS) {
             BsonDocument role = read(ROLES.resolve("Sprout_Sapling_" + c + ".json"));
             assertEquals("Sprout_Sapling_" + c, role.getDocument("Modify").getString("Appearance").getValue());
             assertEquals("Kweebec_Sapling_" + c, read(MODELS.resolve("Sprout_Sapling_" + c + ".json")).getString("Parent").getValue());

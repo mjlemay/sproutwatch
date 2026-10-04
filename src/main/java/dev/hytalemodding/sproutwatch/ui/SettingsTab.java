@@ -37,17 +37,17 @@ enum SettingsTab {
      * Exercised only in-game: UICommandBuilder's static init requires the Hytale log manager, which a JUnit JVM cannot
      * install without breaking the JUL handler capture other tests rely on.
      */
-    static void apply(UICommandBuilder cmd, SettingsTab active) {
+    static void apply(UICommandBuilder commands, SettingsTab active) {
         for (SettingsTab t : values()) {
-            cmd.set(t.button + ".Style", t == active ? SELECTED_STYLE : STYLE);
-            cmd.set(t.group + ".Visible", t == active);
+            commands.set(t.button + ".Style", t == active ? SELECTED_STYLE : STYLE);
+            commands.set(t.group + ".Visible", t == active);
         }
     }
 
     /** Binds each button once per build; bindings survive partial updates. */
-    static void bind(UIEventBuilder evt) {
+    static void bind(UIEventBuilder events) {
         for (SettingsTab t : values()) {
-            evt.addEventBinding(CustomUIEventBindingType.Activating, t.button,
+            events.addEventBinding(CustomUIEventBindingType.Activating, t.button,
                 new EventData().append(SettingsEvent.KEY_ACTION, "tab").append(SettingsEvent.KEY_TAB, t.name()));
         }
     }

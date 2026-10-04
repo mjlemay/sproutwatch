@@ -33,21 +33,21 @@ class PenBoundsTest {
         assertEquals(new Vector3d(16.0, 65.0, 28.0), B.center());
     }
 
-    @Test void randomPointsLandOnBlockCentresInsideTheInterior() {
+    @Test void randomPointsLandOnBlockCentersInsideTheInterior() {
         Random r = new Random(42);
         int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE;
         int minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE;
         for (int i = 0; i < 500; i++) {
-            Vector3d p = B.randomPoint(r);
-            assertTrue(p.x >= 10.5 && p.x <= 21.5, "x " + p.x);
-            assertTrue(p.z >= 20.5 && p.z <= 35.5, "z " + p.z);
-            assertEquals(65.0, p.y);
-            assertEquals(0.5, p.x - Math.floor(p.x));
-            assertEquals(0.5, p.z - Math.floor(p.z));
-            minX = Math.min(minX, (int) Math.floor(p.x));
-            maxX = Math.max(maxX, (int) Math.floor(p.x));
-            minZ = Math.min(minZ, (int) Math.floor(p.z));
-            maxZ = Math.max(maxZ, (int) Math.floor(p.z));
+            Vector3d point = B.randomPoint(r);
+            assertTrue(point.x >= 10.5 && point.x <= 21.5, "x " + point.x);
+            assertTrue(point.z >= 20.5 && point.z <= 35.5, "z " + point.z);
+            assertEquals(65.0, point.y);
+            assertEquals(0.5, point.x - Math.floor(point.x));
+            assertEquals(0.5, point.z - Math.floor(point.z));
+            minX = Math.min(minX, (int) Math.floor(point.x));
+            maxX = Math.max(maxX, (int) Math.floor(point.x));
+            minZ = Math.min(minZ, (int) Math.floor(point.z));
+            maxZ = Math.max(maxZ, (int) Math.floor(point.z));
         }
         // With seed 42 over 500 samples, the full interior range must be hit; a shrink-by-one
         // (e.g. nextInt(sizeX - 1)) would never reach the true min/max.

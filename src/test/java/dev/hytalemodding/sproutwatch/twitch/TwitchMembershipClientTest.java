@@ -52,9 +52,9 @@ class TwitchMembershipClientTest {
 
         try (ServerSocket server = new ServerSocket(0)) {
             Thread mock = new Thread(() -> {
-                try (Socket s = server.accept();
-                     BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream(), StandardCharsets.UTF_8));
-                     PrintWriter out = new PrintWriter(new OutputStreamWriter(s.getOutputStream(), StandardCharsets.UTF_8), true)) {
+                try (Socket connection = server.accept();
+                     BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
+                     PrintWriter out = new PrintWriter(new OutputStreamWriter(connection.getOutputStream(), StandardCharsets.UTF_8), true)) {
                     received.complete(List.of(in.readLine(), in.readLine(), in.readLine()));
                     out.println(CAP_ACK);
                     out.println(":justinfan1.tmi.twitch.tv 353 justinfan1 = #streamer :alice bob");
@@ -63,9 +63,9 @@ class TwitchMembershipClientTest {
                     out.println(":bob!bob@bob.tmi.twitch.tv PART #streamer");
                     out.println("PING :tmi.twitch.tv");
                     pong.complete(in.readLine());
-                } catch (IOException e) {
-                    received.completeExceptionally(e);
-                    pong.completeExceptionally(e);
+                } catch (IOException exception) {
+                    received.completeExceptionally(exception);
+                    pong.completeExceptionally(exception);
                 }
             });
             mock.start();
@@ -83,7 +83,7 @@ class TwitchMembershipClientTest {
                 // The PONG is written only after every earlier line was read and applied.
                 assertEquals("PONG :tmi.twitch.tv", pong.get(10, TimeUnit.SECONDS));
                 assertEquals(Set.of("alice", "carol", "dave"), roster.snapshot().keySet());
-                assertTrue(client.isMembershipAcked());
+                assertTrue(client.isMembershipAcknowledged());
                 assertEquals(List.of("connecting", "connected to #streamer"), states.subList(0, 2),
                     "the hook fires on each state change so open pages refresh at once");
                 assertEquals(0, warnings.stream().filter(w -> w != null && w.contains("membership")).count(),
@@ -105,17 +105,17 @@ class TwitchMembershipClientTest {
 
         try (ServerSocket server = new ServerSocket(0)) {
             Thread mock = new Thread(() -> {
-                try (Socket s = server.accept();
-                     BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream(), StandardCharsets.UTF_8));
-                     PrintWriter out = new PrintWriter(new OutputStreamWriter(s.getOutputStream(), StandardCharsets.UTF_8), true)) {
+                try (Socket connection = server.accept();
+                     BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
+                     PrintWriter out = new PrintWriter(new OutputStreamWriter(connection.getOutputStream(), StandardCharsets.UTF_8), true)) {
                     in.readLine(); in.readLine(); in.readLine();
                     out.println(":tmi.twitch.tv 001 justinfan1 :Welcome");
                     out.println(":tmi.twitch.tv 376 justinfan1 :End of /MOTD"); // warning trigger
                     out.println(":erin!erin@erin.tmi.twitch.tv PRIVMSG #streamer :still here");
                     out.println("PING :tmi.twitch.tv");
                     pong.complete(in.readLine());
-                } catch (IOException e) {
-                    pong.completeExceptionally(e);
+                } catch (IOException exception) {
+                    pong.completeExceptionally(exception);
                 }
             });
             mock.start();
@@ -125,7 +125,7 @@ class TwitchMembershipClientTest {
             client.start();
             try {
                 assertEquals("PONG :tmi.twitch.tv", pong.get(10, TimeUnit.SECONDS));
-                assertFalse(client.isMembershipAcked());
+                assertFalse(client.isMembershipAcknowledged());
                 assertEquals(1, warnings.stream().filter(w -> w != null && w.contains("membership")).count(),
                     "exactly one membership warning, got: " + warnings);
                 assertEquals(Set.of("erin"), roster.snapshot().keySet(), "speakers still count without membership");
@@ -145,14 +145,14 @@ class TwitchMembershipClientTest {
 
         try (ServerSocket server = new ServerSocket(0)) {
             // Accept every (re)connect until the ServerSocket is closed: read the handshake, then
-            // drop the connection with a TCP reset so the client's read fails and it reconnects.
+            // drop the connection with a TCP reset so the client'connection read fails and it reconnects.
             Thread mock = new Thread(() -> {
                 while (!server.isClosed()) {
-                    try (Socket s = server.accept();
-                         BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream(), StandardCharsets.UTF_8))) {
+                    try (Socket connection = server.accept();
+                         BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
                         in.readLine(); in.readLine(); in.readLine();
-                        s.setSoLinger(true, 0);
-                    } catch (IOException e) {
+                        connection.setSoLinger(true, 0);
+                    } catch (IOException exception) {
                         return; // server closed
                     }
                 }

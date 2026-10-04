@@ -36,7 +36,7 @@ public final class YouTubeChatParser {
         BsonDocument root = parseRoot(json);
 
         boolean ended = root.containsKey("offlineAt") && !root.get("offlineAt").isNull();
-        List<YtMessage> messages = new ArrayList<>();
+        List<YouTubeMessage> messages = new ArrayList<>();
 
         BsonValue items = root.get("items");
         if (items != null && items.isArray()) {
@@ -49,7 +49,7 @@ public final class YouTubeChatParser {
                     continue;
                 }
                 if (type == null || !PRESENCE_TYPES.contains(type)) continue;
-                YtMessage message = toMessage(item);
+                YouTubeMessage message = toMessage(item);
                 if (message != null) messages.add(message);
             }
         }
@@ -64,7 +64,7 @@ public final class YouTubeChatParser {
     }
 
     /** The item as a message, or null when it has no author channel id. */
-    private static YtMessage toMessage(BsonDocument item) {
+    private static YouTubeMessage toMessage(BsonDocument item) {
         BsonDocument snippet = doc(item, "snippet");
         BsonDocument author = doc(item, "authorDetails");
         String channelId = str(author, "channelId");
@@ -75,7 +75,7 @@ public final class YouTubeChatParser {
         if (text == null) text = str(doc(snippet, "textMessageDetails"), "messageText");
         if (text == null) text = "";
 
-        return new YtMessage(channelId, str(author, "displayName"), text, str(snippet, "publishedAt"));
+        return new YouTubeMessage(channelId, str(author, "displayName"), text, str(snippet, "publishedAt"));
     }
 
     /** YouTube's suggestion when it is a finite number within 1..60 000 ms, else the default. */
@@ -96,7 +96,7 @@ public final class YouTubeChatParser {
             // BSON reads $-prefixed keys as extended JSON (e.g. {"$date": ...}); chat text is always a string
             // value, so viewers can't trigger it, only a YouTube schema change could.
             return BsonDocument.parse(json);
-        } catch (RuntimeException | StackOverflowError e) {
+        } catch (RuntimeException | StackOverflowError exception) {
             // Deliberately no cause: parser messages can quote the input, which may contain an API key.
             // StackOverflowError: deeply nested input exhausts the recursive reader.
             throw new IllegalArgumentException("YouTube chat response was not a valid JSON object");

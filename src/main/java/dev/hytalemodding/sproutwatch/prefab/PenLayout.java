@@ -12,7 +12,7 @@ import java.util.function.Predicate;
  *   interior     = bounding box of "Empty" blocks at floorY + 1 (the fenced air), or, if the
  *                  prefab has no Empty blocks there, the whole bounding box shrunk by one on x/z
  *   chair        = first block the isSeat predicate accepts (runtime: BlockType has Seats)
- *   facing       = direction from the chair toward the interior centre (NORTH when no chair)
+ *   facing       = direction from the chair toward the interior center (NORTH when no chair)
  */
 public record PenLayout(int interiorMinX, int interiorMinZ, int sizeX, int sizeZ,
                         int floorY, int clearHeight,

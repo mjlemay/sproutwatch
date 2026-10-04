@@ -20,17 +20,17 @@ public final class MembershipParser {
 
     public static RosterEvent parse(String line) {
         if (line == null || line.isEmpty()) return null;
-        String s = line;
-        if (s.startsWith("@")) {
-            int sp = s.indexOf(' ');
+        String remaining = line;
+        if (remaining.startsWith("@")) {
+            int sp = remaining.indexOf(' ');
             if (sp < 0) return null;
-            s = s.substring(sp + 1);
+            remaining = remaining.substring(sp + 1);
         }
-        if (!s.startsWith(":")) return null;
-        int sp = s.indexOf(' ');
+        if (!remaining.startsWith(":")) return null;
+        int sp = remaining.indexOf(' ');
         if (sp < 0) return null;
-        String prefix = s.substring(1, sp);
-        String rest = s.substring(sp + 1);
+        String prefix = remaining.substring(1, sp);
+        String rest = remaining.substring(sp + 1);
         int cmdEnd = rest.indexOf(' ');
         String command = cmdEnd < 0 ? rest : rest.substring(0, cmdEnd);
 

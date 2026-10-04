@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class PenCameraTest {
 
-    // interior min (10, floor 64, 20), 12 x 16 -> centre (16, 65, 28)
+    // interior min (10, floor 64, 20), 12 x 16 -> center (16, 65, 28)
     private static final PenBounds B = new PenBounds(10, 64, 20, 12, 16, 4);
     private static final Vector3d LOOK = new Vector3d(16.0, 65.0, 28.0);
 

@@ -17,8 +17,9 @@ import java.util.logging.Logger;
 /**
  * Evicts a registry entry when its entity is removed for any reason (killed, chunk unload,
  * /kill, shutdown, or our own despawn). The next tick then respawns that viewer if they are
- * still in chat. Copy of Subinator's BossDespawnSystem: match-everything query, membership
- * decided by the registry. Fires inside the store's write lock: no store mutation here.
+ * still in chat. No component marks a sprout, so the query matches every entity and the
+ * registry decides membership; the isEmpty() check keeps chunk-unload storms cheap. Fires
+ * inside the store's write lock: no store mutation here.
  */
 public final class PenDespawnSystem extends RefSystem<EntityStore> {
 
@@ -47,11 +48,11 @@ public final class PenDespawnSystem extends RefSystem<EntityStore> {
                                CommandBuffer<EntityStore> commandBuffer) {
         if (registry.isEmpty()) return; // chunk-unload storms with no sprouts live
         try {
-            PenRegistry.Entry e = registry.removeByRef(ref);
-            if (e != null) logger.info("Sproutwatch: sprout for " + e.login() + " removed (" + reason + ")");
-        } catch (Exception e) {
+            PenRegistry.Entry entry = registry.removeByReference(ref);
+            if (entry != null) logger.info("Sproutwatch: sprout for " + entry.viewerKey() + " removed (" + reason + ")");
+        } catch (Exception exception) {
             if (warned.compareAndSet(false, true)) {
-                logger.log(Level.WARNING, "Sproutwatch registry eviction failed on entity removal", e);
+                logger.log(Level.WARNING, "Sproutwatch registry eviction failed on entity removal", exception);
             }
         }
     }

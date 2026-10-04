@@ -15,18 +15,18 @@ class PenLayoutTest {
 
     @Test void analysesTheBundledPen() throws Exception {
         List<PrefabBlock> blocks = PenPrefab.parseBlocks(PenPrefab.readBundledJson());
-        PenLayout l = PenLayout.analyze(blocks, PenLayoutTest::isChair);
-        assertEquals(0, l.floorY());
-        assertEquals(4, l.clearHeight());
-        assertEquals(1, l.interiorMinX());
-        assertEquals(1, l.interiorMinZ());
-        assertEquals(16, l.sizeX());
-        assertEquals(12, l.sizeZ());
-        assertTrue(l.chairFound());
-        assertEquals(8, l.chairX());
-        assertEquals(1, l.chairY());
-        assertEquals(-1, l.chairZ());
-        assertEquals(PenFacing.SOUTH, l.facing());
+        PenLayout layout = PenLayout.analyze(blocks, PenLayoutTest::isChair);
+        assertEquals(0, layout.floorY());
+        assertEquals(4, layout.clearHeight());
+        assertEquals(1, layout.interiorMinX());
+        assertEquals(1, layout.interiorMinZ());
+        assertEquals(16, layout.sizeX());
+        assertEquals(12, layout.sizeZ());
+        assertTrue(layout.chairFound());
+        assertEquals(8, layout.chairX());
+        assertEquals(1, layout.chairY());
+        assertEquals(-1, layout.chairZ());
+        assertEquals(PenFacing.SOUTH, layout.facing());
     }
 
     @Test void fallsBackToShrunkBoundingBoxWithoutEmptyBlocks() {
@@ -34,15 +34,15 @@ class PenLayoutTest {
             new PrefabBlock(0, 5, 0, "Stone"), new PrefabBlock(9, 5, 0, "Stone"),
             new PrefabBlock(0, 5, 7, "Stone"), new PrefabBlock(9, 5, 7, "Stone"),
             new PrefabBlock(4, 7, 3, "Stone"));
-        PenLayout l = PenLayout.analyze(blocks, PenLayoutTest::isChair);
-        assertEquals(5, l.floorY());
-        assertEquals(2, l.clearHeight());
-        assertEquals(1, l.interiorMinX());
-        assertEquals(1, l.interiorMinZ());
-        assertEquals(8, l.sizeX());
-        assertEquals(6, l.sizeZ());
-        assertFalse(l.chairFound());
-        assertEquals(PenFacing.NORTH, l.facing());
+        PenLayout layout = PenLayout.analyze(blocks, PenLayoutTest::isChair);
+        assertEquals(5, layout.floorY());
+        assertEquals(2, layout.clearHeight());
+        assertEquals(1, layout.interiorMinX());
+        assertEquals(1, layout.interiorMinZ());
+        assertEquals(8, layout.sizeX());
+        assertEquals(6, layout.sizeZ());
+        assertFalse(layout.chairFound());
+        assertEquals(PenFacing.NORTH, layout.facing());
     }
 
     @Test void facingPointsFromTheChairIntoThePen() {
@@ -51,8 +51,8 @@ class PenLayoutTest {
             new PrefabBlock(1, 1, 1, "Empty"), new PrefabBlock(4, 1, 1, "Empty"),
             new PrefabBlock(1, 1, 4, "Empty"), new PrefabBlock(4, 1, 4, "Empty"),
             new PrefabBlock(6, 1, 2, "Furniture_Village_Chair"));
-        PenLayout l = PenLayout.analyze(blocks, PenLayoutTest::isChair);
-        assertEquals(PenFacing.WEST, l.facing());   // chair east of the pen, camera looks west
+        PenLayout layout = PenLayout.analyze(blocks, PenLayoutTest::isChair);
+        assertEquals(PenFacing.WEST, layout.facing());   // chair east of the pen, camera looks west
     }
 
     @Test void rejectsEmptyPrefab() {

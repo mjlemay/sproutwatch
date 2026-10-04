@@ -17,7 +17,7 @@ class SproutSpawnerTest {
 
     @Test void aGroupIsOneEntryThatPicksOneOfItsRoles() {
         // Entries are equally likely; inside a "|" group each role is equally likely: Saplings stay a third
-        // of the pen while their colour varies.
+        // of the pen while their color varies.
         String[] pool = {"Seed", "Sprout", "Red | Blue|Green"};
         Map<String, Integer> n = new HashMap<>();
         Random r = new Random(42);

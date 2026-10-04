@@ -9,16 +9,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class SeatLookTest {
 
-    // interior x 10..25, z 20..31, floor 64 -> centre (18, 26)
+    // interior x 10..25, z 20..31, floor 64 -> center (18, 26)
     private static final PenBounds PEN = new PenBounds(10, 64, 20, 16, 12, 4);
 
-    @Test void theSeatedLookIsLevelAndFacesThePenCentre() {
+    @Test void theSeatedLookIsLevelAndFacesThePenCenter() {
         Vector3d seat = new Vector3d(18, 65.6, 17);              // on the chair, south of the pen
         Rotation3f look = SeatLook.levelToward(seat, PEN);
         assertEquals(0f, look.pitch(), 1e-6, "level: no tilt up or down");
         assertEquals(0f, look.roll(), 1e-6);
         Rotation3f expected = Rotation3f.lookAt(seat, new Vector3d(PEN.centerX(), seat.y, PEN.centerZ()));
-        assertEquals(expected.yaw(), look.yaw(), 1e-5, "turned toward the pen centre");
+        assertEquals(expected.yaw(), look.yaw(), 1e-5, "turned toward the pen center");
     }
 
     @Test void sittingFromAnotherSideTurnsTheOtherWay() {

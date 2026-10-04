@@ -12,7 +12,7 @@ class DisplayNamesTest {
         assertEquals("yt:UCabc", names.nameFor("yt:UCabc"));
     }
 
-    @Test void putStoresTheSanitisedNameAndLatestWins() {
+    @Test void putStoresTheSanitizedNameAndLatestWins() {
         DisplayNames names = new DisplayNames();
         names.put("yt:UCabc", "  Lofi   Fan ");
         assertEquals("Lofi Fan", names.nameFor("yt:UCabc"));
@@ -29,7 +29,7 @@ class DisplayNamesTest {
         names.put("yt:UCabc", null);
         assertEquals("yt:UCabc", names.nameFor("yt:UCabc"));
         names.put("yt:UCabc", "Fan");
-        names.put("yt:UCabc", "\u200B\u0007");   // sanitises to empty
+        names.put("yt:UCabc", "\u200B\u0007");   // sanitizes to empty
         assertEquals("yt:UCabc", names.nameFor("yt:UCabc"));
     }
 

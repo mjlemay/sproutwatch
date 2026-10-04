@@ -16,10 +16,10 @@ import java.util.UUID;
 import java.util.logging.Logger;
 
 /**
- * Pastes the bundled pen prefab centred on a player and records the pen in config.
+ * Pastes the bundled pen prefab centered on a player and records the pen in config.
  * Verified against Server-0.6.3.jar: SelectionPrefabSerializer.deserialize(BsonDocument) reads
  * exactly the bundled JSON format; BlockSelection.placeNoReturn(World, Vector3i, ComponentAccessor)
- * puts prefab-local block (lx,ly,lz) at world (lx + sel.getX() + pos.x - sel.getAnchorX(), ...).
+ * puts prefab-local block (lx,ly,lz) at world (lx + selection.getX() + pos.x - selection.getAnchorX(), ...).
  * Must run on the world thread.
  */
 public final class PenPlacer {
@@ -32,32 +32,32 @@ public final class PenPlacer {
      * @throws IOException if the bundled prefab is missing
      */
     public static String place(World world, Store<EntityStore> store, Vector3i feet, UUID worldUuid,
-                               SproutwatchConfig cfg, Logger logger) throws IOException {
-        String json = PenPrefab.readBundledJson(PenPrefabCatalog.resourceFor(cfg.getPenPrefab()));
+                               SproutwatchConfig config, Logger logger) throws IOException {
+        String json = PenPrefab.readBundledJson(PenPrefabCatalog.resourceFor(config.getPenPrefab()));
         List<PrefabBlock> blocks = PenPrefab.parseBlocks(json);
         PenLayout layout = PenLayout.analyze(blocks, PenPlacer::isSeatBlock);
-        BlockSelection sel = SelectionPrefabSerializer.deserialize(BsonDocument.parse(json));
+        BlockSelection selection = SelectionPrefabSerializer.deserialize(BsonDocument.parse(json));
 
-        // Centre the interior on the caller; the floor block goes one below their feet.
-        int centreLocalX = (int) Math.floor(layout.interiorMinX() + layout.sizeX() / 2.0);
-        int centreLocalZ = (int) Math.floor(layout.interiorMinZ() + layout.sizeZ() / 2.0);
+        // Center the interior on the caller; the floor block goes one below their feet.
+        int centerLocalX = (int) Math.floor(layout.interiorMinX() + layout.sizeX() / 2.0);
+        int centerLocalZ = (int) Math.floor(layout.interiorMinZ() + layout.sizeZ() / 2.0);
         Vector3i pos = new Vector3i(
-            feet.x - centreLocalX,
+            feet.x - centerLocalX,
             feet.y - 1 - layout.floorY(),
-            feet.z - centreLocalZ);
+            feet.z - centerLocalZ);
 
-        sel.placeNoReturn(world, pos, store);
+        selection.placeNoReturn(world, pos, store);
 
-        int ox = sel.getX() + pos.x - sel.getAnchorX();
-        int oy = sel.getY() + pos.y - sel.getAnchorY();
-        int oz = sel.getZ() + pos.z - sel.getAnchorZ();
+        int ox = selection.getX() + pos.x - selection.getAnchorX();
+        int oy = selection.getY() + pos.y - selection.getAnchorY();
+        int oz = selection.getZ() + pos.z - selection.getAnchorZ();
 
-        cfg.setPen(worldUuid.toString(),
+        config.setPen(worldUuid.toString(),
             layout.interiorMinX() + ox, layout.floorY() + oy, layout.interiorMinZ() + oz,
             layout.sizeX(), layout.clearHeight(), layout.sizeZ());
-        cfg.setChair(layout.chairFound(),
+        config.setChair(layout.chairFound(),
             layout.chairX() + ox, layout.chairY() + oy, layout.chairZ() + oz);
-        cfg.setPenFacing(layout.facing().key());
+        config.setPenFacing(layout.facing().key());
 
         String chair = layout.chairFound()
             ? "chair at " + (layout.chairX() + ox) + "," + (layout.chairY() + oy) + "," + (layout.chairZ() + oz)
@@ -74,7 +74,7 @@ public final class PenPlacer {
             if (idx < 0) return false;
             BlockType bt = BlockType.getAssetMap().getAsset(idx);
             return bt != null && bt.getSeats() != null && bt.getSeats().size() > 0;
-        } catch (RuntimeException e) {
+        } catch (RuntimeException exception) {
             return false;
         }
     }

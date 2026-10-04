@@ -30,10 +30,10 @@ public final class CameraPackets {
 
     private CameraPackets() {}
 
-    public static SetServerCamera penCamera(SproutwatchConfig cfg) {
-        PenBounds bounds = PenBounds.fromConfig(cfg);
-        PenCamera cam = PenCamera.of(bounds, PenFacing.parse(cfg.getPenFacing()), cfg.getCameraHeight(), cfg.getCameraBack());
-        return penCamera(cam, cfg.getCameraFov(), cfg.isCameraFlip());
+    public static SetServerCamera penCamera(SproutwatchConfig config) {
+        PenBounds bounds = PenBounds.fromConfig(config);
+        PenCamera cam = PenCamera.of(bounds, PenFacing.parse(config.getPenFacing()), config.getCameraHeight(), config.getCameraBack());
+        return penCamera(cam, config.getCameraFov(), config.isCameraFlip());
     }
 
     public static SetServerCamera penCamera(PenCamera cam, double fov, boolean flip) {
@@ -42,23 +42,23 @@ public final class CameraPackets {
             : Rotation3f.lookAt(cam.position(), cam.lookAt());
         Direction dir = PositionUtil.toDirectionPacket(look);
 
-        ServerCameraSettings s = new ServerCameraSettings();
-        s.positionLerpSpeed = 0.2f;
-        s.rotationLerpSpeed = 0.2f;
-        s.isFirstPerson = false;
-        s.displayCursor = false;
-        s.eyeOffset = false;
-        s.attachedToType = AttachedToType.None;
-        s.positionType = PositionType.Custom;
-        s.position = new Position(cam.position().x, cam.position().y, cam.position().z);
-        s.positionDistanceOffsetType = PositionDistanceOffsetType.None;
-        s.rotationType = RotationType.Custom;
-        s.rotation = dir;
-        s.movementForceRotationType = MovementForceRotationType.Custom;
-        s.movementForceRotation = dir;
-        s.canMoveType = CanMoveType.Always;
-        s.baseFov = (float) fov;
-        return new SetServerCamera(ClientCameraView.Custom, true, s);
+        ServerCameraSettings settings = new ServerCameraSettings();
+        settings.positionLerpSpeed = 0.2f;
+        settings.rotationLerpSpeed = 0.2f;
+        settings.isFirstPerson = false;
+        settings.displayCursor = false;
+        settings.eyeOffset = false;
+        settings.attachedToType = AttachedToType.None;
+        settings.positionType = PositionType.Custom;
+        settings.position = new Position(cam.position().x, cam.position().y, cam.position().z);
+        settings.positionDistanceOffsetType = PositionDistanceOffsetType.None;
+        settings.rotationType = RotationType.Custom;
+        settings.rotation = dir;
+        settings.movementForceRotationType = MovementForceRotationType.Custom;
+        settings.movementForceRotation = dir;
+        settings.canMoveType = CanMoveType.Always;
+        settings.baseFov = (float) fov;
+        return new SetServerCamera(ClientCameraView.Custom, true, settings);
     }
 
     /** Identical bytes to /camera reset and CameraManager.resetCamera. */

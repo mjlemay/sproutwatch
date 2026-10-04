@@ -19,5 +19,5 @@ public sealed interface RosterEvent
      * A viewer spoke (PRIVMSG): proves presence even without membership, and carries the message
      * text for chat commands.
      */
-    record Chat(String login, String text) implements RosterEvent {}
+    record Chat(String viewerKey, String text) implements RosterEvent {}
 }

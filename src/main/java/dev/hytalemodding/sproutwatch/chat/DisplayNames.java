@@ -16,7 +16,7 @@ public final class DisplayNames {
 
     private final Map<String, String> names = new ConcurrentHashMap<>();
 
-    /** Stores the sanitised name; a null name, or one that sanitises to empty, drops the entry. */
+    /** Stores the sanitized name; a null name, or one that sanitizes to empty, drops the entry. */
     public void put(String key, String name) {
         if (key == null || key.isBlank()) return;
         String clean = sanitize(name);
@@ -58,7 +58,7 @@ public final class DisplayNames {
                 || Character.getType(cp) == Character.FORMAT
                 || Character.getType(cp) == Character.SURROGATE))
             .toArray();
-        // Pass 2: keep a ZWJ only between two visible neighbours; collapse spaces.
+        // Pass 2: keep a ZWJ only between two visible neighbors; collapse spaces.
         StringBuilder out = new StringBuilder(raw.length());
         int count = 0;
         for (int i = 0; i < cps.length && count < MAX_CODE_POINTS; i++) {

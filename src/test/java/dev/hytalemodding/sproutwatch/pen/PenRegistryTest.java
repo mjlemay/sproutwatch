@@ -25,11 +25,11 @@ class PenRegistryTest {
 
     private static Ref<EntityStore> ref() { return new TestRef(nextIndex.getAndIncrement()); }
 
-    private static PenRegistry.Entry entry(String login, Ref<EntityStore> ref, long t) {
-        return new PenRegistry.Entry(login, ref, 7, WORLD, t, t);
+    private static PenRegistry.Entry entry(String viewerKey, Ref<EntityStore> ref, long timestamp) {
+        return new PenRegistry.Entry(viewerKey, ref, 7, WORLD, timestamp, timestamp);
     }
 
-    @Test void putGetRemoveByLogin() {
+    @Test void putGetRemoveByViewerKey() {
         PenRegistry r = new PenRegistry();
         Ref<EntityStore> a = ref();
         r.put(entry("alice", a, 100));
@@ -37,23 +37,23 @@ class PenRegistryTest {
         assertSame(a, r.get("alice").ref());
         assertEquals(1, r.size());
         PenRegistry.Entry removed = r.remove("alice");
-        assertEquals("alice", removed.login());
+        assertEquals("alice", removed.viewerKey());
         assertNull(r.remove("alice"));
         assertTrue(r.isEmpty());
         // old ref must no longer resolve, even after alice rejoins with a fresh ref
         r.put(entry("alice", ref(), 200));
-        assertNull(r.removeByRef(a));
+        assertNull(r.removeByReference(a));
         assertTrue(r.contains("alice"));
     }
 
-    @Test void removeByRefFindsTheLogin() {
+    @Test void removeByRefFindsTheViewerKey() {
         PenRegistry r = new PenRegistry();
         Ref<EntityStore> a = ref();
         r.put(entry("alice", a, 100));
         r.put(entry("bob", ref(), 100));
-        assertEquals("alice", r.removeByRef(a).login());
-        assertNull(r.removeByRef(a));
-        assertNull(r.removeByRef(ref()));
+        assertEquals("alice", r.removeByReference(a).viewerKey());
+        assertNull(r.removeByReference(a));
+        assertNull(r.removeByReference(ref()));
         assertEquals(1, r.size());
         assertTrue(r.contains("bob"));
     }
@@ -65,11 +65,11 @@ class PenRegistryTest {
         r.put(entry("alice", old, 100));
         r.put(entry("alice", fresh, 200));
         assertEquals(1, r.size());
-        assertNull(r.removeByRef(old));
-        assertEquals("alice", r.removeByRef(fresh).login());
+        assertNull(r.removeByReference(old));
+        assertEquals("alice", r.removeByReference(fresh).viewerKey());
     }
 
-    @Test void touchUpdatesLastSeenOnlyForKnownLogins() {
+    @Test void touchUpdatesLastSeenOnlyForKnownViewers() {
         PenRegistry r = new PenRegistry();
         Ref<EntityStore> a = ref();
         r.put(entry("alice", a, 100));
@@ -93,7 +93,7 @@ class PenRegistryTest {
         assertEquals(2, cleared.size());
         assertTrue(r.isEmpty());
         r.put(entry("b", ref(), 3));
-        assertNull(r.removeByRef(b));
+        assertNull(r.removeByReference(b));
         assertTrue(r.contains("b"));
     }
 
@@ -101,14 +101,14 @@ class PenRegistryTest {
         PenRegistry r = new PenRegistry();
         Ref<EntityStore> a = ref();
         r.put(entry("alice", a, 100));
-        PenRegistry.Entry found = r.findByRef(a);
+        PenRegistry.Entry found = r.findByReference(a);
         assertNotNull(found);
-        assertEquals("alice", found.login());
+        assertEquals("alice", found.viewerKey());
         assertSame(a, found.ref());
         assertTrue(r.contains("alice"));
         assertEquals(1, r.size());
-        assertNull(r.findByRef(ref()));
-        assertNull(r.findByRef(null));
+        assertNull(r.findByReference(ref()));
+        assertNull(r.findByReference(null));
     }
 
     @Test void retireIsSetLikeAndPrunedByRetain() {
@@ -120,14 +120,14 @@ class PenRegistryTest {
         assertTrue(r.isRetired("a"));
         assertTrue(r.isRetired("b"));
         assertFalse(r.isRetired("c"));
-        assertEquals(Set.of("a", "b"), r.retiredLogins());
+        assertEquals(Set.of("a", "b"), r.retiredViewers());
         r.retainRetired(Set.of("a", "zzz"));
-        assertEquals(Set.of("a"), r.retiredLogins());
+        assertEquals(Set.of("a"), r.retiredViewers());
         assertFalse(r.isRetired("b"));
-        Set<String> snap = r.retiredLogins();
+        Set<String> snap = r.retiredViewers();
         assertThrows(UnsupportedOperationException.class, () -> snap.add("x"));
         r.retire("d");
-        assertEquals(Set.of("a"), snap, "retiredLogins is a copy, not a live view");
+        assertEquals(Set.of("a"), snap, "retiredViewers is a copy, not a live view");
     }
 
     @Test void clearAlsoDropsRetired() {
@@ -139,6 +139,6 @@ class PenRegistryTest {
         assertTrue(r.isEmpty());
         assertFalse(r.isRetired("alice"));
         assertFalse(r.isRetired("bob"));
-        assertTrue(r.retiredLogins().isEmpty());
+        assertTrue(r.retiredViewers().isEmpty());
     }
 }

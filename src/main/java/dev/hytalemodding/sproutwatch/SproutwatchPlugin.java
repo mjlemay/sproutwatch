@@ -66,16 +66,16 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
      */
     private volatile List<ChatSource> sources = List.of();
     /** The running YouTube source's pacer (null when YouTube is not started); read by youTubeStatus. */
-    private volatile QuotaPacer ytPacer;
+    private volatile QuotaPacer youTubePacer;
     /** One shared client per plugin, recreated when the key changes. Guarded by the plugin monitor. */
-    private YouTubeApi ytApi;
-    private String ytApiKey;
+    private YouTubeApi youTubeApi;
+    private String youTubeApiKey;
     private final QuotaStore quotaStore;
     /** Allow/ignore @handle lookups: one daemon thread, so a lookup never blocks a world or command thread. */
-    private final java.util.concurrent.ExecutorService ytLookups = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "Sproutwatch-YouTube-lookup");
-        t.setDaemon(true);
-        return t;
+    private final java.util.concurrent.ExecutorService youTubeLookups = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread thread = new Thread(r, "Sproutwatch-YouTube-lookup");
+        thread.setDaemon(true);
+        return thread;
     });
     private final AtomicBoolean bootSweepDone = new AtomicBoolean();
 
@@ -85,7 +85,7 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
         this.bridgeLogger = createBridgeLogger();
         // Ignore list and queue command are read live from the config on every roster event, so
         // /sproutwatch ignore add|remove and a QueueCommand edit take effect without a restart.
-        this.roster = new ChatRoster(() -> config.get().ignoredLogins(), () -> config.get().getQueueCommand(), new SproutQueue());
+        this.roster = new ChatRoster(() -> config.get().ignoredViewers(), () -> config.get().getQueueCommand(), new SproutQueue());
         this.displayNames = new DisplayNames();
         this.registry = new PenRegistry();
         this.spawner = new SproutSpawner(config::get, registry, displayNames, bridgeLogger);
@@ -104,74 +104,74 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
         if (config.get().upgradeLegacyRoles()) {
             bridgeLogger.info("Sproutwatch: Roles upgraded to the clothed Kweebec roles (Sprout_Sproutling, Sprout_Sapling_*)");
         }
-        config.save().whenComplete((v, t) -> {
-            if (t != null) bridgeLogger.log(Level.WARNING, "Failed to save Sproutwatch config", t);
+        config.save().whenComplete((value, throwable) -> {
+            if (throwable != null) bridgeLogger.log(Level.WARNING, "Failed to save Sproutwatch config", throwable);
         });
         getCommandRegistry().registerCommand(new SproutwatchCommand(this));
         // Disconnect never fires the mount-removed callback; drop the player's camera state here.
         try {
-            getEventRegistry().register(PlayerDisconnectEvent.class, e -> {
-                java.util.UUID uuid = e.getPlayerRef().getUuid();
+            getEventRegistry().register(PlayerDisconnectEvent.class, event -> {
+                java.util.UUID uuid = event.getPlayerRef().getUuid();
                 cameraService.forget(uuid);
                 openPages.forget(uuid);
             });
-        } catch (RuntimeException e) {
-            getLogger().atSevere().withCause(e).log("Sproutwatch disconnect listener failed to register");
+        } catch (RuntimeException exception) {
+            getLogger().atSevere().withCause(exception).log("Sproutwatch disconnect listener failed to register");
         }
-        // ECS systems via getEntityStoreRegistry(), the route Subinator proved on 0.6.3. Each
+        // ECS systems via getEntityStoreRegistry(), the route verified on 0.6.3. Each
         // registration is guarded on its own so one failure never drops the other.
         try {
             getEntityStoreRegistry().registerSystem(new PenDespawnSystem(registry, bridgeLogger));
-        } catch (RuntimeException e) {
-            getLogger().atSevere().withCause(e).log("Sproutwatch despawn system failed to register");
+        } catch (RuntimeException exception) {
+            getLogger().atSevere().withCause(exception).log("Sproutwatch despawn system failed to register");
         }
         try {
             getEntityStoreRegistry().registerSystem(new SproutDeathSystem(registry, bridgeLogger));
-        } catch (RuntimeException e) {
-            getLogger().atSevere().withCause(e).log("Sproutwatch death system failed to register");
+        } catch (RuntimeException exception) {
+            getLogger().atSevere().withCause(exception).log("Sproutwatch death system failed to register");
         }
         try {
             getEntityStoreRegistry().registerSystem(cameraService);
-        } catch (RuntimeException e) {
-            getLogger().atSevere().withCause(e).log("Sproutwatch chair camera failed to register");
+        } catch (RuntimeException exception) {
+            getLogger().atSevere().withCause(exception).log("Sproutwatch chair camera failed to register");
         }
         try {
             getEntityStoreRegistry().registerSystem(new SeatedInvulnerabilitySystem(cameraService));
-        } catch (RuntimeException e) {
-            getLogger().atSevere().withCause(e).log("Sproutwatch seated invulnerability failed to register");
+        } catch (RuntimeException exception) {
+            getLogger().atSevere().withCause(exception).log("Sproutwatch seated invulnerability failed to register");
         }
         try {
             getEntityStoreRegistry().registerSystem(new PenGuardSystem(config::get, registry, bridgeLogger));
-        } catch (RuntimeException e) {
-            getLogger().atSevere().withCause(e).log("Sproutwatch pen guard failed to register");
+        } catch (RuntimeException exception) {
+            getLogger().atSevere().withCause(exception).log("Sproutwatch pen guard failed to register");
         }
         // Restart safety: sweep leftover younglings out of the pen if its world is already loaded.
-        World w = PenTicker.resolveWorld(config.get());
-        if (w != null) runOnWorld(w, () -> bootSweep(w));
+        World world = PenTicker.resolveWorld(config.get());
+        if (world != null) runOnWorld(world, () -> bootSweep(world));
         if (config.get().isAutoStartOnBoot()) {
-            String err = startListener();
-            if (err != null) getLogger().atWarning().log("%s", err);
+            String error = startListener();
+            if (error != null) getLogger().atWarning().log("%s", error);
         }
     }
 
     @Override
     protected void shutdown() {
         // Lookups first: queued ones are failed (LookupUnavailable), an in-flight one is interrupted.
-        for (Runnable r : ytLookups.shutdownNow()) {
-            if (r instanceof LookupTask t) t.future.completeExceptionally(new ActionsHost.LookupUnavailable());
+        for (Runnable r : youTubeLookups.shutdownNow()) {
+            if (r instanceof LookupTask task) task.future.completeExceptionally(new ActionsHost.LookupUnavailable());
         }
         stopListener();   // flushes the quota usage into a config save
         closeYouTubeApi();
         try {
-            ytLookups.awaitTermination(1, java.util.concurrent.TimeUnit.SECONDS);   // its quota unit may still land
-        } catch (InterruptedException e) {
+            youTubeLookups.awaitTermination(1, java.util.concurrent.TimeUnit.SECONDS);   // its quota unit may still land
+        } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
         }
         try {
             config.save().get(2, java.util.concurrent.TimeUnit.SECONDS);   // let the last usage reach disk before exit
-        } catch (Exception e) {
-            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-            bridgeLogger.warning("Sproutwatch: final config save did not finish: " + e.getClass().getSimpleName());
+        } catch (Exception exception) {
+            if (exception instanceof InterruptedException) Thread.currentThread().interrupt();
+            bridgeLogger.warning("Sproutwatch: final config save did not finish: " + exception.getClass().getSimpleName());
         }
         ticker.shutdown();
         if (bridgeHandler != null) bridgeLogger.removeHandler(bridgeHandler);
@@ -182,7 +182,7 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
     public ChatRoster getRoster() { return roster; }
     /** Roster key -> nameplate name (YouTube display names); cleared with the roster on Stop. */
     public DisplayNames getDisplayNames() { return displayNames; }
-    /** The "!sprout" priority queue the roster feeds (FIFO of logins who asked for a sprout). */
+    /** The "!sprout" priority queue the roster feeds (FIFO of viewer keys who asked for a sprout). */
     public SproutQueue getQueue() { return roster.queue(); }
     public PenRegistry getRegistry() { return registry; }
     public PenTicker getTicker() { return ticker; }
@@ -208,8 +208,8 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
 
     @Override
     public void saveConfig() {
-        config.save().whenComplete((v, t) -> {
-            if (t != null) bridgeLogger.log(Level.WARNING, "Failed to save Sproutwatch config", t);
+        config.save().whenComplete((value, throwable) -> {
+            if (throwable != null) bridgeLogger.log(Level.WARNING, "Failed to save Sproutwatch config", throwable);
         });
     }
 
@@ -225,25 +225,25 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
     }
 
     @Override
-    public boolean feedAcked() {
-        TwitchMembershipClient c = twitch();
-        return c != null && c.isMembershipAcked();
+    public boolean feedAcknowledged() {
+        TwitchMembershipClient client = twitch();
+        return client != null && client.isMembershipAcknowledged();
     }
 
     @Override
     public Map<String, String> sourceStates() {
-        SproutwatchConfig cfg = config.get();
-        String tw = null, yt = null;
+        SproutwatchConfig currentConfig = config.get();
+        String twitchState = null, youTubeState = null;
         for (ChatSource s : sources) {
-            if (s instanceof TwitchMembershipClient) tw = s.getState();
-            else if (s instanceof YouTubeChatSource) yt = s.getState();
+            if (s instanceof TwitchMembershipClient) twitchState = s.getState();
+            else if (s instanceof YouTubeChatSource) youTubeState = s.getState();
         }
-        return StatusSnapshot.sourceStates(tw, cfg.twitchReady(), yt, cfg.youTubeConfigured());
+        return StatusSnapshot.sourceStates(twitchState, currentConfig.twitchReady(), youTubeState, currentConfig.youTubeConfigured());
     }
 
     @Override
     public YouTubeStatus youTubeStatus() {
-        return YouTubeStatus.of(config.get(), ytPacer, Clock.systemDefaultZone());
+        return YouTubeStatus.of(config.get(), youTubePacer, Clock.systemDefaultZone());
     }
 
     /**
@@ -253,19 +253,19 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
     @Override
     public synchronized String startListener() {
         stopListener();
-        SproutwatchConfig cfg = config.get();
-        String nothing = cfg.nothingToStartReason();
+        SproutwatchConfig currentConfig = config.get();
+        String nothing = currentConfig.nothingToStartReason();
         if (nothing != null) return nothing;
-        if (!cfg.isPenSet()) {
+        if (!currentConfig.isPenSet()) {
             return "No pen placed yet. Stand where you want it and run /sproutwatch place.";
         }
         List<ChatSource> next = new ArrayList<>();
-        if (cfg.twitchReady()) {
-            next.add(new TwitchMembershipClient(cfg.getTwitchChannel(), roster, bridgeLogger)); // one-shot per start
+        if (currentConfig.twitchReady()) {
+            next.add(new TwitchMembershipClient(currentConfig.getTwitchChannel(), roster, bridgeLogger)); // one-shot per start
         }
-        if (cfg.youTubeConfigured()) {
-            ChatSource yt = newYouTubeSource(cfg);
-            if (yt != null) next.add(yt);
+        if (currentConfig.youTubeConfigured()) {
+            ChatSource youTube = newYouTubeSource(currentConfig);
+            if (youTube != null) next.add(youTube);
         }
         List<ChatSource> started = new ArrayList<>();
         for (ChatSource s : next) {
@@ -273,16 +273,16 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
                 s.setOnStateChange(this::statusChanged); // Connecting... -> Stop flips on open pages at once
                 s.start();
                 started.add(s);
-            } catch (RuntimeException e) {
+            } catch (RuntimeException exception) {
                 // Class name only: a message could in theory echo configuration.
-                bridgeLogger.warning("Sproutwatch: a chat source failed to start: " + e.getClass().getSimpleName());
-                if (s instanceof YouTubeChatSource) ytPacer = null;
+                bridgeLogger.warning("Sproutwatch: a chat source failed to start: " + exception.getClass().getSimpleName());
+                if (s instanceof YouTubeChatSource) youTubePacer = null;
             }
         }
         if (started.isEmpty()) return "No chat source could start (see the server log).";
         sources = List.copyOf(started);
-        World w = PenTicker.resolveWorld(cfg);
-        if (w != null) runOnWorld(w, () -> bootSweep(w));
+        World world = PenTicker.resolveWorld(currentConfig);
+        if (world != null) runOnWorld(world, () -> bootSweep(world));
         ticker.start();
         return null;
     }
@@ -296,10 +296,10 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
         ticker.stop();
         roster.clear();
         displayNames.clear();   // names belong to the session's roster
-        QuotaPacer p = ytPacer;
-        ytPacer = null;
-        if (p != null) p.setUsageListener(null);   // a call still in flight after the join may not save
-        quotaStore.flush(p);
+        QuotaPacer pacer = youTubePacer;
+        youTubePacer = null;
+        if (pacer != null) pacer.setUsageListener(null);   // a call still in flight after the join may not save
+        quotaStore.flush(pacer);
         if (!config.get().youTubeConfigured()) closeYouTubeApi();   // no idle HttpClient once YouTube is off
         // True when a Start was in effect, even if every source has since ended on its own (chat
         // ended): the ticker was still running, so Stop did stop something.
@@ -307,23 +307,23 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
     }
 
     /** Fresh pacer (restored from the saved usage) and source on the shared API client; null if it cannot be built. */
-    private ChatSource newYouTubeSource(SproutwatchConfig cfg) {
+    private ChatSource newYouTubeSource(SproutwatchConfig currentConfig) {
         try {
-            String key = cfg.getYouTubeApiKey();
-            if (ytApi == null || !key.equals(ytApiKey)) {
+            String key = currentConfig.getYouTubeApiKey();
+            if (youTubeApi == null || !key.equals(youTubeApiKey)) {
                 closeYouTubeApi();
-                ytApi = new YouTubeApi(key);
-                ytApiKey = key;
+                youTubeApi = new YouTubeApi(key);
+                youTubeApiKey = key;
             }
-            QuotaPacer pacer = new QuotaPacer(cfg.getYouTubeStreamHours(), Clock.systemDefaultZone());
+            QuotaPacer pacer = new QuotaPacer(currentConfig.getYouTubeStreamHours(), Clock.systemDefaultZone());
             quotaStore.attach(pacer);
-            ChatSource source = new YouTubeChatSource(cfg.getYouTubeHandle(), cfg.getYouTubeVideo(), ytApi, pacer,
+            ChatSource source = new YouTubeChatSource(currentConfig.getYouTubeHandle(), currentConfig.getYouTubeVideo(), youTubeApi, pacer,
                 roster, displayNames, bridgeLogger);
-            ytPacer = pacer;
+            youTubePacer = pacer;
             return source;
-        } catch (RuntimeException e) {
+        } catch (RuntimeException exception) {
             // Class name only: a message could in theory echo configuration.
-            bridgeLogger.warning("Sproutwatch: YouTube source could not start: " + e.getClass().getSimpleName());
+            bridgeLogger.warning("Sproutwatch: YouTube source could not start: " + exception.getClass().getSimpleName());
             return null;
         }
     }
@@ -336,9 +336,9 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
     private void closeYouTubeApi() {
         YouTubeApi api;
         synchronized (this) {
-            api = ytApi;
-            ytApi = null;
-            ytApiKey = null;
+            api = youTubeApi;
+            youTubeApi = null;
+            youTubeApiKey = null;
         }
         if (api != null) Thread.startVirtualThread(api::close);
     }
@@ -347,14 +347,14 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
      * Resolves an allow/ignore @handle on the lookup thread with the shared client (created for the
      * configured key when the listener has not made one). The plugin monitor is only taken on the
      * lookup thread, never the caller's. Each call that reaches the API is counted as 1 quota unit.
-     * Failures carry the YtException kind only, never the key.
+     * Failures carry the YouTubeException kind only, never the key.
      */
     @Override
-    public java.util.concurrent.CompletableFuture<String> lookUpYouTubeChannel(String handle) {
-        LookupTask task = new LookupTask(handle);
+    public java.util.concurrent.CompletableFuture<String> lookUpViewerChannelId(String viewerHandle) {
+        LookupTask task = new LookupTask(viewerHandle);
         try {
-            ytLookups.execute(task);
-        } catch (java.util.concurrent.RejectedExecutionException e) {
+            youTubeLookups.execute(task);
+        } catch (java.util.concurrent.RejectedExecutionException exception) {
             task.future.completeExceptionally(new ActionsHost.LookupUnavailable());
         }
         return task.future;
@@ -380,16 +380,16 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
                     countLookupUnit();
                     releaseLookupApi(api);
                 }
-            } catch (Throwable t) {
-                future.completeExceptionally(t);
+            } catch (Throwable throwable) {
+                future.completeExceptionally(throwable);
             }
         }
     }
 
     /** 1 unit: into the running pacer (which persists it), else straight into the saved usage. */
     private void countLookupUnit() {
-        QuotaPacer p = ytPacer;
-        if (p != null) p.recordCall(1);
+        QuotaPacer pacer = youTubePacer;
+        if (pacer != null) pacer.recordCall(1);
         else quotaStore.addUnits(1, java.time.LocalDate.now(QuotaPacer.QUOTA_ZONE));
     }
 
@@ -397,23 +397,23 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
     private synchronized YouTubeApi lookupApi() {
         String key = config.get().getYouTubeApiKey();
         if (key.isEmpty()) return null;
-        if (ytApi == null || !key.equals(ytApiKey)) {
-            if (ytPacer != null && ytApi != null) return ytApi;   // a running source keeps its client until restart
+        if (youTubeApi == null || !key.equals(youTubeApiKey)) {
+            if (youTubePacer != null && youTubeApi != null) return youTubeApi;   // a running source keeps its client until restart
             closeYouTubeApi();
-            ytApi = new YouTubeApi(key);
-            ytApiKey = key;
+            youTubeApi = new YouTubeApi(key);
+            youTubeApiKey = key;
         }
-        return ytApi;
+        return youTubeApi;
     }
 
     /** Same rule as stopListener: no idle HttpClient once YouTube is off and nothing else uses it. */
     private synchronized void releaseLookupApi(YouTubeApi used) {
-        if (ytApi == used && ytPacer == null && !config.get().youTubeConfigured()) closeYouTubeApi();
+        if (youTubeApi == used && youTubePacer == null && !config.get().youTubeConfigured()) closeYouTubeApi();
     }
 
     /** The started Twitch client, or null. Lock-free (volatile read). */
     private TwitchMembershipClient twitch() {
-        for (ChatSource s : sources) if (s instanceof TwitchMembershipClient t) return t;
+        for (ChatSource s : sources) if (s instanceof TwitchMembershipClient client) return client;
         return null;
     }
 
@@ -429,38 +429,38 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
 
     @Override
     public WorldQueue runOnPenWorld(Consumer<World> task) {
-        World w = PenTicker.resolveWorld(config.get());
-        if (w == null) return WorldQueue.NOT_LOADED;
-        return runOnWorld(w, () -> task.accept(w)) ? WorldQueue.QUEUED : WorldQueue.REJECTED;
+        World world = PenTicker.resolveWorld(config.get());
+        if (world == null) return WorldQueue.NOT_LOADED;
+        return runOnWorld(world, () -> task.accept(world)) ? WorldQueue.QUEUED : WorldQueue.REJECTED;
     }
 
     @Override
     public WorldQueue runOnPlayerWorld(PlayerRef sender, Consumer<World> task) {
-        Universe u = Universe.get();
-        java.util.UUID wu = sender.getWorldUuid(); // nullable mid-transfer
-        World w = (u == null || wu == null) ? null : u.getWorld(wu);
-        if (w == null) return WorldQueue.NOT_LOADED;
-        return runOnWorld(w, () -> task.accept(w)) ? WorldQueue.QUEUED : WorldQueue.REJECTED;
+        Universe universe = Universe.get();
+        java.util.UUID worldUuid = sender.getWorldUuid(); // nullable mid-transfer
+        World world = (universe == null || worldUuid == null) ? null : universe.getWorld(worldUuid);
+        if (world == null) return WorldQueue.NOT_LOADED;
+        return runOnWorld(world, () -> task.accept(world)) ? WorldQueue.QUEUED : WorldQueue.REJECTED;
     }
 
     /** world.execute that cannot escape: a world mid-unload rejects tasks. @return false if rejected. */
     @Override
-    public boolean runOnWorld(World w, Runnable task) {
-        try { w.execute(task); return true; }
-        catch (RuntimeException e) { bridgeLogger.log(Level.WARNING, "Sproutwatch: world rejected task (unloading?)", e); return false; }
+    public boolean runOnWorld(World world, Runnable task) {
+        try { world.execute(task); return true; }
+        catch (RuntimeException exception) { bridgeLogger.log(Level.WARNING, "Sproutwatch: world rejected task (unloading?)", exception); return false; }
     }
 
     // ---- internals ---------------------------------------------------------------------------
 
     /** Restart safety: once per boot, sweep leftover younglings out of the pen. World thread. */
-    private void bootSweep(World w) {
+    private void bootSweep(World world) {
         if (!bootSweepDone.compareAndSet(false, true)) return;
-        PenClearer.clear(w, registry, roleSet(), PenBounds.fromConfig(config.get()), bridgeLogger);
+        PenClearer.clear(world, registry, roleSet(), PenBounds.fromConfig(config.get()), bridgeLogger);
     }
 
     /**
      * Bridges java.util.logging (used by every component) onto this plugin's HytaleLogger, a
-     * Flogger with only the fluent at(Level) API. Copied from Subinator (verified on 0.6.3).
+     * Flogger with only the fluent at(Level) API. Verified on 0.6.3.
      */
     private Logger createBridgeLogger() {
         Logger jul = Logger.getLogger("Sproutwatch");
@@ -472,10 +472,10 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
             SimpleFormatter formatter = new SimpleFormatter();
             bridgeHandler = new java.util.logging.Handler() {
                 @Override public void publish(java.util.logging.LogRecord r) {
-                    String msg = formatter.formatMessage(r);
+                    String message = formatter.formatMessage(r);
                     var api = getLogger().at(r.getLevel());
                     if (r.getThrown() != null) api = api.withCause(r.getThrown());
-                    api.log("%s", msg);
+                    api.log("%s", message);
                 }
                 @Override public void flush() {}
                 @Override public void close() {}

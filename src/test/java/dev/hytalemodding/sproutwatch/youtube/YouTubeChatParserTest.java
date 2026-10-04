@@ -30,10 +30,10 @@ class YouTubeChatParserTest {
         String author = channelId == null ? "" : """
                 , "authorDetails": {"channelId": "%s", "displayName": "%s"}"""
                 .formatted(esc(channelId), esc(String.valueOf(name)));
-        String msg = displayMessage == null ? "" : ", \"displayMessage\": \"%s\"".formatted(esc(displayMessage));
+        String message = displayMessage == null ? "" : ", \"displayMessage\": \"%s\"".formatted(esc(displayMessage));
         return """
                 {"snippet": {"type": "%s", "publishedAt": "2026-10-03T12:00:00Z"%s}%s}"""
-                .formatted(esc(type), msg, author);
+                .formatted(esc(type), message, author);
     }
 
     private static String page(String... items) {
@@ -50,15 +50,15 @@ class YouTubeChatParserTest {
         assertEquals(1901, page.pollingIntervalMillis());
         assertFalse(page.chatEnded());
 
-        List<YtMessage> m = page.messages();
+        List<YouTubeMessage> m = page.messages();
         assertEquals(5, m.size());
         assertEquals(List.of("UCaaaaaaaaaaaaaaaaaaaaa1", "UCbbbbbbbbbbbbbbbbbbbbb2", "UCccccccccccccccccccccc3",
                         "UCaaaaaaaaaaaaaaaaaaaaa1", "UCddddddddddddddddddddd4"),
-                m.stream().map(YtMessage::channelId).toList());
+                m.stream().map(YouTubeMessage::channelId).toList());
         assertEquals(List.of("Viewer One", "Viewer Two", "Viewer Three", "Viewer One", "Viewer Four"),
-                m.stream().map(YtMessage::displayName).toList());
+                m.stream().map(YouTubeMessage::displayName).toList());
         assertEquals(List.of("hello from youtube", "!sprout", "this is so cozy", "!SPROUT ", "hi chat 👋"),
-                m.stream().map(YtMessage::text).toList());
+                m.stream().map(YouTubeMessage::text).toList());
         assertEquals("2026-10-03T12:00:00.000000+00:00", m.get(0).publishedAt());
         assertEquals("2026-10-03T12:00:04.000000+00:00", m.get(4).publishedAt());
     }
@@ -74,7 +74,7 @@ class YouTubeChatParserTest {
             "memberMilestoneChatEvent", "membershipGiftingEvent"})
     void presenceEventsAreKept(String type) {
         ChatPage page = YouTubeChatParser.parse(page(item(type, "UCx", "Payer", "thanks!")));
-        assertEquals(List.of(new YtMessage("UCx", "Payer", "thanks!", "2026-10-03T12:00:00Z")), page.messages());
+        assertEquals(List.of(new YouTubeMessage("UCx", "Payer", "thanks!", "2026-10-03T12:00:00Z")), page.messages());
     }
 
     @Test
@@ -92,7 +92,7 @@ class YouTubeChatParserTest {
                 item("textMessageEvent", "UCa", "A", "before"),
                 item(type, "UCb", "B", "x"),
                 item("textMessageEvent", "UCc", "C", "after")));
-        assertEquals(List.of("before", "after"), page.messages().stream().map(YtMessage::text).toList());
+        assertEquals(List.of("before", "after"), page.messages().stream().map(YouTubeMessage::text).toList());
     }
 
     @Test
@@ -105,7 +105,7 @@ class YouTubeChatParserTest {
                   {"snippet": {"type": "textMessageEvent", "displayMessage": "ok"},
                    "authorDetails": {"channelId": "UCc", "displayName": "C"}}
                 ]}""");
-        assertEquals(List.of("ok"), page.messages().stream().map(YtMessage::text).toList());
+        assertEquals(List.of("ok"), page.messages().stream().map(YouTubeMessage::text).toList());
     }
 
     @Test
@@ -140,7 +140,7 @@ class YouTubeChatParserTest {
                 item("textMessageEvent", null, null, "ghost"),
                 item("textMessageEvent", "", "Empty", "blank id"),
                 item("textMessageEvent", "UCa", "A", "real")));
-        assertEquals(List.of("real"), page.messages().stream().map(YtMessage::text).toList());
+        assertEquals(List.of("real"), page.messages().stream().map(YouTubeMessage::text).toList());
     }
 
     @Test
@@ -156,7 +156,7 @@ class YouTubeChatParserTest {
                 item("textMessageEvent", "UCa", "A", "bye"),
                 item("chatEndedEvent", "UCowner", "Owner", null)));
         assertTrue(page.chatEnded());
-        assertEquals(List.of("bye"), page.messages().stream().map(YtMessage::text).toList());
+        assertEquals(List.of("bye"), page.messages().stream().map(YouTubeMessage::text).toList());
     }
 
     @Test
@@ -184,9 +184,9 @@ class YouTubeChatParserTest {
     @ParameterizedTest
     @ValueSource(strings = {"60000:60000", "1901.0:1901", "1:1", "1901:1901"})
     void saneIntervalIsKept(String c) {
-        String[] p = c.split(":");
-        ChatPage page = YouTubeChatParser.parse("{\"pollingIntervalMillis\": " + p[0] + ", \"items\": []}");
-        assertEquals(Long.parseLong(p[1]), page.pollingIntervalMillis());
+        String[] parts = c.split(":");
+        ChatPage page = YouTubeChatParser.parse("{\"pollingIntervalMillis\": " + parts[0] + ", \"items\": []}");
+        assertEquals(Long.parseLong(parts[1]), page.pollingIntervalMillis());
     }
 
     @Test
@@ -227,22 +227,22 @@ class YouTubeChatParserTest {
     void deeplyNestedInputThrowsConstantMessageWithoutCause() {
         int depth = 50_000;
         String json = "{\"items\": " + "[".repeat(depth) + "]".repeat(depth) + "}";
-        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> YouTubeChatParser.parse(json));
-        assertEquals("YouTube chat response was not a valid JSON object", e.getMessage());
-        assertNull(e.getCause());
+        assertEquals("YouTube chat response was not a valid JSON object", exception.getMessage());
+        assertNull(exception.getCause());
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"", "   ", "not json key=AIzaSECRETSECRET", "{\"items\": [", "[1,2,3]", "null"})
     void malformedJsonThrowsWithoutEchoingInput(String json) {
-        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> YouTubeChatParser.parse(json));
-        assertNotNull(e.getMessage());
-        assertFalse(e.getMessage().contains("AIza"), e.getMessage());
-        if (!json.isBlank()) assertFalse(e.getMessage().contains(json), e.getMessage());
+        assertNotNull(exception.getMessage());
+        assertFalse(exception.getMessage().contains("AIza"), exception.getMessage());
+        if (!json.isBlank()) assertFalse(exception.getMessage().contains(json), exception.getMessage());
         // the parser's own exception text may quote the input, so it must not be chained either
-        assertNull(e.getCause());
+        assertNull(exception.getCause());
     }
 
     @Test

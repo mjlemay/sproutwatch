@@ -22,8 +22,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Spawns one named youngling inside the pen. Same validated ladder as Subinator's BossSpawner
- * (up to 8 random validated spots, then a column probe over the pen centre); no unvalidated
+ * Spawns one named youngling inside the pen. Validated ladder
+ * (up to 8 random validated spots, then a column probe over the pen center); no unvalidated
  * fallback, a miss is retried next tick. Must run on the world thread.
  */
 public final class SproutSpawner {
@@ -52,16 +52,16 @@ public final class SproutSpawner {
         return parts.length == 0 ? entry : parts[random.nextInt(parts.length)];
     }
 
-    /** @return true if a sprout was spawned (and registered) for login. World thread only. */
-    public boolean spawn(World world, String login) {
+    /** @return true if a sprout was spawned (and registered) for viewer key. World thread only. */
+    public boolean spawn(World world, String viewerKey) {
         try {
-            SproutwatchConfig cfg = config.get();
-            PenBounds bounds = PenBounds.fromConfig(cfg);
+            SproutwatchConfig currentConfig = config.get();
+            PenBounds bounds = PenBounds.fromConfig(currentConfig);
             if (!bounds.isSet()) {
                 logger.warning("Sproutwatch: cannot spawn, pen not placed");
                 return false;
             }
-            String role = pickRole(cfg.spawnRoles(), random);
+            String role = pickRole(currentConfig.spawnRoles(), random);
             Store<EntityStore> store = world.getEntityStore().getStore();
             UUID worldUuid = world.getWorldConfig().getUuid();
             NPCPlugin npcs = NPCPlugin.get();
@@ -72,7 +72,7 @@ public final class SproutSpawner {
                 Rotation3f rot = new Rotation3f(0f, (float) (random.nextDouble() * Math.PI * 2), 0f);
                 result = npcs.spawnNPCWithSpaceValidation(
                     store, role, null, pos, rot,
-                    (npc, npcRef, npcStore) -> onSpawned(npcRef, npcStore, login, role, worldUuid),
+                    (npc, npcRef, npcStore) -> onSpawned(npcRef, npcStore, viewerKey, role, worldUuid),
                     true, false);
                 if (result == SpawnTestResult.TEST_OK) return true;
             }
@@ -80,7 +80,7 @@ public final class SproutSpawner {
             result = npcs.spawnNPCWithColumnProbe(
                 store, role, null, world, (int) Math.floor(c.x), (int) Math.floor(c.z), c.y + 1.0,
                 new Rotation3f(0f, 0f, 0f),
-                (npc, npcRef, npcStore) -> onSpawned(npcRef, npcStore, login, role, worldUuid));
+                (npc, npcRef, npcStore) -> onSpawned(npcRef, npcStore, viewerKey, role, worldUuid));
             if (result == SpawnTestResult.TEST_OK) return true;
 
             if (isRoleProblem(result)) {
@@ -88,11 +88,11 @@ public final class SproutSpawner {
                     logger.warning("Sproutwatch role '" + role + "' cannot spawn: " + result + " (check the Roles config)");
                 }
             } else {
-                logger.fine("Sproutwatch: no validated spot for " + login + " (" + result + "); retrying next tick");
+                logger.fine("Sproutwatch: no validated spot for " + viewerKey + " (" + result + "); retrying next tick");
             }
             return false;
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Sproutwatch spawn failed for " + login, e);
+        } catch (Exception exception) {
+            logger.log(Level.WARNING, "Sproutwatch spawn failed for " + viewerKey, exception);
             return false;
         }
     }
@@ -105,29 +105,30 @@ public final class SproutSpawner {
     }
 
     /**
-     * Spawn init callback: world thread, outside the store's write-processing lock (Subinator's
-     * TwitchAura mutates a plain Store from the same callback), so ensureAndGetComponent is safe.
+     * Spawn init callback: world thread, outside the store's write-processing lock (verified in
+     * an earlier mod that mutates a plain Store from this same callback), so ensureAndGetComponent
+     * is safe.
      * Nameplate is what vanilla /entity nameplate uses (R3); it shows the display name (a YouTube
      * author's name), the key itself for Twitch.
      */
-    private void onSpawned(Ref<EntityStore> npcRef, Store<EntityStore> npcStore, String login, String role, UUID worldUuid) {
-        String name = displayNames.nameFor(login);
+    private void onSpawned(Ref<EntityStore> npcRef, Store<EntityStore> npcStore, String viewerKey, String role, UUID worldUuid) {
+        String name = displayNames.nameFor(viewerKey);
         try {
             npcStore.ensureAndGetComponent(npcRef, Nameplate.getComponentType()).setText(name);
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Sproutwatch: could not set nameplate for " + login, e);
+        } catch (Exception exception) {
+            logger.log(Level.WARNING, "Sproutwatch: could not set nameplate for " + viewerKey, exception);
         }
         int networkId = -1;
         try {
             NetworkId nid = npcStore.getComponent(npcRef, NetworkId.getComponentType());
             if (nid != null) networkId = nid.getId();
-        } catch (Exception e) {
-            logger.log(Level.FINE, "Sproutwatch: no NetworkId for " + login, e);
+        } catch (Exception exception) {
+            logger.log(Level.FINE, "Sproutwatch: no NetworkId for " + viewerKey, exception);
         }
         long now = System.currentTimeMillis();
-        registry.put(new PenRegistry.Entry(login, npcRef, networkId, worldUuid, now, now));
+        registry.put(new PenRegistry.Entry(viewerKey, npcRef, networkId, worldUuid, now, now));
         // Log the key (unambiguous), plus the shown name when it differs.
-        String shown = name.equals(login) ? "" : " (" + name + ")";
-        logger.info("Sproutwatch: " + login + " joined the pen as " + role + shown);
+        String shown = name.equals(viewerKey) ? "" : " (" + name + ")";
+        logger.info("Sproutwatch: " + viewerKey + " joined the pen as " + role + shown);
     }
 }

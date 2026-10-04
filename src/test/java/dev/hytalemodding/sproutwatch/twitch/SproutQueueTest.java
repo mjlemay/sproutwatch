@@ -39,7 +39,7 @@ class SproutQueueTest {
         assertEquals(List.of("b"), q.snapshot());
     }
 
-    @Test void retainDropsLoginsNotPresent() {
+    @Test void retainDropsViewersNotPresent() {
         SproutQueue q = new SproutQueue();
         q.offer("a");
         q.offer("b");

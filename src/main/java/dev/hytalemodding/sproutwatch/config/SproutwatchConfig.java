@@ -16,9 +16,9 @@ import java.util.Set;
 /**
  * Codec-backed config for Sproutwatch_config.json. Defaults here must match
  * src/main/resources/Sproutwatch_config.json. Getters clamp; the on-disk value is left as written.
- * Same BuilderCodec idiom as Subinator's SubinatorConfig (verified working on 0.6.3).
+ * BuilderCodec-based, verified working on 0.6.3.
  *
- * <p>AllowUsers / IgnoreUsers entries are Twitch logins or YouTube keys. When hand-editing the JSON,
+ * AllowUsers / IgnoreUsers entries are Twitch logins or YouTube keys. When hand-editing the JSON,
  * a YouTube entry must be written {@code yt:UC...} (the exact channel ID): a bare {@code UC...} is
  * read as a Twitch login, and {@code yt:@handle} is not resolved from JSON (it is dropped). Handles
  * are resolved only through /sproutwatch allow|ignore add or the Viewers tab, which also record the
@@ -28,7 +28,7 @@ public class SproutwatchConfig {
 
     /**
      * One entry per kind of sprout, each equally likely. An entry may be a "|" group: one of its roles is
-     * picked (the six Sapling colours share one third of the pen). Sprout_* roles ship in the mod's asset
+     * picked (the six Sapling colors share one third of the pen). Sprout_* roles ship in the mod's asset
      * pack (Server/NPC/Roles/Sproutwatch, Server/Models/Sproutwatch) and carry random hair and outfits.
      */
     private static final String[] DEFAULT_ROLES = {"Kweebec_Seedling", "Sprout_Sproutling",
@@ -189,8 +189,8 @@ public class SproutwatchConfig {
         if (r != null) {
             for (String s : r) {
                 if (s == null) continue;
-                String t = s.trim();
-                if (!t.isEmpty()) cleaned.add(t);
+                String trimmedEntry = s.trim();
+                if (!trimmedEntry.isEmpty()) cleaned.add(trimmedEntry);
             }
         }
         return cleaned.isEmpty() ? DEFAULT_ROLES.clone() : cleaned.toArray(new String[0]);
@@ -206,8 +206,8 @@ public class SproutwatchConfig {
         Set<String> all = new LinkedHashSet<>();
         for (String entry : entries) {
             for (String part : entry.split("\\|")) {
-                String t = part.trim();
-                if (!t.isEmpty()) all.add(t);
+                String trimmedPart = part.trim();
+                if (!trimmedPart.isEmpty()) all.add(trimmedPart);
             }
         }
         return all;
@@ -254,25 +254,25 @@ public class SproutwatchConfig {
      */
     public static String normalizeEntry(String raw) {
         if (raw == null) return "";
-        String t = raw.trim();
-        if (t.regionMatches(true, 0, ViewerKey.YOUTUBE_PREFIX, 0, ViewerKey.YOUTUBE_PREFIX.length())) {
-            return YouTubeRef.parseChannelId(t.substring(ViewerKey.YOUTUBE_PREFIX.length()))
+        String trimmed = raw.trim();
+        if (trimmed.regionMatches(true, 0, ViewerKey.YOUTUBE_PREFIX, 0, ViewerKey.YOUTUBE_PREFIX.length())) {
+            return YouTubeRef.parseChannelId(trimmed.substring(ViewerKey.YOUTUBE_PREFIX.length()))
                 .map(id -> ViewerKey.YOUTUBE_PREFIX + id).orElse("");
         }
-        return normalizeChannel(t);
+        return normalizeChannel(trimmed);
     }
 
     /** Normalized ignore list (Twitch logins lowercased, yt: keys exact) plus the channel login itself (the streamer never gets a sprout). */
-    public Set<String> ignoredLogins() {
-        Set<String> out = normalizedLogins(ignoreUsers);
+    public Set<String> ignoredViewers() {
+        Set<String> out = normalizedViewers(ignoreUsers);
         String ch = getTwitchChannel();
         if (!ch.isEmpty()) out.add(ch);
         return out;
     }
 
     /** Normalized allow list (Twitch logins lowercased, yt: keys exact); applied only in allow mode (see {@link #passesFilter}). */
-    public Set<String> allowedLogins() {
-        return normalizedLogins(allowUsers);
+    public Set<String> allowedViewers() {
+        return normalizedViewers(allowUsers);
     }
 
     /** "allow" or "ignore"; anything else reads as "ignore". */
@@ -286,11 +286,11 @@ public class SproutwatchConfig {
 
     /**
      * The viewer filter: in ignore mode everyone not on IgnoreUsers is eligible; in allow mode only
-     * AllowUsers are (IgnoreUsers still wins; an empty allow list means nobody). Login must be normalized.
+     * AllowUsers are (IgnoreUsers still wins; an empty allow list means nobody). The viewer key must be normalized.
      */
-    public boolean passesFilter(String login) {
-        if (ignoredLogins().contains(login)) return false;
-        return !isAllowMode() || allowedLogins().contains(login);
+    public boolean passesFilter(String viewerKey) {
+        if (ignoredViewers().contains(viewerKey)) return false;
+        return !isAllowMode() || allowedViewers().contains(viewerKey);
     }
 
     /** Chat text that queues a viewer for the next sprout; trimmed, default "!sprout" when blank. */
@@ -299,34 +299,34 @@ public class SproutwatchConfig {
         return q.isEmpty() ? DEFAULT_QUEUE_COMMAND : q;
     }
 
-    /** @return true if the (normalized) login was added to AllowUsers; false if blank or already there. */
+    /** @return true if the (normalized) viewer key was added to AllowUsers; false if blank or already there. */
     public synchronized boolean addAllow(String raw) {
-        String[] next = withLogin(allowUsers, raw);
+        String[] next = withViewer(allowUsers, raw);
         if (next == null) return false;
         allowUsers = next;
         return true;
     }
 
-    /** @return true if the (normalized) login was removed from AllowUsers. */
+    /** @return true if the (normalized) viewer key was removed from AllowUsers. */
     public synchronized boolean removeAllow(String raw) {
-        String[] next = withoutLogin(allowUsers, raw);
+        String[] next = withoutViewer(allowUsers, raw);
         if (next == null) return false;
         allowUsers = next;
         dropOrphanLabel(raw);
         return true;
     }
 
-    /** @return true if the (normalized) login was added to IgnoreUsers; false if blank or already there. */
+    /** @return true if the (normalized) viewer key was added to IgnoreUsers; false if blank or already there. */
     public synchronized boolean addIgnore(String raw) {
-        String[] next = withLogin(ignoreUsers, raw);
+        String[] next = withViewer(ignoreUsers, raw);
         if (next == null) return false;
         ignoreUsers = next;
         return true;
     }
 
-    /** @return true if the (normalized) login was removed from IgnoreUsers. */
+    /** @return true if the (normalized) viewer key was removed from IgnoreUsers. */
     public synchronized boolean removeIgnore(String raw) {
-        String[] next = withoutLogin(ignoreUsers, raw);
+        String[] next = withoutViewer(ignoreUsers, raw);
         if (next == null) return false;
         ignoreUsers = next;
         dropOrphanLabel(raw);
@@ -360,8 +360,8 @@ public class SproutwatchConfig {
         String k = normalizeEntry(key);
         if (!k.startsWith(ViewerKey.YOUTUBE_PREFIX)) return;
         Map<String, String> m = youTubeLabels();
-        String l = label == null ? "" : label.trim();
-        if (l.isEmpty()) m.remove(k); else m.put(k, l);
+        String trimmedLabel = label == null ? "" : label.trim();
+        if (trimmedLabel.isEmpty()) m.remove(k); else m.put(k, trimmedLabel);
         writeLabels(m);
     }
 
@@ -381,9 +381,9 @@ public class SproutwatchConfig {
     /** The yt: key whose stored label equals this handle, ignoring case. */
     public Optional<String> youTubeKeyForLabel(String handle) {
         if (handle == null || handle.isBlank()) return Optional.empty();
-        String h = handle.trim();
+        String trimmedHandle = handle.trim();
         for (Map.Entry<String, String> e : youTubeLabels().entrySet()) {
-            if (e.getValue().equalsIgnoreCase(h)) return Optional.of(e.getKey());
+            if (e.getValue().equalsIgnoreCase(trimmedHandle)) return Optional.of(e.getKey());
         }
         return Optional.empty();
     }
@@ -399,7 +399,7 @@ public class SproutwatchConfig {
     private void dropOrphanLabel(String raw) {
         String k = normalizeEntry(raw);
         if (!k.startsWith(ViewerKey.YOUTUBE_PREFIX)) return;
-        if (normalizedLogins(allowUsers).contains(k) || normalizedLogins(ignoreUsers).contains(k)) return;
+        if (normalizedViewers(allowUsers).contains(k) || normalizedViewers(ignoreUsers).contains(k)) return;
         Map<String, String> m = youTubeLabels();
         if (m.remove(k) != null) writeLabels(m);
     }
@@ -408,34 +408,34 @@ public class SproutwatchConfig {
         youTubeLabels = m.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).toArray(String[]::new);
     }
 
-    /** Normalized ({@link #normalizeEntry}), non-blank, de-duplicated (order preserved) copy of a login array. */
-    private static Set<String> normalizedLogins(String[] raw) {
+    /** Normalized ({@link #normalizeEntry}), non-blank, de-duplicated (order preserved) copy of a viewer key array. */
+    private static Set<String> normalizedViewers(String[] raw) {
         Set<String> out = new LinkedHashSet<>();
         if (raw != null) {
             for (String s : raw) {
                 if (s == null) continue;
-                String t = normalizeEntry(s);
-                if (!t.isEmpty()) out.add(t);
+                String entry = normalizeEntry(s);
+                if (!entry.isEmpty()) out.add(entry);
             }
         }
         return out;
     }
 
-    /** New array with the login appended, or null when blank or already present. */
-    private static String[] withLogin(String[] current, String raw) {
-        String login = normalizeEntry(raw);
-        if (login.isEmpty()) return null;
-        Set<String> set = normalizedLogins(current);
-        if (!set.add(login)) return null;
+    /** New array with the viewer key appended, or null when blank or already present. */
+    private static String[] withViewer(String[] current, String raw) {
+        String viewerKey = normalizeEntry(raw);
+        if (viewerKey.isEmpty()) return null;
+        Set<String> set = normalizedViewers(current);
+        if (!set.add(viewerKey)) return null;
         return set.toArray(new String[0]);
     }
 
-    /** New array with the login dropped, or null when blank or not present. */
-    private static String[] withoutLogin(String[] current, String raw) {
-        String login = normalizeEntry(raw);
-        if (login.isEmpty()) return null;
-        Set<String> set = normalizedLogins(current);
-        if (!set.remove(login)) return null;
+    /** New array with the viewer key dropped, or null when blank or not present. */
+    private static String[] withoutViewer(String[] current, String raw) {
+        String viewerKey = normalizeEntry(raw);
+        if (viewerKey.isEmpty()) return null;
+        Set<String> set = normalizedViewers(current);
+        if (!set.remove(viewerKey)) return null;
         return set.toArray(new String[0]);
     }
 
@@ -487,8 +487,8 @@ public class SproutwatchConfig {
 
     /** Bundled pen prefab name (see PenPrefabCatalog): trimmed lowercase, "default" when blank. */
     public String getPenPrefab() {
-        String p = penPrefab == null ? "" : penPrefab.trim().toLowerCase(Locale.ROOT);
-        return p.isEmpty() ? "default" : p;
+        String prefabName = penPrefab == null ? "" : penPrefab.trim().toLowerCase(Locale.ROOT);
+        return prefabName.isEmpty() ? "default" : prefabName;
     }
     public void setPenPrefab(String v) { penPrefab = v; }
 
@@ -508,8 +508,8 @@ public class SproutwatchConfig {
 
     /** Planned stream length the quota pacer spreads the daily budget over: 1..24 h, 8 when unreadable. */
     public double getYouTubeStreamHours() {
-        double h = youTubeStreamHours;
-        return Double.isFinite(h) ? Math.clamp(h, 1.0, 24.0) : DEFAULT_STREAM_HOURS;
+        double hours = youTubeStreamHours;
+        return Double.isFinite(hours) ? Math.clamp(hours, 1.0, 24.0) : DEFAULT_STREAM_HOURS;
     }
     public void setYouTubeStreamHours(double v) { youTubeStreamHours = v; }
 

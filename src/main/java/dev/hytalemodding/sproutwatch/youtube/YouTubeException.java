@@ -3,10 +3,10 @@ package dev.hytalemodding.sproutwatch.youtube;
 /**
  * A failed YouTube Data API call, classified for the caller's state machine.
  *
- * <p>Messages are built only from the call name, HTTP status and API reason code; they never
+ * Messages are built only from the call name, HTTP status and API reason code; they never
  * contain a URL, response body or API key, and no cause is chained (a cause's message could).
  */
-public final class YtException extends Exception {
+public final class YouTubeException extends Exception {
 
     public enum Kind {
         /** Key missing/invalid, API not enabled for the key's project, or key restrictions block us. Stop. */
@@ -28,7 +28,7 @@ public final class YtException extends Exception {
 
     private final Kind kind;
 
-    public YtException(Kind kind, String message) {
+    public YouTubeException(Kind kind, String message) {
         super(message);
         this.kind = kind;
     }

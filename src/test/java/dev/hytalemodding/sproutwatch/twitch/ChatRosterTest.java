@@ -148,12 +148,12 @@ class ChatRosterTest {
 
     /** A yt: key on IgnoreUsers never enters the roster when the YouTube source applies its Chat event. */
     @Test void ignoredYouTubeChatterNeverEntersTheRoster() {
-        dev.hytalemodding.sproutwatch.config.SproutwatchConfig cfg =
+        dev.hytalemodding.sproutwatch.config.SproutwatchConfig config =
             new dev.hytalemodding.sproutwatch.config.SproutwatchConfigAccess().fresh();
         String ignoredKey = dev.hytalemodding.sproutwatch.chat.ViewerKey.youtube("UCabcdefghijklmnopqrstuV");
         String otherKey = dev.hytalemodding.sproutwatch.chat.ViewerKey.youtube("UCabcdefghijklmnopqrstuW");
-        assertTrue(cfg.addIgnore(ignoredKey));
-        ChatRoster r = new ChatRoster(cfg::ignoredLogins, cfg::getQueueCommand, new SproutQueue());
+        assertTrue(config.addIgnore(ignoredKey));
+        ChatRoster r = new ChatRoster(config::ignoredViewers, config::getQueueCommand, new SproutQueue());
         r.apply(new RosterEvent.Chat(ignoredKey, "!sprout"), 1L);
         r.apply(new RosterEvent.Chat(otherKey, "hi"), 2L);
         assertEquals(Set.of(otherKey), r.snapshot().keySet());

@@ -15,7 +15,7 @@ public final class SettingsEvent {
 
     public static final String KEY_ACTION = "Action";
     public static final String KEY_TAB = "Tab";
-    public static final String KEY_LOGIN = "Login";
+    public static final String KEY_VIEWER_KEY = "Login";
     public static final String KEY_FILTER = "Filter";
     public static final String KEY_CHANNEL = "@Channel";
     public static final String KEY_ALLOW_INPUT = "@AllowInput";
@@ -36,7 +36,7 @@ public final class SettingsEvent {
     public static final BuilderCodec<SettingsEvent> CODEC = BuilderCodec.builder(SettingsEvent.class, SettingsEvent::new)
         .append(new KeyedCodec<>(KEY_ACTION, Codec.STRING, false), (e, v) -> e.action = v, e -> e.action).add()
         .append(new KeyedCodec<>(KEY_TAB, Codec.STRING, false), (e, v) -> e.tab = v, e -> e.tab).add()
-        .append(new KeyedCodec<>(KEY_LOGIN, Codec.STRING, false), (e, v) -> e.login = v, e -> e.login).add()
+        .append(new KeyedCodec<>(KEY_VIEWER_KEY, Codec.STRING, false), (e, v) -> e.viewerKey = v, e -> e.viewerKey).add()
         .append(new KeyedCodec<>(KEY_FILTER, Codec.STRING, false), (e, v) -> e.filter = v, e -> e.filter).add()
         .append(new KeyedCodec<>(KEY_CHANNEL, Codec.STRING, false), (e, v) -> e.channel = v, e -> e.channel).add()
         .append(new KeyedCodec<>(KEY_ALLOW_INPUT, Codec.STRING, false), (e, v) -> e.allowInput = v, e -> e.allowInput).add()
@@ -56,7 +56,7 @@ public final class SettingsEvent {
 
     public String action;
     public String tab;
-    public String login;
+    public String viewerKey;
     public String filter;
     public String channel;
     public String allowInput;

@@ -40,8 +40,8 @@ class SproutwatchConfigTest {
         assertEquals(json.getInt32("GraceSeconds").getValue(), c.getGraceSeconds());
         assertEquals(json.getInt32("MaxSprouts").getValue(), c.getMaxSprouts());
         assertArrayEquals(toStringArray(json.getArray("Roles")), c.getRoles());
-        assertArrayEquals(toStringArray(json.getArray("IgnoreUsers")), c.ignoredLogins().toArray(new String[0]));
-        assertArrayEquals(toStringArray(json.getArray("AllowUsers")), c.allowedLogins().toArray(new String[0]));
+        assertArrayEquals(toStringArray(json.getArray("IgnoreUsers")), c.ignoredViewers().toArray(new String[0]));
+        assertArrayEquals(toStringArray(json.getArray("AllowUsers")), c.allowedViewers().toArray(new String[0]));
         assertEquals(json.getString("QueueCommand").getValue(), c.getQueueCommand());
         assertEquals(json.getString("PenWorld").getValue(), c.getPenWorld());
         assertEquals(json.getInt32("PenX").getValue(), c.getPenX());
@@ -177,7 +177,7 @@ class SproutwatchConfigTest {
         assertTrue(c.getRoles()[2].startsWith("Sprout_Sapling_Red|"), c.getRoles()[2]);
         assertFalse(c.upgradeLegacyRoles(), "already upgraded");
         c.setRoles(new String[]{"Kweebec_Sapling"});
-        assertFalse(c.upgradeLegacyRoles(), "a customised list is left alone");
+        assertFalse(c.upgradeLegacyRoles(), "a customized list is left alone");
         assertArrayEquals(new String[]{"Kweebec_Sapling"}, c.getRoles());
     }
 
@@ -195,18 +195,18 @@ class SproutwatchConfigTest {
         assertEquals("streamer", c.getTwitchChannel());
     }
 
-    @Test void ignoredLoginsIncludeDefaultsAndChannel() {
+    @Test void ignoredViewersIncludeDefaultsAndChannel() {
         SproutwatchConfig c = new SproutwatchConfig();
         c.setTwitchChannel("Streamer");
-        Set<String> ignored = c.ignoredLogins();
+        Set<String> ignored = c.ignoredViewers();
         assertTrue(ignored.containsAll(Set.of("nightbot", "streamelements", "streamlabs", "streamer")));
         assertFalse(ignored.contains(""));
     }
 
-    @Test void ignoredLoginsNormalizesIrcSymbols() {
+    @Test void ignoredViewersNormalizesIrcSymbols() {
         SproutwatchConfig c = new SproutwatchConfig();
         c.setIgnoreUsersForTest(new String[]{"@NightBot"});
-        assertTrue(c.ignoredLogins().contains("nightbot"));
+        assertTrue(c.ignoredViewers().contains("nightbot"));
     }
 
     @Test void penAndChairSettersRoundTrip() {
@@ -262,11 +262,11 @@ class SproutwatchConfigTest {
         assertEquals("north", c.getPenFacing());
     }
 
-    @Test void allowListNormalisesAndDedupes() {
+    @Test void allowListNormalizesAndDedupes() {
         SproutwatchConfig c = new SproutwatchConfig();
-        assertTrue(c.allowedLogins().isEmpty(), "empty means everyone");
+        assertTrue(c.allowedViewers().isEmpty(), "empty means everyone");
         c.setAllowUsersForTest(new String[]{"@Alice", "alice", " ", null, "Bob!"});
-        assertEquals(List.of("alice", "bob"), List.copyOf(c.allowedLogins()));
+        assertEquals(List.of("alice", "bob"), List.copyOf(c.allowedViewers()));
     }
 
     @Test void allowAndIgnoreMutatorsReportChange() {
@@ -275,20 +275,20 @@ class SproutwatchConfigTest {
         assertFalse(c.addAllow("carol"));
         assertFalse(c.addAllow("  "));
         assertFalse(c.addAllow(null));
-        assertEquals(Set.of("carol"), c.allowedLogins());
+        assertEquals(Set.of("carol"), c.allowedViewers());
         assertTrue(c.removeAllow("CAROL"));
         assertFalse(c.removeAllow("carol"));
-        assertTrue(c.allowedLogins().isEmpty());
+        assertTrue(c.allowedViewers().isEmpty());
 
-        assertTrue(c.ignoredLogins().contains("nightbot"));
+        assertTrue(c.ignoredViewers().contains("nightbot"));
         assertFalse(c.addIgnore("NightBot"));
         assertTrue(c.addIgnore("@Spammer"));
-        assertTrue(c.ignoredLogins().contains("spammer"));
+        assertTrue(c.ignoredViewers().contains("spammer"));
         assertTrue(c.removeIgnore("spammer"));
         assertFalse(c.removeIgnore("spammer"));
-        assertFalse(c.ignoredLogins().contains("spammer"));
+        assertFalse(c.ignoredViewers().contains("spammer"));
         assertTrue(c.removeIgnore("nightbot"));
-        assertFalse(c.ignoredLogins().contains("nightbot"));
+        assertFalse(c.ignoredViewers().contains("nightbot"));
         assertFalse(c.addIgnore(""));
     }
 
@@ -312,7 +312,7 @@ class SproutwatchConfigTest {
         assertEquals("!sprout", c.getQueueCommand());
     }
 
-    @Test void penPrefabDefaultsAndNormalises() {
+    @Test void penPrefabDefaultsAndNormalizes() {
         SproutwatchConfig c = new SproutwatchConfig();
         assertEquals("default", c.getPenPrefab());
         c.setPenPrefab("  Castle ");
@@ -331,16 +331,16 @@ class SproutwatchConfigTest {
     @Test void youTubeKeysKeepTheirCaseInMixedLists() {
         SproutwatchConfig c = new SproutwatchConfig();
         c.setIgnoreUsersForTest(new String[]{"NightBot", " yt:" + CH + " ", "yt:" + CH, "@Bob"});
-        assertEquals(List.of("nightbot", "yt:" + CH, "bob"), List.copyOf(c.ignoredLogins()));
+        assertEquals(List.of("nightbot", "yt:" + CH, "bob"), List.copyOf(c.ignoredViewers()));
         c.setAllowUsersForTest(new String[]{"Alice", "yt:" + CH2});
-        assertEquals(List.of("alice", "yt:" + CH2), List.copyOf(c.allowedLogins()));
+        assertEquals(List.of("alice", "yt:" + CH2), List.copyOf(c.allowedViewers()));
     }
 
     @Test void invalidYouTubeEntriesAreDropped() {
         SproutwatchConfig c = new SproutwatchConfig();
         c.setIgnoreUsersForTest(new String[]{"yt:", "yt:UCshort", "yt:" + CH.toLowerCase(java.util.Locale.ROOT),
             "yt:@handle", "yt:" + CH + "x", "carol"});
-        assertEquals(Set.of("carol"), c.ignoredLogins());
+        assertEquals(Set.of("carol"), c.ignoredViewers());
         assertFalse(c.addIgnore("yt:nope"));
         assertFalse(c.addAllow("yt:"));
     }
@@ -351,7 +351,7 @@ class SproutwatchConfigTest {
         assertTrue(c.passesFilter(yt));
         assertTrue(c.addIgnore(yt));
         assertFalse(c.addIgnore(yt), "already there");
-        assertTrue(c.ignoredLogins().contains(yt));
+        assertTrue(c.ignoredViewers().contains(yt));
         assertFalse(c.passesFilter(yt));
         assertTrue(c.removeIgnore(yt));
         c.setAllowMode(true);
@@ -366,7 +366,7 @@ class SproutwatchConfigTest {
         SproutwatchConfig c = new SproutwatchConfig();
         c.setTwitchChannel("Streamer");
         c.addIgnore("yt:" + CH);
-        assertTrue(c.ignoredLogins().containsAll(Set.of("streamer", "yt:" + CH)));
+        assertTrue(c.ignoredViewers().containsAll(Set.of("streamer", "yt:" + CH)));
     }
 
     @Test void youTubeLabelsRoundTripAndAreCleanedUpWithTheEntry() {
@@ -408,13 +408,13 @@ class SproutwatchConfigTest {
         SproutwatchConfig c = new SproutwatchConfig();
         String yt = "yt:" + CH;
         assertTrue(c.addYouTubeEntry(false, yt, "@Streamer"));
-        assertTrue(c.ignoredLogins().contains(yt));
+        assertTrue(c.ignoredViewers().contains(yt));
         assertEquals(java.util.Optional.of("@Streamer"), c.youTubeLabel(yt));
         assertFalse(c.addYouTubeEntry(false, yt, "@Renamed"), "already listed");
         assertEquals(java.util.Optional.of("@Renamed"), c.youTubeLabel(yt), "label refreshed anyway");
         assertFalse(c.addYouTubeEntry(true, "alice", "@x"), "Twitch logins are not YouTube entries");
-        assertFalse(c.allowedLogins().contains("alice"));
+        assertFalse(c.allowedViewers().contains("alice"));
         assertTrue(c.addYouTubeEntry(true, yt, null));
-        assertTrue(c.allowedLogins().contains(yt));
+        assertTrue(c.allowedViewers().contains(yt));
     }
 }

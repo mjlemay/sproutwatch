@@ -8,12 +8,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class TickOutcomeTest {
 
-    @Test void spawnedTheTestLogin() {
+    @Test void spawnedTheTestViewer() {
         TickOutcome o = new TickOutcome(Optional.of("alice"), true);
         assertEquals("alice joined the pen.", o.testReply("alice"));
     }
 
-    @Test void noFreeSpotForTheTestLogin() {
+    @Test void noFreeSpotForTheTestViewer() {
         TickOutcome o = new TickOutcome(Optional.of("alice"), false);
         assertEquals("alice could not be placed: no free spot in the pen this tick. It retries on the next tick"
             + " while the listener runs, or run /sproutwatch test alice now again.", o.testReply("alice"));

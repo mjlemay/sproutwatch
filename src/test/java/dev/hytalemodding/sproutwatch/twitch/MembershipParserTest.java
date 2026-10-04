@@ -9,13 +9,13 @@ import static org.junit.jupiter.api.Assertions.*;
 class MembershipParserTest {
 
     @Test void parsesNamesReplyWithChannelMarker() {
-        RosterEvent e = MembershipParser.parse(":justinfan1.tmi.twitch.tv 353 justinfan1 = #streamer :Alice bob  CAROL");
-        assertEquals(new RosterEvent.Names(List.of("alice", "bob", "carol")), e);
+        RosterEvent event = MembershipParser.parse(":justinfan1.tmi.twitch.tv 353 justinfan1 = #streamer :Alice bob  CAROL");
+        assertEquals(new RosterEvent.Names(List.of("alice", "bob", "carol")), event);
     }
 
     @Test void parsesNamesReplyWithoutMarker() {
-        RosterEvent e = MembershipParser.parse(":x.tmi.twitch.tv 353 justinfan #chan :a b c");
-        assertEquals(new RosterEvent.Names(List.of("a", "b", "c")), e);
+        RosterEvent event = MembershipParser.parse(":x.tmi.twitch.tv 353 justinfan #chan :a b c");
+        assertEquals(new RosterEvent.Names(List.of("a", "b", "c")), event);
     }
 
     @Test void parsesJoinPartAndPrivmsgLowercased() {

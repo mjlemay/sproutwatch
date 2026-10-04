@@ -36,12 +36,12 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
     private static final List<String> STATUS_SELECTORS = statusSelectors();
 
     private static List<String> statusSelectors() {
-        List<String> sel = new ArrayList<>();
-        for (String id : StatusSnapshot.DETAIL_IDS) sel.add(id + ".Text");
-        sel.add("#RunLabel.Text");
-        sel.add("#BeginCaption.Text");
-        sel.add("#LookupLabel.Text");
-        return List.copyOf(sel);
+        List<String> selectors = new ArrayList<>();
+        for (String id : StatusSnapshot.DETAIL_IDS) selectors.add(id + ".Text");
+        selectors.add("#RunLabel.Text");
+        selectors.add("#BeginCaption.Text");
+        selectors.add("#LookupLabel.Text");
+        return List.copyOf(selectors);
     }
 
     private final SproutwatchActions actions;
@@ -66,22 +66,22 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
     }
 
     @Override
-    public void build(@Nonnull Ref<EntityStore> ref, @Nonnull UICommandBuilder cmd,
-                      @Nonnull UIEventBuilder evt, @Nonnull Store<EntityStore> store) {
-        StatusSnapshot s = actions.snapshot();
-        SproutwatchConfig cfg = actions.config();
-        cmd.append(DOCUMENT);
-        SettingsTab.bind(evt);
-        SettingsTab.apply(cmd, tab);
-        List<String> labels = statusLabels(s, lookupLine());
-        setStatusLabels(cmd, labels);
+    public void build(@Nonnull Ref<EntityStore> ref, @Nonnull UICommandBuilder commands,
+                      @Nonnull UIEventBuilder events, @Nonnull Store<EntityStore> store) {
+        StatusSnapshot snapshot = actions.snapshot();
+        SproutwatchConfig config = actions.config();
+        commands.append(DOCUMENT);
+        SettingsTab.bind(events);
+        SettingsTab.apply(commands, tab);
+        List<String> labels = statusLabels(snapshot, lookupLine());
+        setStatusLabels(commands, labels);
         lastSentLabels = labels;
-        lastSentLists = listsKey(cfg);
-        SettingsPanes.connect(cmd, evt, cfg, s);
-        SettingsPanes.viewers(cmd, evt, cfg, s);
-        SettingsPanes.listener(cmd, evt, s);
-        SettingsPanes.pen(cmd, evt, s, cfg);
-        cmd.set("#MessageLabel.Text", message);
+        lastSentLists = listsKey(config);
+        SettingsPanes.connect(commands, events, config, snapshot);
+        SettingsPanes.viewers(commands, events, config, snapshot);
+        SettingsPanes.listener(commands, events, snapshot);
+        SettingsPanes.pen(commands, events, snapshot, config);
+        commands.set("#MessageLabel.Text", message);
         // Last, so a build that throws (e.g. a bad .ui) never leaves a phantom entry refreshed every tick.
         openPages.register(playerRef.getUuid(), this);
     }
@@ -93,14 +93,14 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
      * ("pen"/"nopen") and which run button shows ("start"/"connecting"/"stop"), so all of those
      * follow state changes live. Never a field value.
      */
-    private static List<String> statusLabels(StatusSnapshot s, String lookupLine) {
-        List<String> labels = new ArrayList<>(s.detailValues());
-        labels.add(s.runLabel());
-        labels.add(s.beginCaption());
+    private static List<String> statusLabels(StatusSnapshot snapshot, String lookupLine) {
+        List<String> labels = new ArrayList<>(snapshot.detailValues());
+        labels.add(snapshot.runLabel());
+        labels.add(snapshot.beginCaption());
         labels.add(lookupLine);
-        labels.add(s.listenerTone());
-        labels.add(s.penSet() ? "pen" : "nopen");
-        labels.add(s.runButton());
+        labels.add(snapshot.listenerTone());
+        labels.add(snapshot.penSet() ? "pen" : "nopen");
+        labels.add(snapshot.runButton());
         return List.copyOf(labels);
     }
 
@@ -109,79 +109,79 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
         return actions.lastLookupMessage().orElse("");
     }
 
-    private static void setStatusLabels(UICommandBuilder cmd, List<String> labels) {
-        for (int i = 0; i < STATUS_SELECTORS.size(); i++) cmd.set(STATUS_SELECTORS.get(i), labels.get(i));
+    private static void setStatusLabels(UICommandBuilder commands, List<String> labels) {
+        for (int i = 0; i < STATUS_SELECTORS.size(); i++) commands.set(STATUS_SELECTORS.get(i), labels.get(i));
         int n = labels.size();
-        cmd.set("#ListenerValue.Style", Value.<String>ref(DOCUMENT, labels.get(n - 3)));
-        cmd.set("#BeginButton.Disabled", !labels.get(n - 2).equals("pen"));
+        commands.set("#ListenerValue.Style", Value.<String>ref(DOCUMENT, labels.get(n - 3)));
+        commands.set("#BeginButton.Disabled", !labels.get(n - 2).equals("pen"));
         String run = labels.get(n - 1);
-        cmd.set("#StartButton.Visible", run.equals("start"));
-        cmd.set("#ConnectingButton.Visible", run.equals("connecting"));
-        cmd.set("#StopButton.Visible", run.equals("stop"));
+        commands.set("#StartButton.Visible", run.equals("start"));
+        commands.set("#ConnectingButton.Visible", run.equals("connecting"));
+        commands.set("#StopButton.Visible", run.equals("stop"));
     }
 
     @Override
-    public void handleDataEvent(@Nonnull Ref<EntityStore> ref, @Nonnull Store<EntityStore> store, @Nonnull SettingsEvent e) {
-        String action = e.action == null ? "" : e.action;
+    public void handleDataEvent(@Nonnull Ref<EntityStore> ref, @Nonnull Store<EntityStore> store, @Nonnull SettingsEvent event) {
+        String action = event.action == null ? "" : event.action;
         if (action.equals("tab")) {
-            switchTab(e.tab);
+            switchTab(event.tab);
             return;
         }
         if (action.equals("begin") && begin()) return;
         try {
             message = switch (action) {
                 case "begin" -> message; // begin() already set the error
-                case "saveChannel" -> actions.setChannel(e.channel);
-                case "setTwitchEnabled" -> actions.setTwitchEnabled(Boolean.TRUE.equals(e.twitchOn));
-                case "setYouTubeEnabled" -> actions.setYouTubeEnabled(Boolean.TRUE.equals(e.youTubeOn));
-                case "saveYouTubeHandle" -> actions.setYouTubeHandle(e.youTubeHandle);
-                case "saveYouTubeKey" -> actions.setYouTubeKey(e.youTubeKey); // reply is masked; the field is rebuilt empty
-                case "saveYouTubeVideo" -> actions.setYouTubeVideo(e.youTubeVideo); // blank clears
+                case "saveChannel" -> actions.setChannel(event.channel);
+                case "setTwitchEnabled" -> actions.setTwitchEnabled(Boolean.TRUE.equals(event.twitchOn));
+                case "setYouTubeEnabled" -> actions.setYouTubeEnabled(Boolean.TRUE.equals(event.youTubeOn));
+                case "saveYouTubeHandle" -> actions.setYouTubeHandle(event.youTubeHandle);
+                case "saveYouTubeKey" -> actions.setYouTubeKey(event.youTubeKey); // reply is masked; the field is rebuilt empty
+                case "saveYouTubeVideo" -> actions.setYouTubeVideo(event.youTubeVideo); // blank clears
                 case "removeChannel" -> actions.removeChannel();
                 case "removeYouTubeHandle" -> actions.removeYouTubeHandle();
                 case "removeYouTubeKey" -> actions.removeYouTubeKey();
                 case "removeYouTubeVideo" -> actions.setYouTubeVideo("");
-                case "saveMax" -> e.max == null ? "Enter a number of sprouts (min 1)." : actions.setMaxSprouts(e.max);
-                case "setFilter" -> actions.setFilter("allow".equals(e.filter));
-                case "addAllow" -> actions.addAllow(e.allowInput);
-                case "removeAllow" -> actions.removeAllow(e.login);
-                case "addIgnore" -> actions.addIgnore(e.ignoreInput);
-                case "removeIgnore" -> actions.removeIgnore(e.login);
+                case "saveMax" -> event.max == null ? "Enter a number of sprouts (min 1)." : actions.setMaxSprouts(event.max);
+                case "setFilter" -> actions.setFilter("allow".equals(event.filter));
+                case "addAllow" -> actions.addAllow(event.allowInput);
+                case "removeAllow" -> actions.removeAllow(event.viewerKey);
+                case "addIgnore" -> actions.addIgnore(event.ignoreInput);
+                case "removeIgnore" -> actions.removeIgnore(event.viewerKey);
                 case "startListener" -> actions.startListener();
                 case "stopListener" -> actions.stopListener();
-                case "setPersist" -> actions.setPersist(Boolean.TRUE.equals(e.persist));
-                case "setAutoStart" -> actions.setAutoStart(Boolean.TRUE.equals(e.autoStart));
-                case "saveInterval" -> e.interval == null ? "Enter a number of seconds (min 5)." : actions.setTickSeconds(e.interval);
-                case "selectPrefab" -> actions.selectPrefab(e.prefab);
-                case "selectCreatures" -> actions.setCreatures(e.creatures);
+                case "setPersist" -> actions.setPersist(Boolean.TRUE.equals(event.persist));
+                case "setAutoStart" -> actions.setAutoStart(Boolean.TRUE.equals(event.autoStart));
+                case "saveInterval" -> event.interval == null ? "Enter a number of seconds (min 5)." : actions.setTickSeconds(event.interval);
+                case "selectPrefab" -> actions.selectPrefab(event.prefab);
+                case "selectCreatures" -> actions.setCreatures(event.creatures);
                 case "place" -> actions.place(playerRef);
                 case "clear" -> actions.clear();
                 default -> "Unknown action: " + action;
             };
-        } catch (RuntimeException ex) {
-            logger.log(Level.WARNING, "Sproutwatch settings page action '" + action + "' failed", ex);
-            message = "Action failed: " + ex.getMessage() + " (see server log)";
+        } catch (RuntimeException exception) {
+            logger.log(Level.WARNING, "Sproutwatch settings page action '" + action + "' failed", exception);
+            message = "Action failed: " + exception.getMessage() + " (see server log)";
         }
         try {
             rebuild();
-        } catch (RuntimeException ex) {
-            logger.log(Level.WARNING, "Sproutwatch settings page rebuild failed", ex);
+        } catch (RuntimeException exception) {
+            logger.log(Level.WARNING, "Sproutwatch settings page rebuild failed", exception);
         }
     }
 
     /** Begin: start the listener (unless running) and close the page. @return true when closed; false leaves the error for the rebuild. */
     private boolean begin() {
         try {
-            Optional<String> err = actions.begin();
-            if (err.isPresent()) {
-                message = err.get();
+            Optional<String> beginError = actions.begin();
+            if (beginError.isPresent()) {
+                message = beginError.get();
                 return false;
             }
             close(); // PageManager.setPage(None): fires onDismiss, so OpenPages forgets us
             return true;
-        } catch (RuntimeException ex) {
-            logger.log(Level.WARNING, "Sproutwatch settings page begin failed", ex);
-            message = "Action failed: " + ex.getMessage() + " (see server log)";
+        } catch (RuntimeException exception) {
+            logger.log(Level.WARNING, "Sproutwatch settings page begin failed", exception);
+            message = "Action failed: " + exception.getMessage() + " (see server log)";
             return false;
         }
     }
@@ -195,11 +195,11 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
     private void switchTab(String name) {
         tab = SettingsTab.parse(name, tab);
         try {
-            UICommandBuilder cmd = new UICommandBuilder();
-            SettingsTab.apply(cmd, tab);
-            sendUpdate(cmd);
-        } catch (RuntimeException ex) {
-            logger.log(Level.WARNING, "Sproutwatch settings page tab switch failed", ex);
+            UICommandBuilder commands = new UICommandBuilder();
+            SettingsTab.apply(commands, tab);
+            sendUpdate(commands);
+        } catch (RuntimeException exception) {
+            logger.log(Level.WARNING, "Sproutwatch settings page tab switch failed", exception);
         }
     }
 
@@ -227,8 +227,8 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
             if (store.isInThread()) push.run();
             else store.getExternalData().getWorld().execute(push);
             return true;
-        } catch (RuntimeException ex) {
-            logger.log(Level.WARNING, "Sproutwatch settings page refresh failed; dropping the page", ex);
+        } catch (RuntimeException exception) {
+            logger.log(Level.WARNING, "Sproutwatch settings page refresh failed; dropping the page", exception);
             return false;
         }
     }
@@ -241,18 +241,18 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
                 rebuild();   // build() records labels + lists
                 return;
             }
-            UICommandBuilder cmd = new UICommandBuilder();
-            setStatusLabels(cmd, labels);
-            sendUpdate(cmd);
+            UICommandBuilder commands = new UICommandBuilder();
+            setStatusLabels(commands, labels);
+            sendUpdate(commands);
             lastSentLabels = labels;
-        } catch (RuntimeException ex) {
-            logger.log(Level.WARNING, "Sproutwatch settings page push failed", ex);
+        } catch (RuntimeException exception) {
+            logger.log(Level.WARNING, "Sproutwatch settings page push failed", exception);
         }
     }
 
     /** Fingerprint of what the Viewers lists show; kept out of statusLabels (setStatusLabels indexes its tail). */
     private static String listsKey(SproutwatchConfig c) {
-        return c.allowedLogins() + "|" + c.ignoredLogins() + "|" + c.youTubeLabels();
+        return c.allowedViewers() + "|" + c.ignoredViewers() + "|" + c.youTubeLabels();
     }
 
     @Override

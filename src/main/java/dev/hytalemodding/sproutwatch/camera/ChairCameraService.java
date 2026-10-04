@@ -45,7 +45,7 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
     private final Set<UUID> seated = ConcurrentHashMap.newKeySet();
     private final Set<UUID> manual = ConcurrentHashMap.newKeySet();
     /** HUD components each seated player had visible before we hid the bottom UI; restored on stand.
-     *  A game-mode change while seated is last-writer-wins (engine behaviour); the pre-seat set is restored regardless. */
+     *  A game-mode change while seated is last-writer-wins (engine behavior); the pre-seat set is restored regardless. */
     private final Map<UUID, Set<HudComponent>> hudBeforeSeat = new ConcurrentHashMap<>();
 
     /** The bottom-of-screen UI hidden while seated on the pen chair (chat and notifications stay). */
@@ -74,20 +74,20 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
                                  CommandBuffer<EntityStore> commandBuffer) {
         try {
             if (!isPenMountType(mounted.getBlockMountType())) return;
-            SproutwatchConfig cfg = config.get();
-            if (!cfg.isPenSet()) return;
+            SproutwatchConfig currentConfig = config.get();
+            if (!currentConfig.isPenSet()) return;
             PlayerRef player = store.getComponent(ref, PlayerRef.getComponentType());
             if (player == null) return;
-            if (!cfg.getPenWorld().equals(String.valueOf(player.getWorldUuid()))) return;
-            if (!isPenSeat(cfg, seatBlock(mounted))) return;
+            if (!currentConfig.getPenWorld().equals(String.valueOf(player.getWorldUuid()))) return;
+            if (!isPenSeat(currentConfig, seatBlock(mounted))) return;
             seated.add(player.getUuid());
-            player.getPacketHandler().writeNoCache(CameraPackets.penCamera(cfg));
-            TransformComponent t = store.getComponent(ref, TransformComponent.getComponentType());
-            if (t != null) SeatLook.apply(player, new org.joml.Vector3d(t.getPosition()), PenBounds.fromConfig(cfg));
+            player.getPacketHandler().writeNoCache(CameraPackets.penCamera(currentConfig));
+            TransformComponent transform = store.getComponent(ref, TransformComponent.getComponentType());
+            if (transform != null) SeatLook.apply(player, new org.joml.Vector3d(transform.getPosition()), PenBounds.fromConfig(currentConfig));
             hideBottomUi(ref, store, player);
             player.sendMessage(Message.raw("Sproutwatch camera on. Stand up to reset."));
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Sproutwatch chair camera failed on mount", e);
+        } catch (Exception exception) {
+            logger.log(Level.WARNING, "Sproutwatch chair camera failed on mount", exception);
         }
     }
 
@@ -108,19 +108,19 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
                 player.getPacketHandler().writeNoCache(CameraPackets.reset());
                 restoreBottomUi(ref, store, player);
             }
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Sproutwatch chair camera failed on dismount", e);
+        } catch (Exception exception) {
+            logger.log(Level.WARNING, "Sproutwatch chair camera failed on dismount", exception);
         }
     }
 
     /**
-     * A seat counts as the pen chair when its block centre is in the pen's guard zone (interior +
+     * A seat counts as the pen chair when its block center is in the pen's guard zone (interior +
      * PenBounds.GUARD_MARGIN, floor up to clearHeight + 2): any chair, sofa or bed a player sets
      * next to the pen works, not just the one recorded at /sproutwatch place. Pure; tested.
      */
-    static boolean isPenSeat(SproutwatchConfig cfg, Vector3i seat) {
-        if (seat == null || !cfg.isPenSet()) return false;
-        return PenBounds.fromConfig(cfg).inGuardZone(seat.x + 0.5, seat.y, seat.z + 0.5);
+    static boolean isPenSeat(SproutwatchConfig config, Vector3i seat) {
+        if (seat == null || !config.isPenSet()) return false;
+        return PenBounds.fromConfig(config).inGuardZone(seat.x + 0.5, seat.y, seat.z + 0.5);
     }
 
     /** Every block mount counts: Seat (chairs, stools, benches, sofas, couches) and Bed. Creature mounts have none. */
@@ -147,16 +147,16 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
         if (manual.remove(id)) {
             try {
                 player.getPacketHandler().writeNoCache(CameraPackets.reset());
-            } catch (Exception e) {
-                logger.log(Level.WARNING, "Sproutwatch manual camera failed", e);
+            } catch (Exception exception) {
+                logger.log(Level.WARNING, "Sproutwatch manual camera failed", exception);
             }
             return false;
         }
         manual.add(id);
         try {
             player.getPacketHandler().writeNoCache(CameraPackets.penCamera(config.get()));
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Sproutwatch manual camera failed", e);
+        } catch (Exception exception) {
+            logger.log(Level.WARNING, "Sproutwatch manual camera failed", exception);
         }
         return true;
     }
@@ -171,43 +171,43 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
     /** Hides the bottom UI for the seated player, remembering what was visible (same call vanilla game modes use). */
     private void hideBottomUi(Ref<EntityStore> ref, Store<EntityStore> store, PlayerRef player) {
         try {
-            Player p = store.getComponent(ref, Player.getComponentType());
-            if (p == null) return;
-            HudManager hud = p.getHudManager();
+            Player playerComponent = store.getComponent(ref, Player.getComponentType());
+            if (playerComponent == null) return;
+            HudManager hud = playerComponent.getHudManager();
             // EnumSet.noneOf + addAll: EnumSet.copyOf throws on an EMPTY non-EnumSet collection, and the
             // manager exposes an unmodifiable ConcurrentHashMap key set that a game mode can leave empty.
             Set<HudComponent> before = EnumSet.noneOf(HudComponent.class);
             before.addAll(hud.getVisibleHudComponents());
             hudBeforeSeat.put(player.getUuid(), before);
             hud.hideHudComponents(player, HIDE_WHILE_SEATED.toArray(new HudComponent[0]));
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Sproutwatch: could not hide the HUD on sit", e);
+        } catch (Exception exception) {
+            logger.log(Level.WARNING, "Sproutwatch: could not hide the HUD on sit", exception);
         }
     }
 
     /** Restores exactly what was visible before sitting; falls back to the engine defaults. */
     private void restoreBottomUi(Ref<EntityStore> ref, Store<EntityStore> store, PlayerRef player) {
         try {
-            Player p = store.getComponent(ref, Player.getComponentType());
-            if (p == null) return;
-            HudManager hud = p.getHudManager();
+            Player playerComponent = store.getComponent(ref, Player.getComponentType());
+            if (playerComponent == null) return;
+            HudManager hud = playerComponent.getHudManager();
             Set<HudComponent> before = hudBeforeSeat.remove(player.getUuid());
             if (before != null) hud.setVisibleHudComponents(player, before);
             else hud.resetVisibleHudComponents(player);
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Sproutwatch: could not restore the HUD on stand", e);
+        } catch (Exception exception) {
+            logger.log(Level.WARNING, "Sproutwatch: could not restore the HUD on stand", exception);
         }
     }
 
     /** Re-sends the camera to everyone currently using it (after /sproutwatch interval-style tuning edits). */
     public void refresh(Collection<PlayerRef> players) {
-        SproutwatchConfig cfg = config.get();
+        SproutwatchConfig currentConfig = config.get();
         for (PlayerRef p : players) {
             if (seated.contains(p.getUuid()) || manual.contains(p.getUuid())) {
                 try {
-                    p.getPacketHandler().writeNoCache(CameraPackets.penCamera(cfg));
-                } catch (Exception e) {
-                    logger.log(Level.WARNING, "Sproutwatch camera refresh failed", e);
+                    p.getPacketHandler().writeNoCache(CameraPackets.penCamera(currentConfig));
+                } catch (Exception exception) {
+                    logger.log(Level.WARNING, "Sproutwatch camera refresh failed", exception);
                 }
             }
         }

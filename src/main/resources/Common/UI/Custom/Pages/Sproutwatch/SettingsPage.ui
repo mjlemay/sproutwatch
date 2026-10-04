@@ -530,7 +530,7 @@ $C.@PageOverlay {
           Visible: true;
 
           $C.@Subtitle {
-            @Text = "Ignore list (the channel login is always ignored)";
+            @Text = "Ignore list (your own channel is always ignored)";
           }
 
           Group #IgnoreList {

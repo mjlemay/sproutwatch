@@ -18,7 +18,7 @@ import dev.hytalemodding.sproutwatch.prefab.PenPlacer;
 import dev.hytalemodding.sproutwatch.prefab.PenPrefabCatalog;
 import dev.hytalemodding.sproutwatch.twitch.RosterEvent;
 import dev.hytalemodding.sproutwatch.youtube.YouTubeRef;
-import dev.hytalemodding.sproutwatch.youtube.YtException;
+import dev.hytalemodding.sproutwatch.youtube.YouTubeException;
 import org.joml.Vector3d;
 import org.joml.Vector3i;
 
@@ -55,8 +55,8 @@ public final class SproutwatchActions {
         host.saveConfig();
         if (!host.config().isTwitchEnabled()) return "Channel set to #" + channel + " (Twitch chat is off).";
         if (host.listenerRunning()) {
-            String err = host.startListener();
-            return err != null ? err : "Channel set to #" + channel + "; listener restarted.";
+            String error = host.startListener();
+            return error != null ? error : "Channel set to #" + channel + "; listener restarted.";
         }
         return "Channel set to #" + channel + ". Run /sproutwatch start to begin.";
     }
@@ -71,28 +71,28 @@ public final class SproutwatchActions {
 
     /** Describes what actually started (read back from the host), plus what could not. */
     public String startListener() {
-        String err = host.startListener();
-        if (err != null) return err;
+        String error = host.startListener();
+        if (error != null) return error;
         SproutwatchConfig c = host.config();
         Map<String, String> states = host.sourceStates();
         boolean twitch = started(states, StatusSnapshot.TWITCH);
         boolean youTube = started(states, StatusSnapshot.YOUTUBE);
         String every = "; one sprout every " + c.getTickSeconds() + "s.";
-        String msg;
+        String message;
         if (twitch && youTube) {
-            msg = "Sproutwatch watching Twitch #" + c.getTwitchChannel() + " and YouTube " + YouTubeStatus.target(c) + every;
+            message = "Sproutwatch watching Twitch #" + c.getTwitchChannel() + " and YouTube " + YouTubeStatus.target(c) + every;
         } else if (twitch) {
-            msg = "Sproutwatch watching #" + c.getTwitchChannel() + every;
+            message = "Sproutwatch watching #" + c.getTwitchChannel() + every;
         } else if (youTube) {
-            msg = "Sproutwatch watching YouTube " + YouTubeStatus.target(c) + every;
+            message = "Sproutwatch watching YouTube " + YouTubeStatus.target(c) + every;
         } else {
             return "Sproutwatch started, but no chat source started (see the server log).";
         }
-        if (c.twitchReady() && !twitch) msg += " Twitch could not start (see the server log).";
-        if (c.youTubeConfigured() && !youTube) msg += " YouTube could not start (see the server log).";
+        if (c.twitchReady() && !twitch) message += " Twitch could not start (see the server log).";
+        if (c.youTubeConfigured() && !youTube) message += " YouTube could not start (see the server log).";
         String missing = YouTubeStatus.missing(c);
-        if (c.isYouTubeEnabled() && missing != null) msg += " YouTube is on but needs " + missing + ".";
-        return msg;
+        if (c.isYouTubeEnabled() && missing != null) message += " YouTube is on but needs " + missing + ".";
+        return message;
     }
 
     /** A source the last start actually started: listed with a state other than "stopped". */
@@ -177,8 +177,8 @@ public final class SproutwatchActions {
         boolean before = host.config().youTubeConfigured();
         host.config().setYouTubeStreamHours(hours);
         host.saveConfig();
-        double h = host.config().getYouTubeStreamHours();
-        String shown = h == Math.rint(h) ? Long.toString((long) h) : Double.toString(h);
+        double streamHours = host.config().getYouTubeStreamHours();
+        String shown = streamHours == Math.rint(streamHours) ? Long.toString((long) streamHours) : Double.toString(streamHours);
         return restartIfRunning("YouTube stream length is now " + shown
             + "h (chat reads are paced so the daily quota lasts that long)", youTubeAffected(before));
     }
@@ -197,10 +197,10 @@ public final class SproutwatchActions {
      */
     private String restartIfRunning(String base, boolean affected) {
         if (!affected || !host.listenerRunning()) return base + ".";
-        String err = host.startListener();
-        if (err == null) return base + "; listener restarted.";
+        String error = host.startListener();
+        if (error == null) return base + "; listener restarted.";
         if (host.config().nothingToStartReason() != null) return base + ". Nothing else is set up, so the listener stopped.";
-        return base + ". " + err + " The listener stopped.";
+        return base + ". " + error + " The listener stopped.";
     }
 
     /** The Pen tab's Begin (Wrangle Viewers): start unless already running. @return the error to show, or empty when the page may close. */
@@ -216,7 +216,7 @@ public final class SproutwatchActions {
     /**
      * Queues the pen placement on the sender's world thread and answers at once; the outcome reaches
      * the sender as a chat message from {@link #placeOnWorldThread}. Runs on the caller's thread.
-     * @param sender the player to centre the pen on; must be non-null in production (the fake host ignores it)
+     * @param sender the player to center the pen on; must be non-null in production (the fake host ignores it)
      */
     public String place(PlayerRef sender) {
         ActionsHost.WorldQueue q = host.runOnPlayerWorld(sender, world -> placeOnWorldThread(sender, world));
@@ -227,30 +227,30 @@ public final class SproutwatchActions {
         };
     }
 
-    /** Sweeps the old pen, pastes the prefab centred on the sender and saves the config. Runs on the world thread. */
+    /** Sweeps the old pen, pastes the prefab centered on the sender and saves the config. Runs on the world thread. */
     private void placeOnWorldThread(PlayerRef sender, World world) {
         try {
             Ref<EntityStore> ref = sender.getReference();
             if (ref == null || !ref.isValid()) return;
             Store<EntityStore> store = ref.getStore();
-            TransformComponent t = store.getComponent(ref, TransformComponent.getComponentType());
-            if (t == null) return;
-            Vector3d p = t.getPosition();
-            Vector3i feet = new Vector3i((int) Math.floor(p.x), (int) Math.floor(p.y), (int) Math.floor(p.z));
+            TransformComponent transform = store.getComponent(ref, TransformComponent.getComponentType());
+            if (transform == null) return;
+            Vector3d position = transform.getPosition();
+            Vector3i feet = new Vector3i((int) Math.floor(position.x), (int) Math.floor(position.y), (int) Math.floor(position.z));
             String swept = sweepOldPen(world);
-            String msg = PenPlacer.place(world, store, feet, world.getWorldConfig().getUuid(), host.config(), host.logger());
+            String message = PenPlacer.place(world, store, feet, world.getWorldConfig().getUuid(), host.config(), host.logger());
             host.saveConfig();
-            sender.sendMessage(Message.raw(msg + swept));
-        } catch (Exception e) {
-            host.logger().log(Level.WARNING, "Sproutwatch place failed", e);
-            sender.sendMessage(Message.raw("Pen placement failed: " + e.getMessage() + " (see server log)"));
+            sender.sendMessage(Message.raw(message + swept));
+        } catch (Exception exception) {
+            host.logger().log(Level.WARNING, "Sproutwatch place failed", exception);
+            sender.sendMessage(Message.raw("Pen placement failed: " + exception.getMessage() + " (see server log)"));
         }
         // No tick may be running; push the new pen to open settings pages now. Kept outside the
         // placement try so a refresh failure can never be reported as a failed placement.
         try {
             host.statusChanged();
-        } catch (Exception e) {
-            host.logger().log(Level.WARNING, "Sproutwatch page refresh failed", e);
+        } catch (Exception exception) {
+            host.logger().log(Level.WARNING, "Sproutwatch page refresh failed", exception);
         }
     }
 
@@ -284,12 +284,12 @@ public final class SproutwatchActions {
     public String removeGuest(String raw) {
         String login = SproutwatchConfig.normalizeChannel(raw);
         if (!host.roster().removeGuest(login)) return login + " is not a test viewer (/sproutwatch test list).";
-        ActionsHost.WorldQueue q = host.runOnPenWorld(w -> {
+        ActionsHost.WorldQueue q = host.runOnPenWorld(world -> {
             try {
-                PenClearer.despawn(w, host.registry(), List.of(login), host.logger());
+                PenClearer.despawn(world, host.registry(), List.of(login), host.logger());
                 host.statusChanged();
-            } catch (Exception e) {
-                host.logger().log(Level.WARNING, "Sproutwatch guest despawn failed", e);
+            } catch (Exception exception) {
+                host.logger().log(Level.WARNING, "Sproutwatch guest despawn failed", exception);
             }
         });
         return switch (q) {
@@ -304,12 +304,12 @@ public final class SproutwatchActions {
 
     public String clear() {
         host.roster().forgetGuests(); // test viewers would otherwise respawn first (firstSeen 0)
-        ActionsHost.WorldQueue q = host.runOnPenWorld(w -> {
+        ActionsHost.WorldQueue q = host.runOnPenWorld(world -> {
             try {
-                PenClearer.clear(w, host.registry(), host.roleSet(), PenBounds.fromConfig(host.config()), host.logger());
+                PenClearer.clear(world, host.registry(), host.roleSet(), PenBounds.fromConfig(host.config()), host.logger());
                 host.statusChanged(); // no tick may be running; push the emptied pen to open settings pages now
-            } catch (Exception e) {
-                host.logger().log(Level.WARNING, "Sproutwatch clear failed", e);
+            } catch (Exception exception) {
+                host.logger().log(Level.WARNING, "Sproutwatch clear failed", exception);
             }
         });
         return switch (q) {
@@ -342,9 +342,9 @@ public final class SproutwatchActions {
         host.saveConfig();
         SproutwatchConfig c = host.config();
         if (!allowMode) {
-            return "Filter is now the ignore list: everyone in chat except " + c.ignoredLogins().size() + " ignored.";
+            return "Filter is now the ignore list: everyone in chat except " + c.ignoredViewers().size() + " ignored.";
         }
-        int n = c.allowedLogins().size();
+        int n = c.allowedViewers().size();
         return "Filter is now the allow list: only listed viewers get a sprout ("
             + (n == 0 ? "the list is empty, so nobody until you add someone" : n + " listed") + ").";
     }
@@ -355,12 +355,12 @@ public final class SproutwatchActions {
         if (next.id().equals(host.config().getCreatures())) return "Creatures are already " + next.displayName() + ".";
         host.config().setCreatures(next.id());
         host.saveConfig();
-        ActionsHost.WorldQueue q = host.runOnPenWorld(w -> {
+        ActionsHost.WorldQueue q = host.runOnPenWorld(world -> {
             try {
-                PenClearer.clear(w, host.registry(), host.roleSet(), PenBounds.fromConfig(host.config()), host.logger());
+                PenClearer.clear(world, host.registry(), host.roleSet(), PenBounds.fromConfig(host.config()), host.logger());
                 host.statusChanged();
-            } catch (Exception e) {
-                host.logger().log(Level.WARNING, "Sproutwatch creature switch clear failed", e);
+            } catch (Exception exception) {
+                host.logger().log(Level.WARNING, "Sproutwatch creature switch clear failed", exception);
             }
         });
         String base = "Creatures: " + next.displayName() + ".";
@@ -382,18 +382,18 @@ public final class SproutwatchActions {
         String base = "Max sprouts is now " + cap;
         List<String> extra = PenReconciler.trim(host.registry().lastSeenMap(), host.roster().snapshot(), cap, host.roster().guests());
         if (extra.isEmpty()) return base + ".";
-        ActionsHost.WorldQueue q = host.runOnPenWorld(w -> {
+        ActionsHost.WorldQueue q = host.runOnPenWorld(world -> {
             try {
-                PenClearer.despawn(w, host.registry(), extra, host.logger());
+                PenClearer.despawn(world, host.registry(), extra, host.logger());
                 host.statusChanged();
-            } catch (Exception e) {
-                host.logger().log(Level.WARNING, "Sproutwatch trim failed", e);
+            } catch (Exception exception) {
+                host.logger().log(Level.WARNING, "Sproutwatch trim failed", exception);
             }
         });
         return switch (q) {
             case QUEUED -> base + "; removing " + extra.size() + " extra sprout(s)...";
             case NOT_LOADED -> {
-                for (String login : extra) host.registry().remove(login);
+                for (String viewerKey : extra) host.registry().remove(viewerKey);
                 yield base + "; pen world not loaded, forgot " + extra.size() + " tracked sprout(s).";
             }
             case REJECTED -> base + "; pen world is unloading, the extra sprouts go on the next tick.";
@@ -454,82 +454,82 @@ public final class SproutwatchActions {
     private String listAction(String raw, boolean allowList, boolean add, Consumer<String> onOutcome) {
         ViewerEntry entry = ViewerEntry.parse(raw);
         return switch (entry) {
-            case ViewerEntry.Invalid i -> i.reply();
-            case ViewerEntry.Twitch t -> apply(t.login(), null, allowList, add);
-            case ViewerEntry.YouTubeChannel c -> apply(c.key(), null, allowList, add);
-            case ViewerEntry.YouTubeHandle h -> {
+            case ViewerEntry.Invalid invalid -> invalid.reply();
+            case ViewerEntry.Twitch twitch -> apply(twitch.login(), null, allowList, add);
+            case ViewerEntry.YouTubeChannel channel -> apply(channel.key(), null, allowList, add);
+            case ViewerEntry.YouTubeHandle handle -> {
                 if (!add) {
-                    Optional<String> known = host.config().youTubeKeyForLabel(h.handle());
+                    Optional<String> known = host.config().youTubeKeyForLabel(handle.handle());
                     if (known.isPresent()) yield apply(known.get(), null, allowList, false);
                 }
-                yield lookUp(h.handle(), allowList, add, onOutcome);
+                yield lookUpViewer(handle.handle(), allowList, add, onOutcome);
             }
         };
     }
 
     /** Starts the off-thread handle lookup; the reply is immediate and the outcome is reported when it ends. */
-    private String lookUp(String handle, boolean allowList, boolean add, Consumer<String> onOutcome) {
+    private String lookUpViewer(String viewerHandle, boolean allowList, boolean add, Consumer<String> onOutcome) {
         if (host.config().getYouTubeApiKey().isEmpty()) return NO_KEY_REPLY;
         if (pendingLookups.incrementAndGet() > MAX_PENDING_LOOKUPS) {
             pendingLookups.decrementAndGet();
             return TOO_MANY_REPLY;
         }
-        String pending = "Looking up " + handle + " on YouTube...";
+        String pending = "Looking up " + viewerHandle + " on YouTube...";
         lastLookupMessage = pending;
-        java.util.concurrent.CompletableFuture<String> f;
+        java.util.concurrent.CompletableFuture<String> lookup;
         try {
-            f = host.lookUpYouTubeChannel(handle);
-        } catch (RuntimeException e) {
+            lookup = host.lookUpViewerChannelId(viewerHandle);
+        } catch (RuntimeException exception) {
             pendingLookups.decrementAndGet();
-            throw e;
+            throw exception;
         }
-        f.whenComplete((channelId, err) -> {
+        lookup.whenComplete((channelId, error) -> {
             pendingLookups.decrementAndGet();
-            String msg;
+            String message;
             try {
-                if (err != null) {
-                    Throwable cause = unwrap(err);
-                    msg = lookupFailure(handle, cause);
-                    host.logger().info("Sproutwatch: YouTube lookup for " + handle + " failed ("
-                        + (cause instanceof YtException yt ? yt.kind() : cause.getClass().getSimpleName()) + ")");
+                if (error != null) {
+                    Throwable cause = unwrap(error);
+                    message = lookupFailure(viewerHandle, cause);
+                    host.logger().info("Sproutwatch: YouTube lookup for " + viewerHandle + " failed ("
+                        + (cause instanceof YouTubeException youTube ? youTube.kind() : cause.getClass().getSimpleName()) + ")");
                 } else {
-                    msg = apply(ViewerKey.youtube(channelId), handle, allowList, add);
+                    message = apply(ViewerKey.youtube(channelId), viewerHandle, allowList, add);
                 }
-            } catch (RuntimeException e) {
-                host.logger().info("Sproutwatch: YouTube lookup for " + handle + " failed (" + e.getClass().getSimpleName() + ")");
-                msg = "YouTube lookup failed; try again.";
+            } catch (RuntimeException exception) {
+                host.logger().info("Sproutwatch: YouTube lookup for " + viewerHandle + " failed (" + exception.getClass().getSimpleName() + ")");
+                message = "YouTube lookup failed; try again.";
             }
-            lastLookupMessage = msg;
+            lastLookupMessage = message;
             try {
                 host.statusChanged();
-            } catch (RuntimeException e) {
-                host.logger().log(Level.WARNING, "Sproutwatch page refresh failed", e);
+            } catch (RuntimeException exception) {
+                host.logger().log(Level.WARNING, "Sproutwatch page refresh failed", exception);
             }
             if (onOutcome != null) {
                 try {
-                    onOutcome.accept(msg);
-                } catch (RuntimeException e) {
-                    host.logger().log(Level.WARNING, "Sproutwatch lookup reply failed", e);
+                    onOutcome.accept(message);
+                } catch (RuntimeException exception) {
+                    host.logger().log(Level.WARNING, "Sproutwatch lookup reply failed", exception);
                 }
             }
         });
         return pending;
     }
 
-    private static Throwable unwrap(Throwable t) {
-        while ((t instanceof java.util.concurrent.CompletionException || t instanceof java.util.concurrent.ExecutionException)
-                && t.getCause() != null) {
-            t = t.getCause();
+    private static Throwable unwrap(Throwable throwable) {
+        while ((throwable instanceof java.util.concurrent.CompletionException || throwable instanceof java.util.concurrent.ExecutionException)
+                && throwable.getCause() != null) {
+            throwable = throwable.getCause();
         }
-        return t;
+        return throwable;
     }
 
-    /** Reply for a failed lookup; never contains the key (YtException messages are not shown at all). */
+    /** Reply for a failed lookup; never contains the key (YouTubeException messages are not shown at all). */
     private static String lookupFailure(String handle, Throwable cause) {
         if (cause instanceof ActionsHost.NoYouTubeKey) return NO_KEY_REPLY;
         if (cause instanceof ActionsHost.LookupUnavailable) return UNAVAILABLE_REPLY;
-        if (!(cause instanceof YtException yt)) return "YouTube lookup failed; try again.";
-        return switch (yt.kind()) {
+        if (!(cause instanceof YouTubeException youTube)) return "YouTube lookup failed; try again.";
+        return switch (youTube.kind()) {
             case NOT_FOUND -> "No YouTube channel " + handle + " found.";
             case KEY_INVALID -> "YouTube API key rejected.";
             case QUOTA_EXCEEDED -> "YouTube quota used up for today; paste the channel link instead.";
@@ -581,16 +581,16 @@ public final class SproutwatchActions {
 
     public StatusSnapshot snapshot() {
         SproutwatchConfig c = host.config();
-        World w = c.isPenSet() ? host.penWorld() : null;
+        World world = c.isPenSet() ? host.penWorld() : null;
         return new StatusSnapshot(
-            host.listenerState(), host.listenerRunning(), host.feedAcked(),
+            host.listenerState(), host.listenerRunning(), host.feedAcknowledged(),
             c.getTwitchChannel(), host.roster().size(), host.roster().queue().size(), c.getQueueCommand(),
-            c.isAllowMode(), c.allowedLogins().size(), c.ignoredLogins().size(),
-            host.registry().size(), c.getMaxSprouts(), host.registry().retiredLogins().size(),
+            c.isAllowMode(), c.allowedViewers().size(), c.ignoredViewers().size(),
+            host.registry().size(), c.getMaxSprouts(), host.registry().retiredViewers().size(),
             c.getTickSeconds(), c.getGraceSeconds(), c.getQuietSeconds(), host.tickerRunning(),
             c.isPersistSprouts(), c.isAutoStartOnBoot(),
             c.isPenSet(), c.getPenX(), c.getPenY(), c.getPenZ(), c.getPenSizeX(), c.getPenSizeZ(), c.getPenFacing(),
-            w == null ? null : w.getName(), c.getPenWorld(),
+            world == null ? null : world.getName(), c.getPenWorld(),
             c.isChairSet(), c.getChairX(), c.getChairY(), c.getChairZ(),
             c.getPenPrefab(),
             host.sourceStates(), host.youTubeStatus());

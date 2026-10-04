@@ -29,19 +29,19 @@ public final class PenClearer {
     private PenClearer() {}
 
     /** Removes the named sprouts (registry entry + entity). World thread only. @return how many entities were removed */
-    public static int despawn(World world, PenRegistry registry, Collection<String> logins, Logger logger) {
+    public static int despawn(World world, PenRegistry registry, Collection<String> viewerKeys, Logger logger) {
         Store<EntityStore> store = world.getEntityStore().getStore();
         int removed = 0;
-        for (String login : logins) {
-            PenRegistry.Entry e = registry.remove(login);
-            if (e == null) continue;
-            Ref<EntityStore> ref = e.ref();
+        for (String viewerKey : viewerKeys) {
+            PenRegistry.Entry entry = registry.remove(viewerKey);
+            if (entry == null) continue;
+            Ref<EntityStore> ref = entry.ref();
             if (ref == null || !ref.isValid()) continue;
             try {
                 store.removeEntity(ref, RemoveReason.REMOVE);
                 removed++;
-            } catch (Exception ex) {
-                logger.log(Level.WARNING, "Sproutwatch: failed to despawn sprout for " + login, ex);
+            } catch (Exception exception) {
+                logger.log(Level.WARNING, "Sproutwatch: failed to despawn sprout for " + viewerKey, exception);
             }
         }
         return removed;
@@ -60,14 +60,14 @@ public final class PenClearer {
                     for (int i = 0; i < chunk.size(); i++) {
                         NPCEntity npc = chunk.getComponent(i, NPCEntity.getComponentType());
                         if (npc == null || npc.getRoleName() == null || !roles.contains(npc.getRoleName())) continue;
-                        TransformComponent t = chunk.getComponent(i, TransformComponent.getComponentType());
-                        if (t == null) continue;
-                        Vector3d p = t.getPosition();
-                        if (bounds.contains(p.x, p.y, p.z, 1.0)) victims.add(chunk.getReferenceTo(i));
+                        TransformComponent transform = chunk.getComponent(i, TransformComponent.getComponentType());
+                        if (transform == null) continue;
+                        Vector3d position = transform.getPosition();
+                        if (bounds.contains(position.x, position.y, position.z, 1.0)) victims.add(chunk.getReferenceTo(i));
                     }
                 });
-            } catch (Exception e) {
-                logger.log(Level.WARNING, "Sproutwatch pen scan failed; removing tracked sprouts only", e);
+            } catch (Exception exception) {
+                logger.log(Level.WARNING, "Sproutwatch pen scan failed; removing tracked sprouts only", exception);
             }
         }
         int removed = 0;
@@ -77,8 +77,8 @@ public final class PenClearer {
                     store.removeEntity(ref, RemoveReason.REMOVE);
                     removed++;
                 }
-            } catch (Exception e) {
-                logger.log(Level.WARNING, "Sproutwatch: failed to remove a sprout during clear", e);
+            } catch (Exception exception) {
+                logger.log(Level.WARNING, "Sproutwatch: failed to remove a sprout during clear", exception);
             }
         }
         logger.info("Sproutwatch: cleared " + removed + " sprout(s)");

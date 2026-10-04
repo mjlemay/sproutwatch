@@ -37,7 +37,7 @@ sealed interface ViewerEntry {
         Optional<String> id = YouTubeRef.parseChannelId(s);   // a bare, case-exact UC... ID
         if (id.isPresent()) return new YouTubeChannel(ViewerKey.youtube(id.get()));
         String login = SproutwatchConfig.normalizeChannel(s);
-        return login.isEmpty() ? new Invalid("Invalid login.") : new Twitch(login);
+        return login.isEmpty() ? new Invalid("Invalid user name.") : new Twitch(login);
     }
 
     /** The part after "yt:" or a youtube link: a channel ID/URL, or a handle/handle URL. */

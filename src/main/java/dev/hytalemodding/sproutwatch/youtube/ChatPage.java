@@ -10,7 +10,7 @@ import java.util.List;
  * @param pollingIntervalMillis YouTube's suggested wait before the next read
  * @param chatEnded             true when the response carries {@code offlineAt} or a {@code chatEndedEvent}
  */
-public record ChatPage(List<YtMessage> messages, String nextPageToken, long pollingIntervalMillis, boolean chatEnded) {
+public record ChatPage(List<YouTubeMessage> messages, String nextPageToken, long pollingIntervalMillis, boolean chatEnded) {
     public ChatPage {
         messages = List.copyOf(messages);
     }

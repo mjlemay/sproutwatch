@@ -15,7 +15,7 @@ import java.util.function.Supplier;
  * saved at most once per {@link #SAVE_INTERVAL_MILLIS} (the first call saves at once) plus on
  * {@link #flush}, so a crash loses at most a minute of usage.
  *
- * <p>Thread-safe: {@link #record} runs on the poller thread (from the pacer's usage listener),
+ * Thread-safe: {@link #record} runs on the poller thread (from the pacer's usage listener),
  * {@link #flush} on whichever thread stops the listener. Never takes the plugin's monitor.
  */
 public final class QuotaStore {

@@ -37,7 +37,7 @@ public interface ActionsHost {
 
     /**
      * "stopped" when no source runs; one source's state alone; with both,
-     * "Twitch: &lt;state&gt; · YouTube: &lt;state&gt;" ({@link StatusSnapshot#joinStates}).
+     * "{@code Twitch: <state> · YouTube: <state>}" ({@link StatusSnapshot#joinStates}).
      * Like every status read here it must not take the lock start/stop hold (sources' state hooks call it).
      */
     String listenerState();
@@ -55,7 +55,7 @@ public interface ActionsHost {
     YouTubeStatus youTubeStatus();
 
     /** True when Twitch acknowledged the membership capability on the current connection. */
-    boolean feedAcked();
+    boolean feedAcknowledged();
 
     /**
      * Stops the current run first, always (even when the start is then refused, so a refused
@@ -96,11 +96,11 @@ public interface ActionsHost {
      * Resolves a YouTube {@code @handle} to its channel ID off the caller's thread (one API call, 1
      * quota unit, counted against the daily quota) with the configured key. Never blocks the caller.
      * Completes with the channel ID, or exceptionally with a
-     * {@link dev.hytalemodding.sproutwatch.youtube.YtException} (its kind says why), a
+     * {@link dev.hytalemodding.sproutwatch.youtube.YouTubeException} (its kind says why), a
      * {@link NoYouTubeKey} when no key is configured, or a {@link LookupUnavailable} when the lookup
      * thread has stopped (server shutting down). Completion runs on the lookup thread.
      */
-    CompletableFuture<String> lookUpYouTubeChannel(String handle);
+    CompletableFuture<String> lookUpViewerChannelId(String viewerHandle);
 
     /** No YouTube API key is configured, so a handle cannot be looked up. */
     final class NoYouTubeKey extends RuntimeException {

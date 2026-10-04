@@ -18,9 +18,9 @@ public final class ChatSourceCommands {
     private ChatSourceCommands() {}
 
     /** Bare {@code /sproutwatch youtube}: the status lines while enabled, else how to turn it on. */
-    public static String youTubeSummary(StatusSnapshot s) {
-        if (!s.youTube().enabled()) return "YouTube chat is off. " + YOUTUBE_USAGE;
-        return String.join("\n", s.youTubeLine(), s.youTubeChannelLine(), s.youTubeKeyLine(), s.youTubeQuotaLine());
+    public static String youTubeSummary(StatusSnapshot snapshot) {
+        if (!snapshot.youTube().enabled()) return "YouTube chat is off. " + YOUTUBE_USAGE;
+        return String.join("\n", snapshot.youTubeLine(), snapshot.youTubeChannelLine(), snapshot.youTubeKeyLine(), snapshot.youTubeQuotaLine());
     }
 
     /** {@code /sproutwatch youtube on|off}. */
@@ -60,16 +60,16 @@ public final class ChatSourceCommands {
 
     /** Whole hours 1 to 24 only ("6", not "2.5"); null for anything else. */
     static Double parseHours(String raw) {
-        String s = raw == null ? "" : raw.trim();
-        if (!s.matches("[0-9]{1,2}")) return null;
-        int h = Integer.parseInt(s);
-        return h >= 1 && h <= 24 ? (double) h : null;
+        String trimmed = raw == null ? "" : raw.trim();
+        if (!trimmed.matches("[0-9]{1,2}")) return null;
+        int wholeHours = Integer.parseInt(trimmed);
+        return wholeHours >= 1 && wholeHours <= 24 ? (double) wholeHours : null;
     }
 
     /** "on"/"off" (also true/false, yes/no), any case; null for anything else. */
     static Boolean onOff(String raw) {
-        String s = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
-        return switch (s) {
+        String trimmed = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
+        return switch (trimmed) {
             case "on", "true", "yes" -> Boolean.TRUE;
             case "off", "false", "no" -> Boolean.FALSE;
             default -> null;
