@@ -24,6 +24,9 @@ import dev.hytalemodding.sproutwatch.pen.PenRegistry;
 import dev.hytalemodding.sproutwatch.pen.PenTicker;
 import dev.hytalemodding.sproutwatch.pen.SproutDeathSystem;
 import dev.hytalemodding.sproutwatch.pen.SproutSpawner;
+import dev.hytalemodding.sproutwatch.prefab.PenSnapshotStore;
+import dev.hytalemodding.sproutwatch.prefab.PenTerrain;
+import dev.hytalemodding.sproutwatch.prefab.PenTerrainRestorer;
 import dev.hytalemodding.sproutwatch.twitch.TwitchMembershipClient;
 import dev.hytalemodding.sproutwatch.ui.ActionsHost;
 import dev.hytalemodding.sproutwatch.ui.OpenPages;
@@ -67,6 +70,8 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
      */
     private final ListenerController listener;
     private final AtomicBoolean bootSweepDone = new AtomicBoolean();
+    /** The ground the pen paste replaced, in pen-restore.json next to the config (one pen at a time). */
+    private final PenTerrain penTerrain;
 
     public SproutwatchPlugin(@Nonnull JavaPluginInit init) {
         super(init);
@@ -88,6 +93,8 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
         // Live status for open settings pages: after every tick, on the pen world thread.
         ticker.setAfterTick(openPages::refreshAll);
         this.listener = new ListenerController(config::get, this::newSources, roster, displayNames, new ListenerHooks(), bridgeLogger);
+        // getDataDirectory() is the folder withConfig above writes Sproutwatch_config.json to.
+        this.penTerrain = new PenTerrainRestorer(new PenSnapshotStore(getDataDirectory().resolve("pen-restore.json")), bridgeLogger);
     }
 
     @Override
@@ -253,6 +260,13 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
         try { world.execute(task); return true; }
         catch (RuntimeException exception) { bridgeLogger.log(Level.WARNING, "Sproutwatch: world rejected task (unloading?)", exception); return false; }
     }
+
+    @Override
+    public int sweepPen(World world, PenBounds bounds) {
+        return PenClearer.clear(world, registry, roleSet(), bounds, bridgeLogger);
+    }
+
+    @Override public PenTerrain penTerrain() { return penTerrain; }
 
     // ---- internals ---------------------------------------------------------------------------
 

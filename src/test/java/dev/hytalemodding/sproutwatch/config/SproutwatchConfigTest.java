@@ -229,6 +229,27 @@ class SproutwatchConfigTest {
         assertEquals("south", c.getPenFacing());
     }
 
+    @Test void clearPenForgetsThePenChairAndFacing() {
+        SproutwatchConfig c = new SproutwatchConfig();
+        c.setPen("uuid-1", 10, 64, 20, 12, 4, 16);
+        c.setChair(true, 16, 65, 19);
+        c.setPenFacing("south");
+        c.clearPen();
+        assertFalse(c.isPenSet());
+        assertEquals("", c.getPenWorld());
+        assertEquals(0, c.getPenX());
+        assertEquals(0, c.getPenY());
+        assertEquals(0, c.getPenZ());
+        assertEquals(0, c.getPenSizeX());
+        assertEquals(0, c.getPenSizeY());
+        assertEquals(0, c.getPenSizeZ());
+        assertFalse(c.isChairSet());
+        assertEquals(0, c.getChairX());
+        assertEquals(0, c.getChairY());
+        assertEquals(0, c.getChairZ());
+        assertEquals("north", c.getPenFacing());
+    }
+
     @Test void viewerFilterModeDecidesWhichListApplies() {
         SproutwatchConfig c = new SproutwatchConfig();
         c.setAllowUsersForTest(new String[] {"alice"});
@@ -253,7 +274,7 @@ class SproutwatchConfigTest {
         c.setCamera(Double.NaN, Double.NaN, Double.NaN);
         assertEquals(15.0, c.getCameraHeight());
         assertEquals(10.0, c.getCameraBack());
-        assertEquals(45.0, c.getCameraFov());
+        assertEquals(35.0, c.getCameraFov());
     }
 
     @Test void getPenFacingNormalizesUnknownValues() {

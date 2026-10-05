@@ -77,14 +77,17 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
     /**
      * Sets what refreshStatus() pushes: the labels (the Details table, two captions, and the Viewers
      * tab's YouTube lookup line, so a finished lookup shows without a click), then the Listener cell's
-     * style, whether Wrangle is enabled and which run button shows, so all of those follow state
-     * changes live. The lists fingerprint is not pushed.
+     * style, whether Wrangle is enabled, which run button shows and whether Place pen here or Remove
+     * pen shows, so all of those follow state changes live. The lists fingerprint is not pushed.
      */
     private static void applyState(UICommandBuilder commands, PageState state) {
         List<String> labels = state.labels();
         for (int i = 0; i < PageState.SELECTORS.size(); i++) commands.set(PageState.SELECTORS.get(i), labels.get(i));
         commands.set("#ListenerValue.Style", Value.<String>ref(DOCUMENT, state.listenerTone()));
         commands.set("#BeginButton.Disabled", !state.penSet());
+        // Place pen here and Remove pen share a spot: one shows, by whether a pen is placed.
+        commands.set("#PlaceButton.Visible", !state.penSet());
+        commands.set("#RemovePenButton.Visible", state.penSet());
         for (RunButton button : RunButton.values()) {
             commands.set(runButtonSelector(button) + ".Visible", button == state.runButton());
         }
@@ -139,6 +142,7 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
                 case SELECT_PREFAB -> actions.pen().selectPrefab(event.prefab);
                 case SELECT_CREATURES -> actions.pen().setCreatures(event.creatures);
                 case PLACE -> actions.pen().place(playerRef);
+                case REMOVE_PEN -> actions.pen().removePen(playerRef);
                 case CLEAR -> actions.pen().clear();
             };
         } catch (RuntimeException exception) {

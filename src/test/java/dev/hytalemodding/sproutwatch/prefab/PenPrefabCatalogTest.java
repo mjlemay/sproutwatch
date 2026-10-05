@@ -11,7 +11,7 @@ class PenPrefabCatalogTest {
     @Test void namesListsDefaultFirst() {
         List<String> names = PenPrefabCatalog.names();
         assertEquals("default", names.get(0));
-        assertEquals(1, names.size(), "only the bundled pen exists today; extend RESOURCES when adding one");
+        assertEquals(List.of("default", "kweebec_nursery", "cobble_pasture"), names);
         assertThrows(UnsupportedOperationException.class, () -> names.add("x"));
     }
 
@@ -29,6 +29,17 @@ class PenPrefabCatalogTest {
         assertEquals(PenPrefab.RESOURCE, PenPrefabCatalog.resourceFor("castle"));
         assertEquals(PenPrefab.RESOURCE, PenPrefabCatalog.resourceFor(null));
         assertEquals(PenPrefab.RESOURCE, PenPrefabCatalog.resourceFor(" DEFAULT "));
+    }
+
+    @Test void labelsAreReadableAndUnknownFallsBackToDefault() {
+        assertEquals("Default Lawn", PenPrefabCatalog.labelFor("default"));
+        assertEquals("Kweebec Nursery", PenPrefabCatalog.labelFor("Kweebec_Nursery"));
+        assertEquals("Cobble Pasture", PenPrefabCatalog.labelFor("cobble_pasture"));
+        assertEquals("Default Lawn", PenPrefabCatalog.labelFor("castle"));
+    }
+
+    @Test void eachPrefabHasItsOwnFile() {
+        assertEquals(3, PenPrefabCatalog.names().stream().map(PenPrefabCatalog::resourceFor).distinct().count());
     }
 
     @Test void everyCatalogEntryIsBundledAndParses() throws Exception {

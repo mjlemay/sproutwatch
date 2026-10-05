@@ -13,12 +13,12 @@ import java.util.List;
 /**
  * Reads the bundled pen prefab. The file is plain Hytale prefab JSON (version 8), the same
  * format the engine's SelectionPrefabSerializer.deserialize(BsonDocument) consumes, so the
- * placer hands the parsed document straight to the engine while PenLayout analyses this
+ * placer hands the parsed document straight to the engine while PenLayout analyzes this
  * lightweight block list. org.bson ships inside HytaleServer.jar.
  */
 public final class PenPrefab {
 
-    public static final String RESOURCE = "/Server/Prefabs/Sproutwatch/sproutwatch_pen.prefab.json";
+    public static final String RESOURCE = "/Server/Prefabs/Sproutwatch/default_lawn.prefab.json";
 
     private PenPrefab() {}
 

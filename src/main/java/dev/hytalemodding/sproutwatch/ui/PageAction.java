@@ -38,6 +38,7 @@ enum PageAction {
     SELECT_CREATURES("selectCreatures"),
     SELECT_PREFAB("selectPrefab"),
     PLACE("place"),
+    REMOVE_PEN("removePen"),
     CLEAR("clear");
 
     private static final Map<String, PageAction> BY_WIRE_NAME = byWireName();

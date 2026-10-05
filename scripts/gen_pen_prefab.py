@@ -6,20 +6,21 @@ Layout (anchor = min corner of the floor at 0,0,0):
   fence ring y=1..FENCE_HEIGHT around a WIDTH x DEPTH interior (default 16 x 12, 4:3 landscape;
              Hytale fences are one block tall, so FENCE_HEIGHT = 1)
   interior   y=1..CLEAR_HEIGHT set to Empty so paste flattens/clears terrain
-  chair      one tile outside the -z long side, centred, facing +z (into the pen)
+  chair      one tile outside the -z long side, centered, facing +z (into the pen)
 
 Rotation convention (verified against vanilla Village prefabs, chairs face tables):
   0 -> +z   1 -> +x   2 -> -z   3 -> -x
 
 Fence orientation (from vanilla Server/Prefabs/Npc/Kweebec/Autumn/Bunny_Area/
 Kweebec_Autumn_Bunny_Area_001.prefab.json; a ring with one shared rotation leaves gaps):
-  straight run along x (neighbours west/east)   -> Wood_Hardwood_Fence, rotation 0
-  straight run along z (neighbours north/south) -> Wood_Hardwood_Fence, rotation 1
+  straight run along x (neighbors west/east)   -> Wood_Hardwood_Fence, rotation 0
+  straight run along z (neighbors north/south) -> Wood_Hardwood_Fence, rotation 1
   corners -> *Wood_Hardwood_Fence_State_Definitions_Corner (leading asterisk as vanilla),
              rotation by the sides joined: east+south 1, west+south 0, east+north 2, west+north 3
   (north = -z, south = +z, east = +x, west = -x)
 
-Edit the constants, run the script, redeploy.
+Edit the constants, run the script, redeploy. Writes only Default Lawn (default_lawn.prefab.json);
+the Kweebec Nursery and Cobble Pasture prefabs are edited by hand and never overwritten here.
 """
 import json, pathlib
 
@@ -31,7 +32,7 @@ FENCE = "Wood_Hardwood_Fence"
 CHAIR = "Furniture_Village_Chair"
 FENCE_CORNER = "*Wood_Hardwood_Fence_State_Definitions_Corner"   # leading asterisk exactly as vanilla writes it
 CHAIR_X = WIDTH // 2           # x=8 for a 16-wide pen (interior spans x=1..16)
-OUT = pathlib.Path(__file__).resolve().parents[1] / "src/main/resources/Server/Prefabs/Sproutwatch/sproutwatch_pen.prefab.json"
+OUT = pathlib.Path(__file__).resolve().parents[1] / "src/main/resources/Server/Prefabs/Sproutwatch/default_lawn.prefab.json"
 
 blocks = []
 def fence_piece(x, z):

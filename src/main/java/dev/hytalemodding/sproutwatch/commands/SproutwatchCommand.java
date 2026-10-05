@@ -43,6 +43,7 @@ public class SproutwatchCommand extends AbstractCommand {
         addSubCommand(new StopCommand(plugin, permission));
         addSubCommand(new StatusCommand(plugin, permission));
         addSubCommand(new PlaceCommand(plugin, permission));
+        addSubCommand(new RemovePenCommand(plugin, permission));
         addSubCommand(new ClearCommand(plugin, permission));
         addSubCommand(new CameraCommand(plugin, permission));
         addSubCommand(new IntervalCommand(plugin, permission));
@@ -218,6 +219,18 @@ public class SproutwatchCommand extends AbstractCommand {
             PlayerRef sender = player(context);
             if (sender == null) return;
             reply(context, actions().pen().place(sender));
+        }
+    }
+
+    private static final class RemovePenCommand extends Sub {
+        RemovePenCommand(SproutwatchPlugin plugin, String permission) {
+            super(plugin, "removepen", "Remove the pen and its sprouts and restore the ground", permission);
+        }
+
+        /** From the console the outcome goes to the server log (there is no player to message). */
+        @Override void run(CommandContext context) {
+            PlayerRef sender = context.isPlayer() ? context.senderAs(PlayerRef.class) : null;
+            reply(context, actions().pen().removePen(sender));
         }
     }
 

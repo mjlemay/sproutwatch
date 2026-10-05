@@ -114,14 +114,24 @@ public record StatusSnapshot(
 
     /** "stopped" when empty or all stopped; one source's state alone; else "Twitch: a · YouTube: b". */
     public static String joinStates(Map<String, String> states) {
+        return joinStates(states, " · ");
+    }
+
+    /** As {@link #joinStates(Map)}, with {@code separator} between the sources (the settings page uses a line break). */
+    public static String joinStates(Map<String, String> states, String separator) {
         if (states.values().stream().allMatch("stopped"::equals)) return "stopped";
         if (states.size() == 1) return states.values().iterator().next();
-        StringBuilder sb = new StringBuilder();
-        for (Map.Entry<String, String> e : states.entrySet()) {
-            if (!sb.isEmpty()) sb.append(" · ");
-            sb.append(e.getKey()).append(": ").append(e.getValue());
+        StringBuilder joined = new StringBuilder();
+        for (Map.Entry<String, String> entry : states.entrySet()) {
+            if (!joined.isEmpty()) joined.append(separator);
+            joined.append(entry.getKey()).append(": ").append(entry.getValue());
         }
-        return sb.toString();
+        return joined.toString();
+    }
+
+    /** The listener state for the settings page: with both sources, each on its own line. */
+    private String listenerStateOnPage() {
+        return sourceStates.isEmpty() ? listenerState : joinStates(sourceStates, "\n");
     }
 
     public String channelLine() {
@@ -194,7 +204,7 @@ public record StatusSnapshot(
     /** Caption beside the Listener tab's Start / Stop button. */
     public String runLabel() {
         return listenerRunning
-            ? "Listener running (" + listenerState + ")"
+            ? "Listener running (" + listenerStateOnPage() + ")"
             : "Listener stopped";
     }
 
@@ -219,7 +229,7 @@ public record StatusSnapshot(
 
     /** Static row names of the Details table, in {@link #detailValues()} order (the .ui prints these). */
     public static final List<String> DETAIL_NAMES = List.of(
-        "Channel", "Listener", "Twitch feed", "YouTube quota", "Persist", "Seen in chat", "Queue", "Filter", "Pen", "Retired");
+        "Channel", "Listeners", "Twitch feed", "YouTube quota", "Persist", "Seen in chat", "Queue", "Filter", "Pen", "Retired");
 
     /** The value-cell ids in SettingsPage.ui, one per DETAIL_NAMES entry, same order. */
     public static final List<String> DETAIL_IDS = List.of(
@@ -229,7 +239,7 @@ public record StatusSnapshot(
     /** The Details table's value cells: each status line without its "Name: " prefix, in DETAIL_NAMES order. */
     public List<String> detailValues() {
         return List.of(
-            value(channelLine()), value(listenerLine()), value(feedLine()), youTubeQuotaValue(), value(persistLine()), value(rosterLine()),
+            value(channelLine()), listenerStateOnPage(), value(feedLine()), youTubeQuotaValue(), value(persistLine()), value(rosterLine()),
             value(queueLine()), filterValue(), value(penCountLine()), value(retiredLine()));
     }
 

@@ -7,8 +7,10 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PageStateTest {
 
@@ -84,5 +86,21 @@ class PageStateTest {
         PageState state = new PageState(source, "ValueGood", true, RunButton.START, "lists");
         source.set(0, "changed");
         assertEquals(labels("x"), state.labels());
+    }
+
+    /** penSet drives which of Place pen here / Remove pen shows, so a finished removal flips it on the next push. */
+    @Test void removingThePenFlipsPenSetSoThePushShowsPlaceAgain() {
+        FakeHost host = new FakeHost();
+        host.config.setPen("world-1", 10, 64, 20, 12, 4, 16);
+        SproutwatchActions actions = new SproutwatchActions(host);
+        PageState placed = PageState.of(actions.snapshot(), "", "");
+        assertTrue(placed.penSet(), "a placed pen shows Remove pen");
+        host.penQueue = ActionsHost.WorldQueue.QUEUED;
+        actions.pen().removePen(message -> {});
+        host.penTasks.get(0).accept(null);
+        PageState removed = PageState.of(actions.snapshot(), "", "");
+        assertFalse(removed.penSet(), "after the removal the page shows Place pen here");
+        assertNotEquals(placed, removed, "the change is pushed");
+        assertEquals(1, host.changedCalls);
     }
 }

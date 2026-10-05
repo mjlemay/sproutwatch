@@ -4,7 +4,9 @@ import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import dev.hytalemodding.sproutwatch.chat.ChatRoster;
 import dev.hytalemodding.sproutwatch.config.SproutwatchConfig;
+import dev.hytalemodding.sproutwatch.pen.PenBounds;
 import dev.hytalemodding.sproutwatch.pen.PenRegistry;
+import dev.hytalemodding.sproutwatch.prefab.PenTerrain;
 
 import java.util.Map;
 import java.util.Set;
@@ -84,6 +86,15 @@ public interface ActionsHost {
 
     /** world.execute that cannot escape. @return false if the world rejected the task. */
     boolean runOnWorld(World world, Runnable task);
+
+    /**
+     * Removes every tracked sprout and any NPC of a sweep role inside bounds (PenClearer.clear).
+     * Must run on that world's thread. @return how many entities were removed
+     */
+    int sweepPen(World world, PenBounds bounds);
+
+    /** The ground under the pen: saved on place, put back on Remove pen and when the pen moves. */
+    PenTerrain penTerrain();
 
     /**
      * Something the page shows changed outside a tick (place/clear finished); the plugin refreshes open

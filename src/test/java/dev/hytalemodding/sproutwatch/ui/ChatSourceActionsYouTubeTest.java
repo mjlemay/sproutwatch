@@ -398,7 +398,9 @@ class ChatSourceActionsYouTubeTest {
         host.states = states("Twitch", "connected to #streamer", "YouTube", "connected to YouTube (@Streamer)");
         StatusSnapshot s = new SproutwatchActions(host).snapshot();
         assertEquals("Listener: Twitch: connected to #streamer · YouTube: connected to YouTube (@Streamer)", s.listenerLine());
-        assertEquals("Twitch: connected to #streamer · YouTube: connected to YouTube (@Streamer)", s.detailValues().get(1));
+        assertEquals("Twitch: connected to #streamer\nYouTube: connected to YouTube (@Streamer)", s.detailValues().get(1),
+            "the page puts each source on its own line");
+        assertEquals("Listener running (Twitch: connected to #streamer\nYouTube: connected to YouTube (@Streamer))", s.runLabel());
         assertEquals("ValueGood", s.listenerTone());
         assertEquals(RunButton.STOP, s.runButton());
 

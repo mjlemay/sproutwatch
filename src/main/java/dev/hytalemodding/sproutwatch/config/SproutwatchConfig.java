@@ -68,7 +68,7 @@ public class SproutwatchConfig {
     private volatile String penFacing = "north";
     private volatile double cameraHeight = 15.0;
     private volatile double cameraBack = 10.0;
-    private volatile double cameraFov = 45.0;
+    private volatile double cameraFov = 35.0;
     private volatile boolean cameraFlip = false;
     private volatile boolean persistSprouts = true;
     private volatile String penPrefab = "default";
@@ -464,13 +464,23 @@ public class SproutwatchConfig {
         chairX = x; chairY = y; chairZ = z;
     }
 
+    /**
+     * Forgets the pen (Remove pen): the pen world, interior and sizes, the chair and the facing go
+     * back to their unset defaults, so {@link #isPenSet()} is false.
+     */
+    public void clearPen() {
+        setPen("", 0, 0, 0, 0, 0, 0);
+        setChair(false, 0, 0, 0);
+        penFacing = "north";
+    }
+
     public String getPenFacing() { return PenFacing.parse(penFacing).key(); }
     public void setPenFacing(String v) { penFacing = v; }
 
     public double getCameraHeight() { return Double.isFinite(cameraHeight) ? cameraHeight : 15.0; }
     public double getCameraBack() { return Double.isFinite(cameraBack) ? cameraBack : 10.0; }
     public double getCameraFov() {
-        return Double.isFinite(cameraFov) ? Math.max(10.0, Math.min(170.0, cameraFov)) : 45.0;
+        return Double.isFinite(cameraFov) ? Math.max(10.0, Math.min(170.0, cameraFov)) : 35.0;
     }
     public void setCamera(double height, double back, double fov) {
         cameraHeight = height; cameraBack = back; cameraFov = fov;

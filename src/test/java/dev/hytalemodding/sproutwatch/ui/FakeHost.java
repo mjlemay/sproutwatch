@@ -6,7 +6,14 @@ import dev.hytalemodding.sproutwatch.chat.ChatRoster;
 import dev.hytalemodding.sproutwatch.chat.SproutQueue;
 import dev.hytalemodding.sproutwatch.config.SproutwatchConfig;
 import dev.hytalemodding.sproutwatch.config.SproutwatchConfigAccess;
+import dev.hytalemodding.sproutwatch.pen.PenBounds;
 import dev.hytalemodding.sproutwatch.pen.PenRegistry;
+import dev.hytalemodding.sproutwatch.prefab.PenPlacer;
+import dev.hytalemodding.sproutwatch.prefab.PenSite;
+import dev.hytalemodding.sproutwatch.prefab.PenSnapshot;
+import dev.hytalemodding.sproutwatch.prefab.PenTerrain;
+import org.bson.BsonDocument;
+import org.joml.Vector3i;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -89,6 +96,58 @@ final class FakeHost implements ActionsHost {
         return playerQueue;
     }
     @Override public boolean runOnWorld(World world, Runnable task) { return false; }
+    /** Bounds each sweep was asked for; a sweep forgets the registry like PenClearer.clear. */
+    final List<PenBounds> sweeps = new ArrayList<>();
+    @Override public int sweepPen(World world, PenBounds bounds) {
+        sweeps.add(bounds);
+        return registry.clear().size();
+    }
+    final FakeTerrain terrain = new FakeTerrain();
+    @Override public PenTerrain penTerrain() { return terrain; }
+
+    /** Records every call; never touches the engine. */
+    static final class FakeTerrain implements PenTerrain {
+        PenSnapshot saved;
+        /** Thrown by load(), like a corrupt file. */
+        java.io.IOException unreadable;
+        Restoration outcome = Restoration.RESTORED;
+        java.io.IOException failure;
+        /** Thrown by place(), like a missing prefab. */
+        java.io.IOException placeFailure;
+        /** Recorded in config by place() (PenPlacer records the new pen the same way). */
+        String placedWorld = "world-2";
+        final List<String> calls = new ArrayList<>();
+        final List<PenSite> restoredSites = new ArrayList<>();
+        final List<PenSnapshot> restoredGround = new ArrayList<>();
+        final List<Vector3i> placedAt = new ArrayList<>();
+        int forgetCalls, setAsideCalls;
+        @Override public PenPlacer.Placement place(World world, Vector3i feet, SproutwatchConfig config) throws java.io.IOException {
+            calls.add("place");
+            if (placeFailure != null) throw placeFailure;
+            placedAt.add(feet);
+            config.setPen(placedWorld, feet.x - 6, feet.y - 1, feet.z - 8, 12, 4, 16);
+            PenSnapshot ground = new PenSnapshot(placedWorld, feet.x - 6, feet.y - 1, feet.z - 8, 0, 0, 0, new BsonDocument());
+            return new PenPlacer.Placement("Pen placed.", ground);
+        }
+        @Override public PenSnapshot load() throws java.io.IOException {
+            if (unreadable != null) throw unreadable;
+            return saved;
+        }
+        @Override public boolean remember(PenSnapshot snapshot) { calls.add("remember"); saved = snapshot; return true; }
+        @Override public void forget() { calls.add("forget"); forgetCalls++; saved = null; }
+        @Override public void forgetIfStill(PenSnapshot snapshot) {
+            calls.add("forgetIfStill");
+            if (java.util.Objects.equals(saved, snapshot)) saved = null;
+        }
+        @Override public void setAside() { calls.add("setAside"); setAsideCalls++; unreadable = null; saved = null; }
+        @Override public Restoration restore(World world, PenSite site, PenSnapshot snapshot) throws java.io.IOException {
+            calls.add("restore");
+            if (failure != null) throw failure;
+            restoredSites.add(site);
+            restoredGround.add(snapshot);
+            return outcome;
+        }
+    }
     int changedCalls;
     @Override public void statusChanged() { changedCalls++; }
     /** Handles looked up, and the futures a test completes to script each outcome. */

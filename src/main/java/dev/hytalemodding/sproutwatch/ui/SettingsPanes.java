@@ -33,7 +33,7 @@ final class SettingsPanes {
     }
 
     /**
-     * Connect tab: chat sources, channel, YouTube setup and cap, plus the Begin binding (its button
+     * Connect tab: chat sources, Twitch channel and YouTube setup, plus the Begin binding (its button
      * sits on the Pen tab: start the listener and close the page). The API key field is always sent empty: the key never travels back to the client,
      * only its masked form as the field's placeholder.
      */
@@ -64,9 +64,6 @@ final class SettingsPanes {
             new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SAVE_YOUTUBE_VIDEO.wireName()).append(SettingsEvent.KEY_YOUTUBE_VIDEO, "#YouTubeVideoField.Value"));
         saveOrRemove(commands, events, "YouTubeVideo", !config.getYouTubeVideo().isEmpty(), PageAction.REMOVE_YOUTUBE_VIDEO);
 
-        commands.set("#MaxField.Value", config.getMaxSprouts());
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#SaveMaxButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SAVE_MAX.wireName()).append(SettingsEvent.KEY_MAX, "#MaxField.Value"));
         events.addEventBinding(CustomUIEventBindingType.Activating, "#BeginButton",
             new EventData().append(SettingsEvent.KEY_ACTION, PageAction.BEGIN.wireName()));
     }
@@ -149,8 +146,11 @@ final class SettingsPanes {
             new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SAVE_INTERVAL.wireName()).append(SettingsEvent.KEY_INTERVAL, "#IntervalField.Value"));
     }
 
-    /** Pen tab: creatures dropdown, prefab dropdown, Place, Clear. */
+    /** Pen tab: creatures dropdown, prefab dropdown, Place, Clear, max sprouts. */
     static void pen(UICommandBuilder commands, UIEventBuilder events, StatusSnapshot snapshot, SproutwatchConfig config) {
+        commands.set("#MaxField.Value", config.getMaxSprouts());
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#SaveMaxButton",
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SAVE_MAX.wireName()).append(SettingsEvent.KEY_MAX, "#MaxField.Value"));
         List<DropdownEntryInfo> creatures = new ArrayList<>();
         for (CreaturePreset p : CreaturePreset.values()) {
             creatures.add(new DropdownEntryInfo(LocalizableString.fromString(p.displayName()), p.id()));
@@ -162,7 +162,7 @@ final class SettingsPanes {
 
         List<DropdownEntryInfo> entries = new ArrayList<>();
         for (String name : PenPrefabCatalog.names()) {
-            entries.add(new DropdownEntryInfo(LocalizableString.fromString(name), name));
+            entries.add(new DropdownEntryInfo(LocalizableString.fromString(PenPrefabCatalog.labelFor(name)), name));
         }
         commands.set("#PrefabDropdown.Entries", entries);
         // Effective name: a stale config value that is no longer in the catalog would otherwise leave
@@ -173,6 +173,8 @@ final class SettingsPanes {
             new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SELECT_PREFAB.wireName()).append(SettingsEvent.KEY_PREFAB, "#PrefabDropdown.Value"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#PlaceButton",
             new EventData().append(SettingsEvent.KEY_ACTION, PageAction.PLACE.wireName()));
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#RemovePenButton",
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.REMOVE_PEN.wireName()));
         events.addEventBinding(CustomUIEventBindingType.Activating, "#ClearButton",
             new EventData().append(SettingsEvent.KEY_ACTION, PageAction.CLEAR.wireName()));
     }
