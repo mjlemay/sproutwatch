@@ -180,9 +180,13 @@ public final class PenTicker {
             // longest (smallest untouched lastSeen) is replaced by the candidate, one swap per tick.
             boolean persist = currentConfig.isPersistSprouts();
             PenPlan plan = PenReconciler.reconcile(
-                eligible, registry.lastSeenMap(), roster.queue().snapshot(),
-                currentConfig.getMaxSprouts(), currentConfig.getGraceSeconds() * 1000L, now, persist, roster.guests(),
-                roster.lastActiveMap(), currentConfig.getQuietSeconds() * 1000L);
+                ReconcileRequest.builder(eligible, registry.lastSeenMap(), currentConfig.getMaxSprouts(), now)
+                    .graceMillis(currentConfig.getGraceSeconds() * 1000L)
+                    .queue(roster.queue().snapshot())
+                    .persist(persist)
+                    .guests(roster.guests())
+                    .quiet(roster.lastActiveMap(), currentConfig.getQuietSeconds() * 1000L)
+                    .build());
 
             for (String viewerKey : plan.despawn()) {
                 PenRegistry.Entry entry = registry.remove(viewerKey);

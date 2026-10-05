@@ -8,72 +8,53 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Pure diff between chat and pen.
+ * Pure diff between chat and pen. All inputs arrive in one {@link ReconcileRequest}.
  *   roster: viewer key -> firstSeen (ordering only; presence = key present)
  *   pen:    viewer key -> lastSeen  (PenTicker sets this to now for every eligible viewer key still in the roster)
  * Default (persist off):
  *   despawn = pen viewer keys whose lastSeen is older than graceMillis.
- *   spawn   = if the pen has room after despawns: the first viewer key in priority (the "!sprout" queue,
+ *   spawn   = if the pen has room after despawns: the first viewer key in the queue (the "!sprout" queue,
  *             FIFO) that is in the roster and not in the pen; otherwise the roster viewer key not in the
  *             pen with the smallest firstSeen (ties by viewer key), so nobody waits forever.
  * Persist on: grace is ignored and sprouts outlive their viewer. The spawn candidate is chosen the
  * same way; below the cap it simply spawns. At the cap, the pen viewer key NOT in the roster with the
  * smallest lastSeen (the viewer gone the longest; ties by viewer key) is despawned to make room, one swap
  * per tick. If every sprout's viewer is still present, nothing happens and the candidate waits.
+ * Guests (/sproutwatch test viewer keys): present, but at the cap (persist) a guest in the pen is
+ * replaced before any longest-gone absent viewer, and never to make room for another guest.
+ * Quiet timeout: when the pen is full and the candidate came from the queue, and nothing else can be
+ * given up, the present pen viewer whose last chat message (lastActive) is oldest is replaced if they
+ * have been quiet for at least quietMillis (0 disables). Viewers next in plain first-seen order never
+ * evict anyone.
  */
 public final class PenReconciler {
 
     private PenReconciler() {}
 
-    /** No priority: first-seen order only. */
-    public static PenPlan reconcile(Map<String, Long> roster, Map<String, Long> pen,
-                                    int cap, long graceMillis, long now) {
-        return reconcile(roster, pen, List.of(), cap, graceMillis, now);
-    }
+    public static PenPlan reconcile(ReconcileRequest request) {
+        Map<String, Long> roster = request.roster();
+        Map<String, Long> pen = request.pen();
+        List<String> queue = request.queue();
+        Set<String> guests = request.guests();
+        Map<String, Long> lastActive = request.lastActive();
+        long now = request.now();
+        long quietMillis = request.quietMillis();
+        boolean persist = request.persist();
 
-    /** Grace-based despawn (persist off). */
-    public static PenPlan reconcile(Map<String, Long> roster, Map<String, Long> pen, List<String> priority,
-                                    int cap, long graceMillis, long now) {
-        return reconcile(roster, pen, priority, cap, graceMillis, now, false);
-    }
-
-    public static PenPlan reconcile(Map<String, Long> roster, Map<String, Long> pen, List<String> priority,
-                                    int cap, long graceMillis, long now, boolean persist) {
-        return reconcile(roster, pen, priority, cap, graceMillis, now, persist, Set.of());
-    }
-
-    /**
-     * {@code guests} are /sproutwatch test viewer keys: present, but at the cap (persist) a guest in the pen
-     * is replaced before any longest-gone absent viewer, and never to make room for another guest.
-     */
-    public static PenPlan reconcile(Map<String, Long> roster, Map<String, Long> pen, List<String> priority,
-                                    int cap, long graceMillis, long now, boolean persist, Set<String> guests) {
-        return reconcile(roster, pen, priority, cap, graceMillis, now, persist, guests, Map.of(), 0L);
-    }
-
-    /**
-     * Quiet timeout: when the pen is full and the candidate came from the queue ({@code priority}),
-     * and nothing else can be given up, the present pen viewer whose last chat message
-     * ({@code lastActive}) is oldest is replaced if they have been quiet for at least
-     * {@code quietMillis} (0 disables). Viewers next in plain first-seen order never evict anyone.
-     */
-    public static PenPlan reconcile(Map<String, Long> roster, Map<String, Long> pen, List<String> priority,
-                                    int cap, long graceMillis, long now, boolean persist, Set<String> guests,
-                                    Map<String, Long> lastActive, long quietMillis) {
         List<String> despawn = new ArrayList<>();
         if (!persist) {
-            long cutoff = now - graceMillis;
+            long cutoff = now - request.graceMillis();
             for (Map.Entry<String, Long> e : pen.entrySet()) {
                 if (e.getValue() < cutoff) despawn.add(e.getKey());
             }
             despawn.sort(Comparator.naturalOrder());
         }
 
-        boolean room = pen.size() - despawn.size() < cap;
-        Optional<String> spawn = candidate(roster, pen, priority);
+        boolean room = pen.size() - despawn.size() < request.cap();
+        Optional<String> spawn = candidate(roster, pen, queue);
         if (room) return new PenPlan(spawn, List.copyOf(despawn));
 
-        boolean queued = spawn.isPresent() && priority.contains(spawn.get());
+        boolean queued = spawn.isPresent() && queue.contains(spawn.get());
         if (!persist) {
             // Persist off: present viewers are never evicted, except for a queued viewer by quiet timeout.
             Optional<String> quiet = queued ? quietest(pen, roster, guests, lastActive, now, quietMillis) : Optional.empty();
@@ -141,9 +122,9 @@ public final class PenReconciler {
         return List.copyOf(victims.subList(0, surplus));
     }
 
-    /** First eligible priority viewer key, else the earliest-seen roster viewer key not yet in the pen. */
-    private static Optional<String> candidate(Map<String, Long> roster, Map<String, Long> pen, List<String> priority) {
-        for (String viewerKey : priority) {
+    /** First eligible queued viewer key, else the earliest-seen roster viewer key not yet in the pen. */
+    private static Optional<String> candidate(Map<String, Long> roster, Map<String, Long> pen, List<String> queue) {
+        for (String viewerKey : queue) {
             if (roster.containsKey(viewerKey) && !pen.containsKey(viewerKey)) return Optional.of(viewerKey);
         }
         return roster.entrySet().stream()

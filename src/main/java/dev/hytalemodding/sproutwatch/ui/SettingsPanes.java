@@ -25,11 +25,11 @@ final class SettingsPanes {
     private SettingsPanes() {}
 
     /** A saved field shows a red Remove (clears it) in place of Save; an empty one shows Save. */
-    private static void saveOrRemove(UICommandBuilder commands, UIEventBuilder events, String name, boolean saved, String removeAction) {
+    private static void saveOrRemove(UICommandBuilder commands, UIEventBuilder events, String name, boolean saved, PageAction removeAction) {
         commands.set("#Save" + name + "Button.Visible", !saved);
         commands.set("#Remove" + name + "Button.Visible", saved);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#Remove" + name + "Button",
-            new EventData().append(SettingsEvent.KEY_ACTION, removeAction));
+            new EventData().append(SettingsEvent.KEY_ACTION, removeAction.wireName()));
     }
 
     /**
@@ -40,35 +40,35 @@ final class SettingsPanes {
     static void connect(UICommandBuilder commands, UIEventBuilder events, SproutwatchConfig config, StatusSnapshot snapshot) {
         commands.set("#ChannelField.Value", config.getTwitchChannel());
         events.addEventBinding(CustomUIEventBindingType.Activating, "#SaveChannelButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "saveChannel").append(SettingsEvent.KEY_CHANNEL, "#ChannelField.Value"));
-        saveOrRemove(commands, events, "Channel", !config.getTwitchChannel().isEmpty(), "removeChannel");
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SAVE_CHANNEL.wireName()).append(SettingsEvent.KEY_CHANNEL, "#ChannelField.Value"));
+        saveOrRemove(commands, events, "Channel", !config.getTwitchChannel().isEmpty(), PageAction.REMOVE_CHANNEL);
 
         commands.set("#TwitchCheck.Value", config.isTwitchEnabled());
         events.addEventBinding(CustomUIEventBindingType.ValueChanged, "#TwitchCheck",
-            new EventData().append(SettingsEvent.KEY_ACTION, "setTwitchEnabled").append(SettingsEvent.KEY_TWITCH_ON, "#TwitchCheck.Value"), false);
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SET_TWITCH_ENABLED.wireName()).append(SettingsEvent.KEY_TWITCH_ON, "#TwitchCheck.Value"), false);
         commands.set("#YouTubeCheck.Value", config.isYouTubeEnabled());
         events.addEventBinding(CustomUIEventBindingType.ValueChanged, "#YouTubeCheck",
-            new EventData().append(SettingsEvent.KEY_ACTION, "setYouTubeEnabled").append(SettingsEvent.KEY_YOUTUBE_ON, "#YouTubeCheck.Value"), false);
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SET_YOUTUBE_ENABLED.wireName()).append(SettingsEvent.KEY_YOUTUBE_ON, "#YouTubeCheck.Value"), false);
 
         commands.set("#YouTubeHandleField.Value", config.getYouTubeHandle());
         events.addEventBinding(CustomUIEventBindingType.Activating, "#SaveYouTubeHandleButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "saveYouTubeHandle").append(SettingsEvent.KEY_YOUTUBE_HANDLE, "#YouTubeHandleField.Value"));
-        saveOrRemove(commands, events, "YouTubeHandle", !config.getYouTubeHandle().isEmpty(), "removeYouTubeHandle");
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SAVE_YOUTUBE_HANDLE.wireName()).append(SettingsEvent.KEY_YOUTUBE_HANDLE, "#YouTubeHandleField.Value"));
+        saveOrRemove(commands, events, "YouTubeHandle", !config.getYouTubeHandle().isEmpty(), PageAction.REMOVE_YOUTUBE_HANDLE);
         commands.set("#YouTubeKeyField.Value", "");
         commands.set("#YouTubeKeyField.PlaceholderText", keyPlaceholder(snapshot.youTube())); // plain String: an inline-literal PlaceholderText is a String on the client; a Message here disconnects the player
         events.addEventBinding(CustomUIEventBindingType.Activating, "#SaveYouTubeKeyButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "saveYouTubeKey").append(SettingsEvent.KEY_YOUTUBE_KEY, "#YouTubeKeyField.Value"));
-        saveOrRemove(commands, events, "YouTubeKey", !config.getYouTubeApiKey().isEmpty(), "removeYouTubeKey");
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SAVE_YOUTUBE_KEY.wireName()).append(SettingsEvent.KEY_YOUTUBE_KEY, "#YouTubeKeyField.Value"));
+        saveOrRemove(commands, events, "YouTubeKey", !config.getYouTubeApiKey().isEmpty(), PageAction.REMOVE_YOUTUBE_KEY);
         commands.set("#YouTubeVideoField.Value", config.getYouTubeVideo());
         events.addEventBinding(CustomUIEventBindingType.Activating, "#SaveYouTubeVideoButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "saveYouTubeVideo").append(SettingsEvent.KEY_YOUTUBE_VIDEO, "#YouTubeVideoField.Value"));
-        saveOrRemove(commands, events, "YouTubeVideo", !config.getYouTubeVideo().isEmpty(), "removeYouTubeVideo");
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SAVE_YOUTUBE_VIDEO.wireName()).append(SettingsEvent.KEY_YOUTUBE_VIDEO, "#YouTubeVideoField.Value"));
+        saveOrRemove(commands, events, "YouTubeVideo", !config.getYouTubeVideo().isEmpty(), PageAction.REMOVE_YOUTUBE_VIDEO);
 
         commands.set("#MaxField.Value", config.getMaxSprouts());
         events.addEventBinding(CustomUIEventBindingType.Activating, "#SaveMaxButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "saveMax").append(SettingsEvent.KEY_MAX, "#MaxField.Value"));
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SAVE_MAX.wireName()).append(SettingsEvent.KEY_MAX, "#MaxField.Value"));
         events.addEventBinding(CustomUIEventBindingType.Activating, "#BeginButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "begin"));
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.BEGIN.wireName()));
     }
 
     /** Placeholder of the (always empty) API key field: "API key" when none is saved, else only the masked key. */
@@ -88,9 +88,9 @@ final class SettingsPanes {
         commands.set("#AllowSection.Visible", allowMode);
         commands.set("#IgnoreSection.Visible", !allowMode);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#FilterIgnoreButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "setFilter").append(SettingsEvent.KEY_FILTER, "ignore"));
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SET_FILTER.wireName()).append(SettingsEvent.KEY_FILTER, "ignore"));
         events.addEventBinding(CustomUIEventBindingType.Activating, "#FilterAllowButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "setFilter").append(SettingsEvent.KEY_FILTER, "allow"));
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SET_FILTER.wireName()).append(SettingsEvent.KEY_FILTER, "allow"));
 
         List<String> allow = List.copyOf(config.allowedViewers());
         commands.set("#AllowEmptyLabel.Visible", allow.isEmpty());
@@ -100,12 +100,12 @@ final class SettingsPanes {
             commands.append("#AllowList", LIST_ROW);
             commands.set(rowSelector + " #Login.Text", config.entryDisplay(viewerKey));   // "@x (YouTube)"; Remove still sends the raw key
             events.addEventBinding(CustomUIEventBindingType.Activating, rowSelector + " #RemoveButton",
-                new EventData().append(SettingsEvent.KEY_ACTION, "removeAllow").append(SettingsEvent.KEY_VIEWER_KEY, viewerKey));
+                new EventData().append(SettingsEvent.KEY_ACTION, PageAction.REMOVE_ALLOW.wireName()).append(SettingsEvent.KEY_VIEWER_KEY, viewerKey));
             i++;
         }
         commands.set("#AllowField.Value", "");
         events.addEventBinding(CustomUIEventBindingType.Activating, "#AddAllowButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "addAllow").append(SettingsEvent.KEY_ALLOW_INPUT, "#AllowField.Value"));
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.ADD_ALLOW.wireName()).append(SettingsEvent.KEY_ALLOW_INPUT, "#AllowField.Value"));
 
         // ignoredViewers() always ends with the channel login; that row is fixed (no Remove button).
         String channel = config.getTwitchChannel();
@@ -118,35 +118,35 @@ final class SettingsPanes {
             commands.set(rowSelector + " #RemoveButton.Visible", !fixed);
             if (!fixed) {
                 events.addEventBinding(CustomUIEventBindingType.Activating, rowSelector + " #RemoveButton",
-                    new EventData().append(SettingsEvent.KEY_ACTION, "removeIgnore").append(SettingsEvent.KEY_VIEWER_KEY, viewerKey));
+                    new EventData().append(SettingsEvent.KEY_ACTION, PageAction.REMOVE_IGNORE.wireName()).append(SettingsEvent.KEY_VIEWER_KEY, viewerKey));
             }
             i++;
         }
         commands.set("#IgnoreField.Value", "");
         events.addEventBinding(CustomUIEventBindingType.Activating, "#AddIgnoreButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "addIgnore").append(SettingsEvent.KEY_IGNORE_INPUT, "#IgnoreField.Value"));
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.ADD_IGNORE.wireName()).append(SettingsEvent.KEY_IGNORE_INPUT, "#IgnoreField.Value"));
     }
 
     /** Listener tab: Start / Connecting / Stop buttons (visibility pushed live by the page), persist, auto-start, tick interval. */
     static void listener(UICommandBuilder commands, UIEventBuilder events, StatusSnapshot snapshot) {
         events.addEventBinding(CustomUIEventBindingType.Activating, "#StartButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "startListener"));
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.START_LISTENER.wireName()));
         events.addEventBinding(CustomUIEventBindingType.Activating, "#StopButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "stopListener"));
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.STOP_LISTENER.wireName()));
         // Connecting / retrying: the gray button cancels (stops) so a stuck retry loop can be ended here.
         events.addEventBinding(CustomUIEventBindingType.Activating, "#ConnectingButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "stopListener"));
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.STOP_LISTENER.wireName()));
         commands.set("#PersistCheck.Value", snapshot.persist());
         commands.set("#PersistCheckLabel.Text", snapshot.persistLabel());
         events.addEventBinding(CustomUIEventBindingType.ValueChanged, "#PersistCheck",
-            new EventData().append(SettingsEvent.KEY_ACTION, "setPersist").append(SettingsEvent.KEY_PERSIST, "#PersistCheck.Value"), false);
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SET_PERSIST.wireName()).append(SettingsEvent.KEY_PERSIST, "#PersistCheck.Value"), false);
         commands.set("#AutoStartCheck.Value", snapshot.autoStart());
         commands.set("#AutoStartCheckLabel.Text", snapshot.autoStartLabel());
         events.addEventBinding(CustomUIEventBindingType.ValueChanged, "#AutoStartCheck",
-            new EventData().append(SettingsEvent.KEY_ACTION, "setAutoStart").append(SettingsEvent.KEY_AUTO_START, "#AutoStartCheck.Value"), false);
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SET_AUTO_START.wireName()).append(SettingsEvent.KEY_AUTO_START, "#AutoStartCheck.Value"), false);
         commands.set("#IntervalField.Value", snapshot.tickSeconds());
         events.addEventBinding(CustomUIEventBindingType.Activating, "#SaveIntervalButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "saveInterval").append(SettingsEvent.KEY_INTERVAL, "#IntervalField.Value"));
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SAVE_INTERVAL.wireName()).append(SettingsEvent.KEY_INTERVAL, "#IntervalField.Value"));
     }
 
     /** Pen tab: creatures dropdown, prefab dropdown, Place, Clear. */
@@ -158,7 +158,7 @@ final class SettingsPanes {
         commands.set("#CreatureDropdown.Entries", creatures);
         commands.set("#CreatureDropdown.Value", config.getCreatures());
         events.addEventBinding(CustomUIEventBindingType.ValueChanged, "#CreatureDropdown",
-            new EventData().append(SettingsEvent.KEY_ACTION, "selectCreatures").append(SettingsEvent.KEY_CREATURES, "#CreatureDropdown.Value"), false);
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SELECT_CREATURES.wireName()).append(SettingsEvent.KEY_CREATURES, "#CreatureDropdown.Value"), false);
 
         List<DropdownEntryInfo> entries = new ArrayList<>();
         for (String name : PenPrefabCatalog.names()) {
@@ -170,10 +170,10 @@ final class SettingsPanes {
         String selected = PenPrefabCatalog.contains(snapshot.prefabName()) ? snapshot.prefabName() : PenPrefabCatalog.DEFAULT;
         commands.set("#PrefabDropdown.Value", selected);
         events.addEventBinding(CustomUIEventBindingType.ValueChanged, "#PrefabDropdown",
-            new EventData().append(SettingsEvent.KEY_ACTION, "selectPrefab").append(SettingsEvent.KEY_PREFAB, "#PrefabDropdown.Value"), false);
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SELECT_PREFAB.wireName()).append(SettingsEvent.KEY_PREFAB, "#PrefabDropdown.Value"), false);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#PlaceButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "place"));
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.PLACE.wireName()));
         events.addEventBinding(CustomUIEventBindingType.Activating, "#ClearButton",
-            new EventData().append(SettingsEvent.KEY_ACTION, "clear"));
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.CLEAR.wireName()));
     }
 }

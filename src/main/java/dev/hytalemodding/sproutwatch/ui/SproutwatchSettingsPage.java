@@ -12,7 +12,6 @@ import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import dev.hytalemodding.sproutwatch.config.SproutwatchConfig;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Level;
@@ -32,18 +31,6 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
 
     static final String DOCUMENT = "Pages/Sproutwatch/SettingsPage.ui";
 
-    /** Selectors of the labels refreshStatus() pushes, in the order statusLabels() emits them: the Details cells, two captions, the Viewers tab's lookup line. */
-    private static final List<String> STATUS_SELECTORS = statusSelectors();
-
-    private static List<String> statusSelectors() {
-        List<String> selectors = new ArrayList<>();
-        for (String id : StatusSnapshot.DETAIL_IDS) selectors.add(id + ".Text");
-        selectors.add("#RunLabel.Text");
-        selectors.add("#BeginCaption.Text");
-        selectors.add("#LookupLabel.Text");
-        return List.copyOf(selectors);
-    }
-
     private final SproutwatchActions actions;
     private final OpenPages openPages;
     private final Logger logger;
@@ -51,10 +38,10 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
     // can change worlds while the page is open, so successive events may arrive on different threads.
     private volatile SettingsTab tab = SettingsTab.CONNECT;
     private volatile String message = "";
-    // Written by build() (player thread) and refreshStatus() (pen thread); the benign race costs one extra push.
-    private volatile List<String> lastSentLabels = List.of();
-    // listsKey() of the lists the last build() showed; a change triggers a rebuild so new rows appear.
-    private volatile String lastSentLists = "";
+    // What the last build() or push showed; null until the first build(). Written by build() and
+    // pushOnWorldThread() (player's world thread), read by refreshStatus() (any thread); the benign
+    // race costs one extra push. Its listsKey changing triggers a rebuild so new rows appear.
+    private volatile PageState lastSent;
     // A refresh queued on the pen thread can land after the player dismissed the page.
     private volatile boolean dismissed;
 
@@ -73,10 +60,9 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
         commands.append(DOCUMENT);
         SettingsTab.bind(events);
         SettingsTab.apply(commands, tab);
-        List<String> labels = statusLabels(snapshot, lookupLine());
-        setStatusLabels(commands, labels);
-        lastSentLabels = labels;
-        lastSentLists = listsKey(config);
+        PageState state = PageState.of(snapshot, lookupLine(), listsKey(config));
+        applyState(commands, state);
+        lastSent = state;
         SettingsPanes.connect(commands, events, config, snapshot);
         SettingsPanes.viewers(commands, events, config, snapshot);
         SettingsPanes.listener(commands, events, snapshot);
@@ -86,77 +72,69 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
         openPages.register(playerRef.getUuid(), this);
     }
 
-    /**
-     * The labels refreshStatus() pushes, in STATUS_SELECTORS order: the Details table, then two captions,
-     * then the Viewers tab's YouTube lookup line (so a finished lookup shows without a click),
-     * then (last three, not selectors) the Listener cell's style name, whether Wrangle is enabled
-     * ("pen"/"nopen") and which run button shows ("start"/"connecting"/"stop"), so all of those
-     * follow state changes live. Never a field value.
-     */
-    private static List<String> statusLabels(StatusSnapshot snapshot, String lookupLine) {
-        List<String> labels = new ArrayList<>(snapshot.detailValues());
-        labels.add(snapshot.runLabel());
-        labels.add(snapshot.beginCaption());
-        labels.add(lookupLine);
-        labels.add(snapshot.listenerTone());
-        labels.add(snapshot.penSet() ? "pen" : "nopen");
-        labels.add(snapshot.runButton());
-        return List.copyOf(labels);
-    }
-
     /** The last YouTube handle lookup (pending or its outcome) for the Viewers tab; "" when none. */
     private String lookupLine() {
         return actions.lastLookupMessage().orElse("");
     }
 
-    private static void setStatusLabels(UICommandBuilder commands, List<String> labels) {
-        for (int i = 0; i < STATUS_SELECTORS.size(); i++) commands.set(STATUS_SELECTORS.get(i), labels.get(i));
-        int n = labels.size();
-        commands.set("#ListenerValue.Style", Value.<String>ref(DOCUMENT, labels.get(n - 3)));
-        commands.set("#BeginButton.Disabled", !labels.get(n - 2).equals("pen"));
-        String run = labels.get(n - 1);
-        commands.set("#StartButton.Visible", run.equals("start"));
-        commands.set("#ConnectingButton.Visible", run.equals("connecting"));
-        commands.set("#StopButton.Visible", run.equals("stop"));
+    /**
+     * Sets what refreshStatus() pushes: the labels (the Details table, two captions, and the Viewers
+     * tab's YouTube lookup line, so a finished lookup shows without a click), then the Listener cell's
+     * style, whether Wrangle is enabled and which run button shows, so all of those follow state
+     * changes live. The lists fingerprint is not pushed.
+     */
+    private static void applyState(UICommandBuilder commands, PageState state) {
+        List<String> labels = state.labels();
+        for (int i = 0; i < PageState.SELECTORS.size(); i++) commands.set(PageState.SELECTORS.get(i), labels.get(i));
+        commands.set("#ListenerValue.Style", Value.<String>ref(DOCUMENT, state.listenerTone()));
+        commands.set("#BeginButton.Disabled", !state.penSet());
+        String runButton = state.runButton();
+        commands.set("#StartButton.Visible", runButton.equals("start"));
+        commands.set("#ConnectingButton.Visible", runButton.equals("connecting"));
+        commands.set("#StopButton.Visible", runButton.equals("stop"));
     }
 
     @Override
     public void handleDataEvent(@Nonnull Ref<EntityStore> ref, @Nonnull Store<EntityStore> store, @Nonnull SettingsEvent event) {
         String action = event.action == null ? "" : event.action;
-        if (action.equals("tab")) {
+        // null when the client sent a name no PageAction carries; the switch reports it.
+        PageAction pageAction = PageAction.fromWire(action).orElse(null);
+        if (pageAction == PageAction.TAB) {
             switchTab(event.tab);
             return;
         }
-        if (action.equals("begin") && begin()) return;
+        if (pageAction == PageAction.BEGIN && begin()) return;
         try {
-            message = switch (action) {
-                case "begin" -> message; // begin() already set the error
-                case "saveChannel" -> actions.setChannel(event.channel);
-                case "setTwitchEnabled" -> actions.setTwitchEnabled(Boolean.TRUE.equals(event.twitchOn));
-                case "setYouTubeEnabled" -> actions.setYouTubeEnabled(Boolean.TRUE.equals(event.youTubeOn));
-                case "saveYouTubeHandle" -> actions.setYouTubeHandle(event.youTubeHandle);
-                case "saveYouTubeKey" -> actions.setYouTubeKey(event.youTubeKey); // reply is masked; the field is rebuilt empty
-                case "saveYouTubeVideo" -> actions.setYouTubeVideo(event.youTubeVideo); // blank clears
-                case "removeChannel" -> actions.removeChannel();
-                case "removeYouTubeHandle" -> actions.removeYouTubeHandle();
-                case "removeYouTubeKey" -> actions.removeYouTubeKey();
-                case "removeYouTubeVideo" -> actions.setYouTubeVideo("");
-                case "saveMax" -> event.max == null ? "Enter a number of sprouts (min 1)." : actions.setMaxSprouts(event.max);
-                case "setFilter" -> actions.setFilter("allow".equals(event.filter));
-                case "addAllow" -> actions.addAllow(event.allowInput);
-                case "removeAllow" -> actions.removeAllow(event.viewerKey);
-                case "addIgnore" -> actions.addIgnore(event.ignoreInput);
-                case "removeIgnore" -> actions.removeIgnore(event.viewerKey);
-                case "startListener" -> actions.startListener();
-                case "stopListener" -> actions.stopListener();
-                case "setPersist" -> actions.setPersist(Boolean.TRUE.equals(event.persist));
-                case "setAutoStart" -> actions.setAutoStart(Boolean.TRUE.equals(event.autoStart));
-                case "saveInterval" -> event.interval == null ? "Enter a number of seconds (min 5)." : actions.setTickSeconds(event.interval);
-                case "selectPrefab" -> actions.selectPrefab(event.prefab);
-                case "selectCreatures" -> actions.setCreatures(event.creatures);
-                case "place" -> actions.place(playerRef);
-                case "clear" -> actions.clear();
-                default -> "Unknown action: " + action;
+            // No default: a PageAction without a case here fails to compile.
+            message = switch (pageAction) {
+                case null -> "Unknown action: " + action;
+                case TAB -> message; // handled above (partial update, no rebuild); never reached
+                case BEGIN -> message; // begin() already set the error
+                case SAVE_CHANNEL -> actions.setChannel(event.channel);
+                case SET_TWITCH_ENABLED -> actions.setTwitchEnabled(Boolean.TRUE.equals(event.twitchOn));
+                case SET_YOUTUBE_ENABLED -> actions.setYouTubeEnabled(Boolean.TRUE.equals(event.youTubeOn));
+                case SAVE_YOUTUBE_HANDLE -> actions.setYouTubeHandle(event.youTubeHandle);
+                case SAVE_YOUTUBE_KEY -> actions.setYouTubeKey(event.youTubeKey); // reply is masked; the field is rebuilt empty
+                case SAVE_YOUTUBE_VIDEO -> actions.setYouTubeVideo(event.youTubeVideo); // blank clears
+                case REMOVE_CHANNEL -> actions.removeChannel();
+                case REMOVE_YOUTUBE_HANDLE -> actions.removeYouTubeHandle();
+                case REMOVE_YOUTUBE_KEY -> actions.removeYouTubeKey();
+                case REMOVE_YOUTUBE_VIDEO -> actions.setYouTubeVideo("");
+                case SAVE_MAX -> event.max == null ? "Enter a number of sprouts (min 1)." : actions.setMaxSprouts(event.max);
+                case SET_FILTER -> actions.setFilter("allow".equals(event.filter));
+                case ADD_ALLOW -> actions.addAllow(event.allowInput);
+                case REMOVE_ALLOW -> actions.removeAllow(event.viewerKey);
+                case ADD_IGNORE -> actions.addIgnore(event.ignoreInput);
+                case REMOVE_IGNORE -> actions.removeIgnore(event.viewerKey);
+                case START_LISTENER -> actions.startListener();
+                case STOP_LISTENER -> actions.stopListener();
+                case SET_PERSIST -> actions.setPersist(Boolean.TRUE.equals(event.persist));
+                case SET_AUTO_START -> actions.setAutoStart(Boolean.TRUE.equals(event.autoStart));
+                case SAVE_INTERVAL -> event.interval == null ? "Enter a number of seconds (min 5)." : actions.setTickSeconds(event.interval);
+                case SELECT_PREFAB -> actions.selectPrefab(event.prefab);
+                case SELECT_CREATURES -> actions.setCreatures(event.creatures);
+                case PLACE -> actions.place(playerRef);
+                case CLEAR -> actions.clear();
             };
         } catch (RuntimeException exception) {
             logger.log(Level.WARNING, "Sproutwatch settings page action '" + action + "' failed", exception);
@@ -219,11 +197,10 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
         Ref<EntityStore> ref = playerRef.getReference();
         if (!playerRef.isValid() || ref == null || !ref.isValid()) return false;
         try {
-            List<String> labels = statusLabels(actions.snapshot(), lookupLine());
-            String lists = listsKey(actions.config());
-            if (labels.equals(lastSentLabels) && lists.equals(lastSentLists)) return true;
+            PageState state = PageState.of(actions.snapshot(), lookupLine(), listsKey(actions.config()));
+            if (state.equals(lastSent)) return true;
             Store<EntityStore> store = ref.getStore();
-            Runnable push = () -> pushOnWorldThread(labels, lists);
+            Runnable push = () -> pushOnWorldThread(state);
             if (store.isInThread()) push.run();
             else store.getExternalData().getWorld().execute(push);
             return true;
@@ -234,25 +211,26 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
     }
 
     /** Runs on the player's world thread. A failure here is logged; the page stays registered. */
-    private void pushOnWorldThread(List<String> labels, String lists) {
+    private void pushOnWorldThread(PageState state) {
         if (dismissed) return;
         try {
-            if (!lists.equals(lastSentLists)) {
-                rebuild();   // build() records labels + lists
+            PageState shown = lastSent;
+            if (shown == null || !state.listsKey().equals(shown.listsKey())) {
+                rebuild();   // build() records the full state
                 return;
             }
             UICommandBuilder commands = new UICommandBuilder();
-            setStatusLabels(commands, labels);
+            applyState(commands, state);
             sendUpdate(commands);
-            lastSentLabels = labels;
+            lastSent = state;
         } catch (RuntimeException exception) {
             logger.log(Level.WARNING, "Sproutwatch settings page push failed", exception);
         }
     }
 
-    /** Fingerprint of what the Viewers lists show; kept out of statusLabels (setStatusLabels indexes its tail). */
-    private static String listsKey(SproutwatchConfig c) {
-        return c.allowedViewers() + "|" + c.ignoredViewers() + "|" + c.youTubeLabels();
+    /** Fingerprint of what the Viewers lists show (PageState.listsKey); never pushed as a label. */
+    private static String listsKey(SproutwatchConfig config) {
+        return config.allowedViewers() + "|" + config.ignoredViewers() + "|" + config.youTubeLabels();
     }
 
     @Override

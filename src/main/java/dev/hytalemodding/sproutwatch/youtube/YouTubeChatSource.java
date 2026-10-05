@@ -2,6 +2,7 @@ package dev.hytalemodding.sproutwatch.youtube;
 
 import dev.hytalemodding.sproutwatch.chat.ChatSource;
 import dev.hytalemodding.sproutwatch.chat.DisplayNames;
+import dev.hytalemodding.sproutwatch.chat.SourceLifecycle;
 import dev.hytalemodding.sproutwatch.chat.ViewerKey;
 import dev.hytalemodding.sproutwatch.twitch.ChatRoster;
 import dev.hytalemodding.sproutwatch.twitch.RosterEvent;
@@ -62,7 +63,7 @@ public final class YouTubeChatSource implements ChatSource {
     static final long MAX_BACKOFF_MILLIS = 300_000;
     /** Margin past the quota reset before polling again. */
     static final long RESET_MARGIN_MILLIS = 1_000;
-    static final long JOIN_MILLIS = 1_000;
+    static final long JOIN_MILLIS = STOP_JOIN_MILLIS;
 
     static final String FINDING = "connecting (finding stream)";
     static final String NO_STREAM = "connecting (no live stream found, retrying)";
@@ -86,13 +87,8 @@ public final class YouTubeChatSource implements ChatSource {
     private final Clock clock;
     private final String connectedState;
 
-    private final Object stateLock = new Object();
-    private volatile String state = STOPPED;
-    private volatile Runnable onStateChange;
-    private volatile boolean running;
+    private final SourceLifecycle lifecycle;
     private volatile Thread thread;
-    /** Bumped per start; a run whose generation is stale may no longer touch state. */
-    private long currentGeneration;
 
     /**
      * @param handle        the channel's {@code @handle} (or channel URL with one); may be blank when
@@ -114,6 +110,7 @@ public final class YouTubeChatSource implements ChatSource {
         this.logger = Objects.requireNonNull(logger, "logger");
         this.sleeper = Objects.requireNonNull(sleeper, "sleeper");
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.lifecycle = new SourceLifecycle(logger, "Sproutwatch YouTube: ", STOPPED);
         Optional<String> video = YouTubeRef.parseVideoId(videoOverride);
         if (video.isPresent()) {
             this.videoOverride = video.get();
@@ -129,18 +126,13 @@ public final class YouTubeChatSource implements ChatSource {
 
     @Override
     public void setOnStateChange(Runnable hook) {
-        onStateChange = hook;
+        lifecycle.setOnStateChange(hook);
     }
 
     @Override
     public synchronized void start() {
-        if (running) return;
-        long generation;
-        synchronized (stateLock) {
-            generation = ++currentGeneration;
-            running = true;
-        }
-        setState(generation, FINDING);
+        if (lifecycle.running()) return;
+        long generation = lifecycle.begin(FINDING);
         Thread worker = new Thread(() -> runLoop(generation), "sproutwatch-youtube");
         worker.setDaemon(true);
         thread = worker;
@@ -149,14 +141,12 @@ public final class YouTubeChatSource implements ChatSource {
 
     @Override
     public synchronized void stop() {
-        boolean changed;
-        synchronized (stateLock) {
-            currentGeneration++; // the old run may no longer change state or touch the roster
-            running = false;
-            changed = !STOPPED.equals(state);
-            state = STOPPED;
-        }
-        // Interrupt and join before announcing, so a throwing hook or logger cannot skip them.
+        // The old run may no longer change state or touch the roster. Interrupt and join before
+        // announcing, so a slow hook cannot delay them.
+        lifecycle.end(STOPPED, this::interruptAndJoin);
+    }
+
+    private void interruptAndJoin() {
         Thread worker = thread;
         thread = null;
         if (worker != null && worker != Thread.currentThread()) {
@@ -171,69 +161,34 @@ public final class YouTubeChatSource implements ChatSource {
                         + " ms of stop; it starts no new roster updates (at most one in-flight message may still land)");
             }
         }
-        if (changed) announce(STOPPED);
     }
 
     @Override
     public boolean isRunning() {
-        return running;
+        return lifecycle.running();
     }
 
     @Override
     public String getState() {
-        return state;
+        return lifecycle.state();
     }
 
     // ---- state ----
 
-    /** Applies {@code next} if run {@code generation} is still current; logs and fires the hook on change. */
     private void setState(long generation, String next) {
-        synchronized (stateLock) {
-            if (generation != currentGeneration || !running || next.equals(state)) return;
-            state = next;
-        }
-        announce(next);
+        lifecycle.setState(generation, next);
     }
 
-    /** Terminal: the run ends with {@code reason} as its visible state. */
     private void finish(long generation, String reason) {
-        synchronized (stateLock) {
-            if (generation != currentGeneration || !running) return;
-            running = false;
-            if (reason.equals(state)) return;
-            state = reason;
-        }
-        announce(reason);
+        lifecycle.finish(generation, reason);
     }
 
-    private void announce(String next) {
-        safeLog(Level.INFO, "Sproutwatch YouTube: " + next);
-        Runnable hook = onStateChange;
-        if (hook == null) return;
-        try {
-            hook.run();
-        } catch (RuntimeException exception) {
-            try {
-                logger.log(Level.WARNING, "Sproutwatch state-change hook failed", exception);
-            } catch (RuntimeException ignored) {
-                // a broken logger must not break the state machine
-            }
-        }
-    }
-
-    /** Logs without ever throwing (a broken logger must not kill the poller or skip stop's join). */
     private void safeLog(Level level, String message) {
-        try {
-            logger.log(level, message);
-        } catch (RuntimeException ignored) {
-            // nothing sensible left to do
-        }
+        lifecycle.safeLog(level, message);
     }
 
     private boolean live(long generation) {
-        synchronized (stateLock) {
-            return running && generation == currentGeneration;
-        }
+        return lifecycle.live(generation);
     }
 
     // ---- loop ----
@@ -328,7 +283,7 @@ public final class YouTubeChatSource implements ChatSource {
         try {
             page = api.chatPage(run.liveChatId, token);
         } finally {
-            pacer.recordCall(YouTubeApi.costOf("liveChat/messages"));
+            pacer.recordCall(Endpoint.CHAT_MESSAGES.cost());
         }
         if (!live(generation)) return -1; // stopped during the read: the plugin may already have cleared the roster
         run.rejectedStreak = 0;
@@ -377,14 +332,14 @@ public final class YouTubeChatSource implements ChatSource {
                 try {
                     run.channelId = api.channelIdForHandle(streamerHandle);
                 } finally {
-                    pacer.recordCall(YouTubeApi.costOf("channels"));
+                    pacer.recordCall(Endpoint.CHANNELS.cost());
                 }
             }
             Optional<String> video;
             try {
                 video = api.liveVideoId(run.channelId);
             } finally {
-                pacer.recordCall(YouTubeApi.costOf("search"));
+                pacer.recordCall(Endpoint.SEARCH.cost());
             }
             if (video.isEmpty()) return lookupMiss(generation, run);
             run.videoId = video.get();
@@ -392,7 +347,7 @@ public final class YouTubeChatSource implements ChatSource {
         try {
             run.liveChatId = api.activeLiveChatId(run.videoId);
         } finally {
-            pacer.recordCall(YouTubeApi.costOf("videos"));
+            pacer.recordCall(Endpoint.VIDEOS.cost());
         }
         run.primed = false;
         run.pageToken = null;

@@ -51,11 +51,6 @@ public final class YouTubeApi implements AutoCloseable {
     /** Largest response body accepted; a real chat page is a few tens of KB. */
     static final long MAX_BODY_BYTES = 2L * 1024 * 1024;
 
-    private static final String CHANNELS = "channels";
-    private static final String SEARCH = "search";
-    private static final String VIDEOS = "videos";
-    private static final String CHAT_MESSAGES = "liveChat/messages";
-
     private static final Set<String> QUOTA_REASONS = Set.of("quotaExceeded", "dailyLimitExceeded");
     /** Short-term throttling: back off and retry, unlike the daily quota. */
     private static final Set<String> RATE_REASONS = Set.of("rateLimitExceeded", "userRateLimitExceeded");
@@ -103,31 +98,13 @@ public final class YouTubeApi implements AutoCloseable {
         if (ownsClient) http.close();
     }
 
-    /**
-     * Quota units charged per call, for the pacer.
-     *
-     * channels/videos list are 1 unit. liveChat/messages is billed at most 2 (measured upper bound).
-     * search.list is listed at 100 units in Google's table, but the Task 1 measurement (7 units total
-     * for 1 channels + 1 search + 1 videos + 2 chat reads) shows it is not charged 100 against the main
-     * daily quota (search is metered from a separate allowance), so it counts 1 here.
-     *
-     * @throws IllegalArgumentException for an endpoint this client does not call
-     */
-    public static int costOf(String endpoint) {
-        return switch (endpoint) {
-            case CHANNELS, VIDEOS, SEARCH -> 1;
-            case CHAT_MESSAGES -> 2;
-            default -> throw new IllegalArgumentException("unknown YouTube endpoint");
-        };
-    }
-
     /** {@code @handle} (leading @ optional) → channel ID. NOT_FOUND when no channel has that handle. */
     public String channelIdForHandle(String handle) throws YouTubeException {
         String atHandle = handle.startsWith("@") ? handle : "@" + handle;
         Map<String, String> parameters = new LinkedHashMap<>();
         parameters.put("part", "id");
         parameters.put("forHandle", atHandle);
-        BsonDocument root = get("channelIdForHandle", CHANNELS, parameters);
+        BsonDocument root = get("channelIdForHandle", Endpoint.CHANNELS, parameters);
         for (BsonDocument item : items(root)) {
             String id = str(item, "id");
             if (id != null && !id.isEmpty()) return id;
@@ -145,7 +122,7 @@ public final class YouTubeApi implements AutoCloseable {
         q.put("channelId", channelId);
         q.put("eventType", "live");
         q.put("type", "video");
-        BsonDocument root = get("liveVideoId", SEARCH, q);
+        BsonDocument root = get("liveVideoId", Endpoint.SEARCH, q);
         List<String> ids = new ArrayList<>();
         for (BsonDocument item : items(root)) {
             String id = str(doc(item, "id"), "videoId");
@@ -159,7 +136,7 @@ public final class YouTubeApi implements AutoCloseable {
         vq.put("id", String.join(",", ids));
         BsonDocument videos;
         try {
-            videos = get("liveVideoId", VIDEOS, vq);
+            videos = get("liveVideoId", Endpoint.VIDEOS, vq);
         } catch (YouTubeException exception) {
             // Tie-break lookup failed transiently: a live video is better than none.
             if (exception.kind() == YouTubeException.Kind.TRANSIENT) return Optional.of(ids.get(0));
@@ -184,7 +161,7 @@ public final class YouTubeApi implements AutoCloseable {
         Map<String, String> q = new LinkedHashMap<>();
         q.put("part", "liveStreamingDetails");
         q.put("id", videoId);
-        List<BsonDocument> items = items(get("activeLiveChatId", VIDEOS, q));
+        List<BsonDocument> items = items(get("activeLiveChatId", Endpoint.VIDEOS, q));
         if (items.isEmpty()) {
             throw new YouTubeException(YouTubeException.Kind.NOT_FOUND, "activeLiveChatId: no such video");
         }
@@ -201,7 +178,7 @@ public final class YouTubeApi implements AutoCloseable {
         q.put("liveChatId", liveChatId);
         q.put("part", "snippet,authorDetails");
         if (pageToken != null && !pageToken.isEmpty()) q.put("pageToken", pageToken);
-        String body = fetch("chatPage", CHAT_MESSAGES, q);
+        String body = fetch("chatPage", Endpoint.CHAT_MESSAGES, q);
         try {
             return YouTubeChatParser.parse(body);
         } catch (RuntimeException | StackOverflowError exception) {
@@ -216,7 +193,7 @@ public final class YouTubeApi implements AutoCloseable {
 
     // ---- transport ----
 
-    private BsonDocument get(String operation, String endpoint, Map<String, String> query) throws YouTubeException {
+    private BsonDocument get(String operation, Endpoint endpoint, Map<String, String> query) throws YouTubeException {
         String body = fetch(operation, endpoint, query);
         try {
             if (body == null || body.isBlank()) throw new IllegalArgumentException();
@@ -227,8 +204,8 @@ public final class YouTubeApi implements AutoCloseable {
     }
 
     /** Performs the GET; returns the 2xx body or throws a classified, key-free exception. */
-    private String fetch(String operation, String endpoint, Map<String, String> query) throws YouTubeException {
-        StringBuilder url = new StringBuilder(baseUrl).append('/').append(endpoint);
+    private String fetch(String operation, Endpoint endpoint, Map<String, String> query) throws YouTubeException {
+        StringBuilder url = new StringBuilder(baseUrl).append('/').append(endpoint.path());
         char separator = '?';
         for (Map.Entry<String, String> e : query.entrySet()) {
             url.append(separator).append(urlEncode(e.getKey())).append('=').append(urlEncode(e.getValue()));
@@ -289,7 +266,7 @@ public final class YouTubeApi implements AutoCloseable {
         return false;
     }
 
-    private YouTubeException classify(String operation, String endpoint, int status, String body) {
+    private YouTubeException classify(String operation, Endpoint endpoint, int status, String body) {
         String reason = null;
         String message = "";
         try {
@@ -325,7 +302,7 @@ public final class YouTubeApi implements AutoCloseable {
             kind = YouTubeException.Kind.KEY_INVALID; // e.g. Google's 400 badRequest "API key not valid"
         } else if ("forbidden".equals(reason)) {
             // Not about the key: on a chat read it means we may not read this chat (owner turned it off).
-            kind = CHAT_MESSAGES.equals(endpoint) ? YouTubeException.Kind.CHAT_ENDED : YouTubeException.Kind.REJECTED;
+            kind = endpoint == Endpoint.CHAT_MESSAGES ? YouTubeException.Kind.CHAT_ENDED : YouTubeException.Kind.REJECTED;
         } else if (status == 404) {
             kind = YouTubeException.Kind.NOT_FOUND;
         } else if (status >= 500) {

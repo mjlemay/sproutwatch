@@ -29,6 +29,7 @@ import dev.hytalemodding.sproutwatch.ui.OpenPages;
 import dev.hytalemodding.sproutwatch.ui.SproutwatchActions;
 import dev.hytalemodding.sproutwatch.ui.StatusSnapshot;
 import dev.hytalemodding.sproutwatch.ui.YouTubeStatus;
+import dev.hytalemodding.sproutwatch.youtube.Endpoint;
 import dev.hytalemodding.sproutwatch.youtube.QuotaPacer;
 import dev.hytalemodding.sproutwatch.youtube.QuotaStore;
 import dev.hytalemodding.sproutwatch.youtube.YouTubeApi;
@@ -386,11 +387,11 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
         }
     }
 
-    /** 1 unit: into the running pacer (which persists it), else straight into the saved usage. */
+    /** One channels lookup: into the running pacer (which persists it), else straight into the saved usage. */
     private void countLookupUnit() {
         QuotaPacer pacer = youTubePacer;
-        if (pacer != null) pacer.recordCall(1);
-        else quotaStore.addUnits(1, java.time.LocalDate.now(QuotaPacer.QUOTA_ZONE));
+        if (pacer != null) pacer.recordCall(Endpoint.CHANNELS.cost());
+        else quotaStore.addUnits(Endpoint.CHANNELS.cost(), java.time.LocalDate.now(QuotaPacer.QUOTA_ZONE));
     }
 
     /** The shared client for the configured key (made if needed), or null when no key is set. */

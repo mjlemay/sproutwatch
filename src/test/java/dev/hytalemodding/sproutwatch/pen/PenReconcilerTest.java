@@ -40,80 +40,94 @@ class PenReconcilerTest {
     }
 
     @Test void emptyInputsPlanNothing() {
-        PenPlan plan = PenReconciler.reconcile(Map.of(), Map.of(), 30, GRACE, NOW);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of(), Map.of(), 30, NOW)
+            .graceMillis(GRACE).build());
         assertEquals(Optional.empty(), plan.spawn());
         assertEquals(List.of(), plan.despawn());
     }
 
     @Test void spawnPicksTheEarliestArrival() {
-        PenPlan plan = PenReconciler.reconcile(Map.of("a", 100L, "b", 50L), Map.of(), 30, GRACE, NOW);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("a", 100L, "b", 50L), Map.of(), 30, NOW)
+            .graceMillis(GRACE).build());
         assertEquals(Optional.of("b"), plan.spawn());
     }
 
     @Test void spawnTieBreaksAlphabetically() {
-        PenPlan plan = PenReconciler.reconcile(Map.of("b", 100L, "a", 100L), Map.of(), 30, GRACE, NOW);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("b", 100L, "a", 100L), Map.of(), 30, NOW)
+            .graceMillis(GRACE).build());
         assertEquals(Optional.of("a"), plan.spawn());
     }
 
     /** /sproutwatch test applies the viewer key at 0L so it is served before every real viewer. */
     @Test void zeroTimestampJumpsTheQueue() {
-        PenPlan plan = PenReconciler.reconcile(Map.of("a", 100L, "b", 50L, "test", 0L), Map.of(), 30, GRACE, NOW);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("a", 100L, "b", 50L, "test", 0L), Map.of(), 30, NOW)
+            .graceMillis(GRACE).build());
         assertEquals(Optional.of("test"), plan.spawn());
     }
 
     @Test void spawnSkipsViewersAlreadyInThePen() {
-        PenPlan plan = PenReconciler.reconcile(Map.of("a", 100L), Map.of("a", NOW), 30, GRACE, NOW);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("a", 100L), Map.of("a", NOW), 30, NOW)
+            .graceMillis(GRACE).build());
         assertEquals(Optional.empty(), plan.spawn());
         assertEquals(List.of(), plan.despawn());
     }
 
     @Test void capBlocksSpawn() {
-        PenPlan plan = PenReconciler.reconcile(Map.of("a", 100L), Map.of("x", NOW), 1, GRACE, NOW);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("a", 100L), Map.of("x", NOW), 1, NOW)
+            .graceMillis(GRACE).build());
         assertEquals(Optional.empty(), plan.spawn());
     }
 
     @Test void despawnsOnlyPastTheGraceWindow() {
         Map<String, Long> pen = Map.of("stale", NOW - GRACE - 1, "fresh", NOW - GRACE + 1, "edge", NOW - GRACE);
-        PenPlan plan = PenReconciler.reconcile(Map.of(), pen, 30, GRACE, NOW);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of(), pen, 30, NOW)
+            .graceMillis(GRACE).build());
         assertEquals(List.of("stale"), plan.despawn());
     }
 
     @Test void despawnFreesACapSlotInTheSameTick() {
-        PenPlan plan = PenReconciler.reconcile(Map.of("a", 100L), Map.of("x", NOW - GRACE - 1), 1, GRACE, NOW);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("a", 100L), Map.of("x", NOW - GRACE - 1), 1, NOW)
+            .graceMillis(GRACE).build());
         assertEquals(List.of("x"), plan.despawn());
         assertEquals(Optional.of("a"), plan.spawn());
     }
 
     @Test void despawnListIsSortedAndOnlyOneSpawnPerTick() {
         Map<String, Long> pen = Map.of("z", 0L, "m", 0L, "c", 0L);
-        PenPlan plan = PenReconciler.reconcile(Map.of("q", 1L, "r", 2L), pen, 30, GRACE, NOW);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("q", 1L, "r", 2L), pen, 30, NOW)
+            .graceMillis(GRACE).build());
         assertEquals(List.of("c", "m", "z"), plan.despawn());
         assertEquals(Optional.of("q"), plan.spawn());
     }
 
     @Test void priorityViewerSpawnsFirst() {
-        PenPlan plan = PenReconciler.reconcile(Map.of("a", 100L, "b", 50L, "q", 900L), Map.of(), List.of("q"), 30, GRACE, NOW);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("a", 100L, "b", 50L, "q", 900L), Map.of(), 30, NOW)
+            .graceMillis(GRACE).queue(List.of("q")).build());
         assertEquals(Optional.of("q"), plan.spawn());
     }
 
     @Test void priorityOrderIsFifo() {
-        PenPlan plan = PenReconciler.reconcile(Map.of("x", 500L, "y", 10L), Map.of(), List.of("x", "y"), 30, GRACE, NOW);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("x", 500L, "y", 10L), Map.of(), 30, NOW)
+            .graceMillis(GRACE).queue(List.of("x", "y")).build());
         assertEquals(Optional.of("x"), plan.spawn());
     }
 
     @Test void prioritySkipsViewersNotInRosterOrAlreadyInPen() {
         Map<String, Long> roster = Map.of("inpen", 1L, "z", 900L, "a", 5L);
-        PenPlan plan = PenReconciler.reconcile(roster, Map.of("inpen", NOW), List.of("gone", "inpen", "z"), 30, GRACE, NOW);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(roster, Map.of("inpen", NOW), 30, NOW)
+            .graceMillis(GRACE).queue(List.of("gone", "inpen", "z")).build());
         assertEquals(Optional.of("z"), plan.spawn());
     }
 
     @Test void emptyPriorityFallsBackToEarliest() {
-        PenPlan plan = PenReconciler.reconcile(Map.of("a", 100L, "b", 50L), Map.of(), List.of(), 30, GRACE, NOW);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("a", 100L, "b", 50L), Map.of(), 30, NOW)
+            .graceMillis(GRACE).queue(List.of()).build());
         assertEquals(Optional.of("b"), plan.spawn());
     }
 
     @Test void priorityStillRespectsTheCap() {
-        PenPlan plan = PenReconciler.reconcile(Map.of("q", 1L), Map.of("x", NOW), List.of("q"), 1, GRACE, NOW);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("q", 1L), Map.of("x", NOW), 1, NOW)
+            .graceMillis(GRACE).queue(List.of("q")).build());
         assertEquals(Optional.empty(), plan.spawn());
     }
 
@@ -121,14 +135,16 @@ class PenReconcilerTest {
 
     @Test void persistKeepsAbsentViewersBelowCap() {
         Map<String, Long> pen = Map.of("gone", NOW - GRACE - 1);
-        PenPlan plan = PenReconciler.reconcile(Map.of("c", 100L), pen, List.of(), 30, GRACE, NOW, true);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("c", 100L), pen, 30, NOW)
+            .graceMillis(GRACE).queue(List.of()).persist(true).build());
         assertEquals(List.of(), plan.despawn());
         assertEquals(Optional.of("c"), plan.spawn());
     }
 
     @Test void persistReplacesLongestGoneAtCap() {
         Map<String, Long> pen = Map.of("a", 100L, "b", 200L);
-        PenPlan plan = PenReconciler.reconcile(Map.of("c", 500L), pen, List.of(), 2, GRACE, NOW, true);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("c", 500L), pen, 2, NOW)
+            .graceMillis(GRACE).queue(List.of()).persist(true).build());
         assertEquals(List.of("a"), plan.despawn());
         assertEquals(Optional.of("c"), plan.spawn());
     }
@@ -137,7 +153,8 @@ class PenReconcilerTest {
         // a: absent since 100, g: guest (present, touched now). Guests go first, alphabetical among guests.
         Map<String, Long> pen = Map.of("a", 100L, "g", NOW, "h", NOW);
         Map<String, Long> roster = Map.of("g", 0L, "h", 0L, "c", 500L);
-        PenPlan plan = PenReconciler.reconcile(roster, pen, List.of(), 3, GRACE, NOW, true, Set.of("g", "h"));
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(roster, pen, 3, NOW)
+            .graceMillis(GRACE).queue(List.of()).persist(true).guests(Set.of("g", "h")).build());
         assertEquals(List.of("g"), plan.despawn());
         assertEquals(Optional.of("c"), plan.spawn());
     }
@@ -145,7 +162,8 @@ class PenReconcilerTest {
     @Test void persistDoesNotReplaceAGuestWithAnotherGuest() {
         Map<String, Long> pen = Map.of("g", NOW);
         Map<String, Long> roster = Map.of("g", 0L, "h", 0L);
-        PenPlan plan = PenReconciler.reconcile(roster, pen, List.of(), 1, GRACE, NOW, true, Set.of("g", "h"));
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(roster, pen, 1, NOW)
+            .graceMillis(GRACE).queue(List.of()).persist(true).guests(Set.of("g", "h")).build());
         assertEquals(List.of(), plan.despawn());
         assertEquals(Optional.empty(), plan.spawn());
     }
@@ -162,7 +180,8 @@ class PenReconcilerTest {
         Map<String, Long> pen = Map.of("a", NOW, "b", NOW);           // both present (touched now)
         Map<String, Long> roster = Map.of("a", 1L, "b", 2L, "q", 3L);
         Map<String, Long> lastActive = Map.of("a", NOW - 700_000L, "b", NOW - 100L, "q", NOW);
-        PenPlan plan = PenReconciler.reconcile(roster, pen, List.of("q"), 2, GRACE, NOW, true, Set.of(), lastActive, 600_000L);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(roster, pen, 2, NOW)
+            .graceMillis(GRACE).queue(List.of("q")).persist(true).guests(Set.of()).quiet(lastActive, 600_000L).build());
         assertEquals(List.of("a"), plan.despawn());
         assertEquals(Optional.of("q"), plan.spawn());
     }
@@ -171,7 +190,8 @@ class PenReconcilerTest {
         Map<String, Long> pen = Map.of("a", NOW);
         Map<String, Long> roster = Map.of("a", 1L, "c", 2L);
         Map<String, Long> lastActive = Map.of("a", NOW - 999_000L, "c", NOW);
-        PenPlan plan = PenReconciler.reconcile(roster, pen, List.of(), 1, GRACE, NOW, true, Set.of(), lastActive, 600_000L);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(roster, pen, 1, NOW)
+            .graceMillis(GRACE).queue(List.of()).persist(true).guests(Set.of()).quiet(lastActive, 600_000L).build());
         assertEquals(List.of(), plan.despawn());
         assertEquals(Optional.empty(), plan.spawn());
     }
@@ -180,11 +200,12 @@ class PenReconcilerTest {
         Map<String, Long> pen = Map.of("a", NOW);
         Map<String, Long> roster = Map.of("a", 1L, "q", 2L);
         Map<String, Long> lastActive = Map.of("a", NOW - 100_000L, "q", NOW);
-        PenPlan plan = PenReconciler.reconcile(roster, pen, List.of("q"), 1, GRACE, NOW, true, Set.of(), lastActive, 600_000L);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(roster, pen, 1, NOW)
+            .graceMillis(GRACE).queue(List.of("q")).persist(true).guests(Set.of()).quiet(lastActive, 600_000L).build());
         assertEquals(List.of(), plan.despawn(), "a has been quiet 100s < 600s");
         assertEquals(Optional.empty(), plan.spawn());
-        PenPlan off = PenReconciler.reconcile(roster, pen, List.of("q"), 1, GRACE, NOW, true, Set.of(),
-            Map.of("a", 0L, "q", NOW), 0L);
+        PenPlan off = PenReconciler.reconcile(ReconcileRequest.builder(roster, pen, 1, NOW)
+            .graceMillis(GRACE).queue(List.of("q")).persist(true).guests(Set.of()).quiet(Map.of("a", 0L, "q", NOW), 0L).build());
         assertEquals(List.of(), off.despawn(), "0 disables the timeout");
     }
 
@@ -192,7 +213,8 @@ class PenReconcilerTest {
         Map<String, Long> pen = Map.of("a", NOW);
         Map<String, Long> roster = Map.of("a", 1L, "q", 2L);
         Map<String, Long> lastActive = Map.of("a", NOW - 700_000L, "q", NOW);
-        PenPlan plan = PenReconciler.reconcile(roster, pen, List.of("q"), 1, GRACE, NOW, false, Set.of(), lastActive, 600_000L);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(roster, pen, 1, NOW)
+            .graceMillis(GRACE).queue(List.of("q")).persist(false).guests(Set.of()).quiet(lastActive, 600_000L).build());
         assertEquals(List.of("a"), plan.despawn());
         assertEquals(Optional.of("q"), plan.spawn());
     }
@@ -201,20 +223,23 @@ class PenReconcilerTest {
         Map<String, Long> pen = Map.of("a", 100L, "b", NOW);          // a absent (lastSeen old), b present
         Map<String, Long> roster = Map.of("b", 1L, "q", 2L);
         Map<String, Long> lastActive = Map.of("b", NOW - 999_000L, "q", NOW);
-        PenPlan plan = PenReconciler.reconcile(roster, pen, List.of("q"), 2, GRACE, NOW, true, Set.of(), lastActive, 600_000L);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(roster, pen, 2, NOW)
+            .graceMillis(GRACE).queue(List.of("q")).persist(true).guests(Set.of()).quiet(lastActive, 600_000L).build());
         assertEquals(List.of("a"), plan.despawn(), "the absent viewer goes, not the quiet present one");
     }
 
     @Test void persistNeverEvictsPresentViewers() {
         Map<String, Long> pen = Map.of("a", 0L);
-        PenPlan plan = PenReconciler.reconcile(Map.of("a", 1L, "c", 2L), pen, List.of(), 1, GRACE, NOW, true);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("a", 1L, "c", 2L), pen, 1, NOW)
+            .graceMillis(GRACE).queue(List.of()).persist(true).build());
         assertEquals(List.of(), plan.despawn());
         assertEquals(Optional.empty(), plan.spawn());
     }
 
     @Test void persistWithNoCandidateDoesNothing() {
         Map<String, Long> pen = Map.of("a", 0L, "b", 0L);
-        PenPlan plan = PenReconciler.reconcile(Map.of("a", 1L, "b", 2L), pen, List.of(), 2, GRACE, NOW, true);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("a", 1L, "b", 2L), pen, 2, NOW)
+            .graceMillis(GRACE).queue(List.of()).persist(true).build());
         assertEquals(List.of(), plan.despawn());
         assertEquals(Optional.empty(), plan.spawn());
     }
@@ -222,23 +247,27 @@ class PenReconcilerTest {
     @Test void persistHonorsPriority() {
         Map<String, Long> pen = Map.of("a", 100L);
         Map<String, Long> roster = Map.of("c", 900L, "d", 10L);
-        PenPlan plan = PenReconciler.reconcile(roster, pen, List.of("c"), 1, GRACE, NOW, true);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(roster, pen, 1, NOW)
+            .graceMillis(GRACE).queue(List.of("c")).persist(true).build());
         assertEquals(List.of("a"), plan.despawn());
         assertEquals(Optional.of("c"), plan.spawn());
     }
 
     @Test void nonPersistUnchanged() {
         Map<String, Long> pen = Map.of("gone", NOW - GRACE - 1);
-        PenPlan plan = PenReconciler.reconcile(Map.of("c", 100L), pen, List.of(), 30, GRACE, NOW);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("c", 100L), pen, 30, NOW)
+            .graceMillis(GRACE).queue(List.of()).build());
         assertEquals(List.of("gone"), plan.despawn());
         assertEquals(Optional.of("c"), plan.spawn());
-        PenPlan q = PenReconciler.reconcile(Map.of("c", 100L), pen, List.of(), 30, GRACE, NOW, false);
-        assertEquals(plan, q);
+        PenPlan explicitPersistOff = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("c", 100L), pen, 30, NOW)
+            .graceMillis(GRACE).queue(List.of()).persist(false).build());
+        assertEquals(plan, explicitPersistOff);
     }
 
     @Test void persistLongestGoneTiesBreakByViewerKey() {
         Map<String, Long> pen = Map.of("b", 100L, "a", 100L);
-        PenPlan plan = PenReconciler.reconcile(Map.of("c", 900L), pen, List.of(), 2, GRACE, NOW, true);
+        PenPlan plan = PenReconciler.reconcile(ReconcileRequest.builder(Map.of("c", 900L), pen, 2, NOW)
+            .graceMillis(GRACE).queue(List.of()).persist(true).build());
         assertEquals(List.of("a"), plan.despawn());
         assertEquals(Optional.of("c"), plan.spawn());
     }

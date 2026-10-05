@@ -18,6 +18,9 @@ package dev.hytalemodding.sproutwatch.chat;
  */
 public interface ChatSource {
 
+    /** How long {@link #stop()} waits for the listener thread to end before giving up on it. */
+    long STOP_JOIN_MILLIS = 1_000;
+
     /** Starts listening on a background thread. */
     void start();
 

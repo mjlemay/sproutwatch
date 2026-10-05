@@ -1,6 +1,7 @@
 package dev.hytalemodding.sproutwatch.twitch;
 
 import dev.hytalemodding.sproutwatch.chat.ChatSource;
+import dev.hytalemodding.sproutwatch.chat.SourceLifecycle;
 import dev.hytalemodding.sproutwatch.config.SproutwatchConfig;
 
 import javax.net.SocketFactory;
@@ -23,7 +24,9 @@ import java.util.logging.Logger;
  * reconnects with exponential backoff (initial delay doubling to 5 min, reset once a connection
  * survives 60 s). Requests twitch.tv/membership so JOIN/PART/NAMES arrive; if Twitch never ACKs
  * it, only chatters who speak will ever appear, which is warned once per connection.
- * One-shot: construct a new client per start; stop() is terminal.
+ * One-shot: construct a new client per start; stop() is terminal. The listener thread checks its
+ * run is still live (see {@link SourceLifecycle}) before every state change and every roster
+ * update, so a line read just before stop() never lands after it.
  * Plain IRC-over-TLS transport, verified on 0.6.3.
  */
 public final class TwitchMembershipClient implements ChatSource {
@@ -42,30 +45,16 @@ public final class TwitchMembershipClient implements ChatSource {
     private final long initialBackoffMillis;
     private final AtomicLong eventCount = new AtomicLong();
 
-    private volatile boolean running;
+    private final SourceLifecycle lifecycle;
     private volatile Thread thread;
     private volatile Socket socket;
-    private volatile String state = "stopped";
-    /** Called on every state change (any thread); the plugin uses it to refresh open settings pages. */
-    private volatile Runnable onStateChange;
     private volatile boolean membershipAcknowledged;
     private boolean started;
 
+    /** Called on every state change (any thread); the plugin uses it to refresh open settings pages. */
     @Override
     public void setOnStateChange(Runnable hook) {
-        onStateChange = hook;
-    }
-
-    private void setState(String next) {
-        if (next.equals(state)) return;
-        state = next;
-        Runnable hook = onStateChange;
-        if (hook == null) return;
-        try {
-            hook.run();
-        } catch (RuntimeException exception) {
-            logger.log(Level.WARNING, "Sproutwatch state-change hook failed", exception);
-        }
+        lifecycle.setOnStateChange(hook);
     }
 
     /** Production client: TLS to irc.chat.twitch.tv:6697. */
@@ -82,6 +71,7 @@ public final class TwitchMembershipClient implements ChatSource {
         this.host = host;
         this.port = port;
         this.initialBackoffMillis = initialBackoffMillis;
+        this.lifecycle = new SourceLifecycle(logger, null, "stopped");
     }
 
     @Override
@@ -90,52 +80,53 @@ public final class TwitchMembershipClient implements ChatSource {
             throw new IllegalStateException("TwitchMembershipClient is one-shot; construct a new instance");
         }
         started = true;
-        running = true;
-        setState("connecting");
-        thread = new Thread(this::runLoop, "sproutwatch-twitch");
+        long generation = lifecycle.begin("connecting");
+        thread = new Thread(() -> runLoop(generation), "sproutwatch-twitch");
         thread.setDaemon(true);
         thread.start();
     }
 
     @Override
     public synchronized void stop() {
-        running = false;
-        setState("stopped");
+        lifecycle.end("stopped", this::closeAndJoin);
+    }
+
+    private void closeAndJoin() {
         closeSocket();
         Thread worker = thread;
-        if (worker != null) {
+        thread = null;
+        if (worker != null && worker != Thread.currentThread()) {
             worker.interrupt();
             try {
-                worker.join(500);
+                worker.join(STOP_JOIN_MILLIS);
             } catch (InterruptedException interruption) {
                 Thread.currentThread().interrupt();
             }
         }
-        thread = null;
     }
 
     @Override
-    public boolean isRunning() { return running; }
+    public boolean isRunning() { return lifecycle.running(); }
     @Override
-    public String getState() { return state; }
+    public String getState() { return lifecycle.state(); }
     public String getChannel() { return channel; }
     public long getEventCount() { return eventCount.get(); }
     public boolean isMembershipAcknowledged() { return membershipAcknowledged; }
     public int getRosterSize() { return roster.size(); }
 
-    private void runLoop() {
+    private void runLoop(long generation) {
         long backoffMillis = initialBackoffMillis;
         try {
-            while (running) {
+            while (lifecycle.live(generation)) {
                 long startedAt = System.currentTimeMillis();
                 try {
-                    connectAndRead();
+                    connectAndRead(generation);
                 } catch (IOException | RuntimeException exception) {
-                    if (!running) break;
-                    setState("reconnecting");
+                    if (!lifecycle.live(generation)) break;
+                    lifecycle.setState(generation, "reconnecting");
                     logger.warning("Twitch connection lost (" + exception.getMessage() + "); retrying in " + (backoffMillis / 1000) + "s");
                 }
-                if (!running) break;
+                if (!lifecycle.live(generation)) break;
                 long connectedMillis = System.currentTimeMillis() - startedAt;
                 backoffMillis = connectedMillis >= HEALTHY_CONNECTION_MILLIS
                         ? initialBackoffMillis
@@ -148,21 +139,21 @@ public final class TwitchMembershipClient implements ChatSource {
                 }
             }
         } finally {
-            if (running) {
+            if (lifecycle.finish(generation, "stopped")) {
                 logger.severe("Twitch listener thread died unexpectedly - run /sproutwatch stop then start");
-                running = false;
             }
-            setState("stopped");
         }
     }
 
-    private void connectAndRead() throws IOException {
+    private void connectAndRead(long generation) throws IOException {
         Socket newSocket = socketFactory.createSocket();
+        // Published before connecting, so a stop() during the connect timeout can close it. A stop()
+        // that ran before this line is caught by the live check after connecting.
+        socket = newSocket;
         try {
             newSocket.connect(new InetSocketAddress(host, port), (int) CONNECT_TIMEOUT_MILLIS);
-            socket = newSocket;
             newSocket.setSoTimeout((int) READ_TIMEOUT_MILLIS);
-            if (!running) return;
+            if (!lifecycle.live(generation)) return;
 
             membershipAcknowledged = false; // per connection
             boolean warnedNoMembership = false;
@@ -175,11 +166,11 @@ public final class TwitchMembershipClient implements ChatSource {
                 out.println("CAP REQ :twitch.tv/membership twitch.tv/commands");
                 out.println("NICK justinfan" + ThreadLocalRandom.current().nextInt(10_000, 100_000));
                 out.println("JOIN #" + channel);
-                setState("connected to #" + channel);
+                lifecycle.setState(generation, "connected to #" + channel);
                 logger.info("Sproutwatch watching Twitch channel #" + channel);
 
                 String line;
-                while (running && (line = in.readLine()) != null) {
+                while (lifecycle.live(generation) && (line = in.readLine()) != null) {
                     if (line.startsWith("PING")) {
                         out.println("PONG" + line.substring(4));
                         continue;
@@ -197,6 +188,9 @@ public final class TwitchMembershipClient implements ChatSource {
                     }
                     RosterEvent event = MembershipParser.parse(line);
                     if (event == null) continue;
+                    // The line may have been read (or held up above) after stop(): the plugin may
+                    // already have cleared the roster.
+                    if (!lifecycle.live(generation)) break;
                     eventCount.incrementAndGet();
                     try {
                         roster.apply(event, System.currentTimeMillis());

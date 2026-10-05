@@ -17,8 +17,8 @@ import java.util.Objects;
  * stream that runs past its plan slows down instead of running dry. It never polls faster than
  * YouTube asks or than once a second, and never sleeps past the daily refill.
  *
- * - {@link #COST_PER_POLL} = 2: measured 2026-10-03 on the Cloud Console quota page, a chat read
- *       costs 1 or 2 units; budgeting the upper bound keeps us safe.
+ * - {@link #COST_PER_POLL} = 2: the cost of one chat read, {@link Endpoint#CHAT_MESSAGES} (see
+ *       {@link Endpoint} for the measurement).
  * - {@link #RESERVE} = 200: kept back from the chat budget to cover the start-up lookups
  *       (channels / search / videos), so a spent chat budget never blocks finding the stream again.
  * - Google resets the quota at midnight Pacific time, so the "quota day" is a {@link LocalDate}
@@ -33,7 +33,7 @@ import java.util.Objects;
 public final class QuotaPacer {
     public static final int DAILY_QUOTA = 10_000;
     public static final int RESERVE = 200;
-    public static final int COST_PER_POLL = 2;
+    public static final int COST_PER_POLL = Endpoint.CHAT_MESSAGES.cost();
     public static final ZoneId QUOTA_ZONE = ZoneId.of("America/Los_Angeles");
 
     public static final long MILLIS_PER_HOUR = 3_600_000L;

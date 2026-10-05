@@ -16,7 +16,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -176,6 +178,65 @@ class TwitchMembershipClientTest {
             } finally {
                 client.stop();
             }
+        }
+    }
+
+    @Test
+    @Timeout(15)
+    void lineReadBeforeStopIsNeverAppliedAfterStop() throws Exception {
+        // The membership warning is logged on the listener thread between reading a line and
+        // applying it. A log handler that holds that warning until stop() has run models a stop
+        // arriving while a line is in flight: the line must not reach the roster afterward.
+        ChatRoster roster = new ChatRoster(() -> Set.of());
+        AtomicReference<TwitchMembershipClient> clientReference = new AtomicReference<>();
+        CountDownLatch warningHeld = new CountDownLatch(1);
+        Logger logger = Logger.getLogger("tmc-5");
+        logger.setUseParentHandlers(false);
+        logger.addHandler(new Handler() {
+            @Override public void publish(LogRecord record) {
+                if (record.getMessage() == null || !record.getMessage().contains("membership")) return;
+                warningHeld.countDown();
+                long deadline = System.currentTimeMillis() + 5_000;
+                TwitchMembershipClient client = clientReference.get();
+                while (client.isRunning() && System.currentTimeMillis() < deadline) {
+                    try {
+                        Thread.sleep(5);
+                    } catch (InterruptedException interruption) {
+                        // stop() interrupts the listener; keep waiting for running to drop
+                    }
+                }
+            }
+            @Override public void flush() {}
+            @Override public void close() {}
+        });
+
+        try (ServerSocket server = new ServerSocket(0)) {
+            Thread mock = new Thread(() -> {
+                try (Socket connection = server.accept();
+                     BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
+                     PrintWriter out = new PrintWriter(new OutputStreamWriter(connection.getOutputStream(), StandardCharsets.UTF_8), true)) {
+                    in.readLine(); in.readLine(); in.readLine();
+                    // No CAP ACK, and " 376 " in the text: this very line triggers the warning.
+                    out.println(":erin!erin@erin.tmi.twitch.tv PRIVMSG #streamer :room 376 says hi");
+                    in.readLine(); // until the client closes the connection
+                } catch (IOException ignored) {
+                    // the client closed the connection
+                }
+            });
+            mock.start();
+
+            TwitchMembershipClient client = new TwitchMembershipClient(
+                "streamer", roster, logger, SocketFactory.getDefault(), "127.0.0.1", server.getLocalPort(), 5_000);
+            clientReference.set(client);
+            client.start();
+            try {
+                assertTrue(warningHeld.await(10, TimeUnit.SECONDS), "the listener read the line");
+            } finally {
+                client.stop(); // the held handler returns once running drops; stop() joins the listener
+                mock.join(5_000);
+            }
+            assertEquals(0, roster.size(), "a line read before stop() must not be applied after it");
+            assertEquals("stopped", client.getState());
         }
     }
 

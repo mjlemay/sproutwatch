@@ -480,15 +480,4 @@ class YouTubeApiTest {
             assertFalse(t.toString().contains(KEY), t.toString());
         }
     }
-
-    // ---- quota cost ----
-
-    @Test
-    void costOf() {
-        assertEquals(1, YouTubeApi.costOf("channels"));
-        assertEquals(1, YouTubeApi.costOf("videos"));
-        assertEquals(1, YouTubeApi.costOf("search"));
-        assertEquals(2, YouTubeApi.costOf("liveChat/messages"));
-        assertThrows(IllegalArgumentException.class, () -> YouTubeApi.costOf("playlists"));
-    }
 }

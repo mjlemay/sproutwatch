@@ -48,7 +48,7 @@ enum SettingsTab {
     static void bind(UIEventBuilder events) {
         for (SettingsTab t : values()) {
             events.addEventBinding(CustomUIEventBindingType.Activating, t.button,
-                new EventData().append(SettingsEvent.KEY_ACTION, "tab").append(SettingsEvent.KEY_TAB, t.name()));
+                new EventData().append(SettingsEvent.KEY_ACTION, PageAction.TAB.wireName()).append(SettingsEvent.KEY_TAB, t.name()));
         }
     }
 

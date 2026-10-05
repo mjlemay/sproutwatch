@@ -258,6 +258,14 @@ return from another thread.
 
 ---
 
+## Follow-ups found during execution
+
+- (found in 1.4) `YouTubeApi.liveVideoId` makes an extra `videos` call to break a tie when several
+  streams are live at once; that call is not charged to the quota. Charge `Endpoint.VIDEOS.cost()`
+  for it (needs the call count surfaced to `YouTubeChatSource.resolve`, or the API reporting units).
+- (found in 1.2) `PageState.runButton` is still the strings "start" / "connecting" / "stop"; an
+  enum would match the 1.1 approach.
+
 ## 3. Still owed outside this backlog
 
 - Task 11 live test of YouTube chat (checklist in the YouTube plan). Partly done: the page opens
@@ -277,3 +285,9 @@ return from another thread.
 - 2026-10-04: Tier 3 pass A (3.1, 3.2, 3.5) done: 532 tests.
 - 2026-10-04: Tier 3 pass B (3.3, 3.4) done: 532 tests.
 - 2026-10-04: Tier 3 reviewed (identifier-only diff confirmed; only literal change "centred" -> "centered"); review fixes applied (ChatRoster command local, SproutQueue/PenDespawnSystem/PenRegistry/SproutSpawner comments, remaining British spellings incl. test names); 532 tests; deployed; headless boot clean. Waiting for Mertie to commit Tier 3 before Tier 1.
+- 2026-10-04: Tier 1.1 PageAction done: 537 tests.
+- 2026-10-04: Tier 1.2 PageState done: 545 tests.
+- 2026-10-04: Tier 1.3 ReconcileRequest done: 550 tests.
+- 2026-10-04: Tier 1.4 Endpoint done: 554 tests.
+- 2026-10-04: Tier 1.5 SourceLifecycle done: 563 tests.
+- 2026-10-05: Tier 1 complete (1.1-1.5 reviewed; 1.5 review fixes applied, mutation-checked); 563 tests; deployed; headless boot clean. Waiting for Mertie to commit Tier 1 before Tier 2.
