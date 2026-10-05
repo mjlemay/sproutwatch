@@ -38,18 +38,15 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
     // can change worlds while the page is open, so successive events may arrive on different threads.
     private volatile SettingsTab tab = SettingsTab.CONNECT;
     private volatile String message = "";
-    // What the last build() or push showed; null until the first build(). Written by build() and
-    // pushOnWorldThread() (player's world thread), read by refreshStatus() (any thread); the benign
-    // race costs one extra push. Its listsKey changing triggers a rebuild so new rows appear.
-    private volatile PageState lastSent;
-    // A refresh queued on the pen thread can land after the player dismissed the page.
-    private volatile boolean dismissed;
+    // Owns what the last build() or push showed, the dismissed flag and the world-thread handoff.
+    private final StatusPusher statusPusher;
 
     public SproutwatchSettingsPage(PlayerRef playerRef, SproutwatchActions actions, OpenPages openPages, Logger logger) {
         super(playerRef, CustomPageLifetime.CanDismissOrCloseThroughInteraction, SettingsEvent.CODEC);
         this.actions = actions;
         this.openPages = openPages;
         this.logger = logger;
+        this.statusPusher = new StatusPusher(new EngineSink(), logger);
     }
 
     @Override
@@ -62,7 +59,7 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
         SettingsTab.apply(commands, tab);
         PageState state = PageState.of(snapshot, lookupLine(), listsKey(config));
         applyState(commands, state);
-        lastSent = state;
+        statusPusher.recordBuilt(state);
         SettingsPanes.connect(commands, events, config, snapshot);
         SettingsPanes.viewers(commands, events, config, snapshot);
         SettingsPanes.listener(commands, events, snapshot);
@@ -193,38 +190,34 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
      */
     @Override
     public boolean refreshStatus() {
-        if (dismissed) return false;
+        if (statusPusher.isDismissed()) return false;
         Ref<EntityStore> ref = playerRef.getReference();
         if (!playerRef.isValid() || ref == null || !ref.isValid()) return false;
-        try {
-            PageState state = PageState.of(actions.snapshot(), lookupLine(), listsKey(actions.config()));
-            if (state.equals(lastSent)) return true;
-            Store<EntityStore> store = ref.getStore();
-            Runnable push = () -> pushOnWorldThread(state);
-            if (store.isInThread()) push.run();
-            else store.getExternalData().getWorld().execute(push);
-            return true;
-        } catch (RuntimeException exception) {
-            logger.log(Level.WARNING, "Sproutwatch settings page refresh failed; dropping the page", exception);
-            return false;
+        return statusPusher.refresh(
+            () -> PageState.of(actions.snapshot(), lookupLine(), listsKey(actions.config())), new PlayerWorld(ref));
+    }
+
+    /** The player's world thread, reached through the entity store only when the push needs it. */
+    private record PlayerWorld(Ref<EntityStore> ref) implements StatusPusher.WorldExecutor {
+        @Override public boolean isInThread() {
+            return ref.getStore().isInThread();
+        }
+
+        @Override public void execute(Runnable task) {
+            ref.getStore().getExternalData().getWorld().execute(task);
         }
     }
 
-    /** Runs on the player's world thread. A failure here is logged; the page stays registered. */
-    private void pushOnWorldThread(PageState state) {
-        if (dismissed) return;
-        try {
-            PageState shown = lastSent;
-            if (shown == null || !state.listsKey().equals(shown.listsKey())) {
-                rebuild();   // build() records the full state
-                return;
-            }
+    /** The engine calls StatusPusher makes on the player's world thread. */
+    private final class EngineSink implements StatusPusher.PageSink {
+        @Override public void rebuild() {
+            SproutwatchSettingsPage.this.rebuild();
+        }
+
+        @Override public void sendState(PageState state) {
             UICommandBuilder commands = new UICommandBuilder();
             applyState(commands, state);
             sendUpdate(commands);
-            lastSent = state;
-        } catch (RuntimeException exception) {
-            logger.log(Level.WARNING, "Sproutwatch settings page push failed", exception);
         }
     }
 
@@ -235,7 +228,7 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
 
     @Override
     public void onDismiss(@Nonnull Ref<EntityStore> ref, @Nonnull Store<EntityStore> store) {
-        dismissed = true; // before forget: a refresh already past refreshAll's iteration must still bail out
+        statusPusher.dismiss(); // before forget: a refresh already past refreshAll's iteration must still bail out
         openPages.forget(playerRef.getUuid(), this);
     }
 }

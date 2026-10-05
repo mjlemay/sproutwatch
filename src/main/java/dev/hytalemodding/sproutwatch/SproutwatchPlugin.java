@@ -28,14 +28,12 @@ import dev.hytalemodding.sproutwatch.twitch.TwitchMembershipClient;
 import dev.hytalemodding.sproutwatch.ui.ActionsHost;
 import dev.hytalemodding.sproutwatch.ui.OpenPages;
 import dev.hytalemodding.sproutwatch.ui.SproutwatchActions;
-import dev.hytalemodding.sproutwatch.ui.StatusSnapshot;
 import dev.hytalemodding.sproutwatch.ui.YouTubeStatus;
+import dev.hytalemodding.sproutwatch.youtube.QuotaPacer;
 import dev.hytalemodding.sproutwatch.youtube.QuotaStore;
-import dev.hytalemodding.sproutwatch.youtube.YouTubeChatSource;
 import dev.hytalemodding.sproutwatch.youtube.YouTubeService;
 
 import javax.annotation.Nonnull;
-import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -60,14 +58,14 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
     private final ChairCameraService cameraService;
     private final SproutwatchActions actions;
     private final OpenPages openPages;
-    /**
-     * The chat sources started by the last Start (empty when stopped). Replaced as a whole under the
-     * plugin monitor; read without it (LOCKING RULE: state hooks and roster suppliers run on source
-     * threads while stopListener joins them, so status reads must never take the monitor).
-     */
-    private volatile List<ChatSource> sources = List.of();
-    /** The shared YouTube client, the running pacer and the @handle lookups (its own lock, never the plugin monitor). */
+    /** The shared YouTube client, the running pacer and the @handle lookups (its own lock, never the listener lock). */
     private final YouTubeService youTubeService;
+    /**
+     * Starts, stops and reports on the chat sources. It owns the LOCKING RULE (status reads never
+     * take its private lock, because stopListener holds it while joining source threads that call
+     * them); see {@link ListenerController} and ListenerControllerTest. The plugin takes no lock.
+     */
+    private final ListenerController listener;
     private final AtomicBoolean bootSweepDone = new AtomicBoolean();
 
     public SproutwatchPlugin(@Nonnull JavaPluginInit init) {
@@ -89,6 +87,7 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
             bridgeLogger);
         // Live status for open settings pages: after every tick, on the pen world thread.
         ticker.setAfterTick(openPages::refreshAll);
+        this.listener = new ListenerController(config::get, this::newSources, roster, displayNames, new ListenerHooks(), bridgeLogger);
     }
 
     @Override
@@ -173,7 +172,7 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
     public PenTicker getTicker() { return ticker; }
     public ChairCameraService getCameraService() { return cameraService; }
     /** The started Twitch client, or null. */
-    public TwitchMembershipClient getClient() { return twitch(); }
+    public TwitchMembershipClient getClient() { return listener.twitchClient(); }
     /** Shared mutation service used by the commands and the settings page. */
     public SproutwatchActions getActions() { return actions; }
     /** Settings pages currently open, for live status pushes and disconnect cleanup. */
@@ -198,105 +197,28 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
         });
     }
 
-    @Override
-    public String listenerState() {
-        return StatusSnapshot.joinStates(sourceStates());
-    }
-
-    @Override
-    public boolean listenerRunning() {
-        for (ChatSource s : sources) if (s.isRunning()) return true;
-        return false;
-    }
+    @Override public String listenerState() { return listener.listenerState(); }
+    @Override public boolean listenerRunning() { return listener.listenerRunning(); }
 
     @Override
     public boolean feedAcknowledged() {
-        TwitchMembershipClient client = twitch();
+        TwitchMembershipClient client = listener.twitchClient();
         return client != null && client.isMembershipAcknowledged();
     }
 
-    @Override
-    public Map<String, String> sourceStates() {
-        SproutwatchConfig currentConfig = config.get();
-        String twitchState = null, youTubeState = null;
-        for (ChatSource s : sources) {
-            if (s instanceof TwitchMembershipClient) twitchState = s.getState();
-            else if (s instanceof YouTubeChatSource) youTubeState = s.getState();
-        }
-        return StatusSnapshot.sourceStates(twitchState, currentConfig.twitchReady(), youTubeState, currentConfig.youTubeConfigured());
-    }
+    @Override public Map<String, String> sourceStates() { return listener.sourceStates(); }
+    @Override public YouTubeStatus youTubeStatus() { return listener.youTubeStatus(); }
 
-    @Override
-    public YouTubeStatus youTubeStatus() {
-        return YouTubeStatus.of(config.get(), youTubeService.currentPacer(), Clock.systemDefaultZone());
-    }
-
-    /**
-     * @return error text, or null on success. Stops the current run first, always (ActionsHost
-     * contract): a refused restart must not leave a source listening. Synchronized: commands may race.
-     */
-    @Override
-    public synchronized String startListener() {
-        stopListener();
-        SproutwatchConfig currentConfig = config.get();
-        String nothing = currentConfig.nothingToStartReason();
-        if (nothing != null) return nothing;
-        if (!currentConfig.isPenSet()) {
-            return "No pen placed yet. Stand where you want it and run /sproutwatch place.";
-        }
-        List<ChatSource> next = new ArrayList<>();
-        if (currentConfig.twitchReady()) {
-            next.add(new TwitchMembershipClient(currentConfig.getTwitchChannel(), roster, bridgeLogger)); // one-shot per start
-        }
-        if (currentConfig.youTubeConfigured()) {
-            ChatSource youTube = youTubeService.newSource(currentConfig, roster, displayNames);
-            if (youTube != null) next.add(youTube);
-        }
-        List<ChatSource> started = new ArrayList<>();
-        for (ChatSource s : next) {
-            try {
-                s.setOnStateChange(this::statusChanged); // Connecting... -> Stop flips on open pages at once
-                s.start();
-                started.add(s);
-            } catch (RuntimeException exception) {
-                // Class name only: a message could in theory echo configuration.
-                bridgeLogger.warning("Sproutwatch: a chat source failed to start: " + exception.getClass().getSimpleName());
-                if (s instanceof YouTubeChatSource) youTubeService.sourceFailedToStart();
-            }
-        }
-        if (started.isEmpty()) return "No chat source could start (see the server log).";
-        sources = List.copyOf(started);
-        World world = PenTicker.resolveWorld(currentConfig);
-        if (world != null) runOnWorld(world, () -> bootSweep(world));
-        ticker.start();
-        return null;
-    }
+    /** @return error text, or null on success (see {@link ListenerController#startListener()}). */
+    @Override public String startListener() { return listener.startListener(); }
 
     /** @return true if a listener was running and has been stopped. Sprouts stay until /sproutwatch clear. */
-    @Override
-    public synchronized boolean stopListener() {
-        List<ChatSource> old = sources;
-        sources = List.of();
-        for (ChatSource s : old) s.stop();   // stop the producers (each joins <= 1 s) before clearing what they produce
-        ticker.stop();
-        roster.clear();
-        displayNames.clear();   // names belong to the session's roster
-        youTubeService.stopped();   // saves the quota usage; closes the client once YouTube is off
-        // True when a Start was in effect, even if every source has since ended on its own (chat
-        // ended): the ticker was still running, so Stop did stop something.
-        return !old.isEmpty();
-    }
+    @Override public boolean stopListener() { return listener.stopListener(); }
 
     /** Resolves an allow/ignore @handle on the YouTube lookup thread (see {@link YouTubeService}). */
     @Override
     public java.util.concurrent.CompletableFuture<String> lookUpViewerChannelId(String viewerHandle) {
         return youTubeService.lookUpViewerChannelId(viewerHandle);
-    }
-
-    /** The started Twitch client, or null. Lock-free (volatile read). */
-    private TwitchMembershipClient twitch() {
-        for (ChatSource s : sources) if (s instanceof TwitchMembershipClient client) return client;
-        return null;
     }
 
     @Override public boolean tickerRunning() { return ticker.isRunning(); }
@@ -333,6 +255,36 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
     }
 
     // ---- internals ---------------------------------------------------------------------------
+
+    /** The sources one Start wants, in start order: a fresh Twitch client, then the YouTube source. */
+    private List<ChatSource> newSources(SproutwatchConfig currentConfig) {
+        List<ChatSource> next = new ArrayList<>();
+        if (currentConfig.twitchReady()) {
+            next.add(new TwitchMembershipClient(currentConfig.getTwitchChannel(), roster, bridgeLogger)); // one-shot per start
+        }
+        if (currentConfig.youTubeConfigured()) {
+            ChatSource youTube = youTubeService.newSource(currentConfig, roster, displayNames);
+            if (youTube != null) next.add(youTube);
+        }
+        return next;
+    }
+
+    /** What the listener drives besides its sources: the ticker, the YouTube service, the boot sweep and open pages. */
+    private final class ListenerHooks implements ListenerController.Hooks {
+        @Override public void startTicker() { ticker.start(); }
+        @Override public void stopTicker() { ticker.stop(); }
+        @Override public void youTubeSourceFailedToStart() { youTubeService.sourceFailedToStart(); }
+        @Override public void youTubeStopped() { youTubeService.stopped(); }
+        /** Lock-free: YouTubeService.currentPacer() is a volatile read. */
+        @Override public QuotaPacer currentYouTubePacer() { return youTubeService.currentPacer(); }
+        @Override public void statusChanged() { SproutwatchPlugin.this.statusChanged(); }
+
+        @Override
+        public void sweepPenWorld(SproutwatchConfig currentConfig) {
+            World world = PenTicker.resolveWorld(currentConfig);
+            if (world != null) runOnWorld(world, () -> bootSweep(world));
+        }
+    }
 
     /** Restart safety: once per boot, sweep leftover younglings out of the pen. World thread. */
     private void bootSweep(World world) {

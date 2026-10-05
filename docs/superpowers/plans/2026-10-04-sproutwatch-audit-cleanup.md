@@ -298,3 +298,6 @@ return from another thread.
 - 2026-10-05: Tier 2.1 actions split (ChatSourceActions, PenActions, ViewerListActions): 601 tests.
 - 2026-10-05: Tier 2.6 smaller methods done: 601 tests.
 - 2026-10-05: Tier 2 complete (2.1-2.6; 2.2 reviewed + mutation-checked); 601 tests; deployed; headless boot clean. Waiting for Mertie to commit Tier 2 before Tier 4.
+- 2026-10-05: Tier 4.1 locking rule enforced (ListenerController + tests): 613 tests.
+- 2026-10-05: Tier 4.2 StatusPusher + WorldExecutor/PageSink seams: 622 tests.
+- 2026-10-05: Tier 4 complete (4.1, 4.2; shared scheduler skipped); 622 tests; deployed; headless boot clean. Remaining: the two follow-ups and the YouTube Task 11 in-game checks.
