@@ -1,5 +1,7 @@
 package dev.hytalemodding.sproutwatch.twitch;
 
+import dev.hytalemodding.sproutwatch.chat.RosterEvent;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;

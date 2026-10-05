@@ -9,8 +9,11 @@ import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.util.Config;
 import dev.hytalemodding.sproutwatch.camera.ChairCameraService;
 import dev.hytalemodding.sproutwatch.camera.SeatedInvulnerabilitySystem;
+import dev.hytalemodding.sproutwatch.camera.SeatedPlayers;
+import dev.hytalemodding.sproutwatch.chat.ChatRoster;
 import dev.hytalemodding.sproutwatch.chat.ChatSource;
 import dev.hytalemodding.sproutwatch.chat.DisplayNames;
+import dev.hytalemodding.sproutwatch.chat.SproutQueue;
 import dev.hytalemodding.sproutwatch.commands.SproutwatchCommand;
 import dev.hytalemodding.sproutwatch.config.SproutwatchConfig;
 import dev.hytalemodding.sproutwatch.pen.PenBounds;
@@ -21,19 +24,15 @@ import dev.hytalemodding.sproutwatch.pen.PenRegistry;
 import dev.hytalemodding.sproutwatch.pen.PenTicker;
 import dev.hytalemodding.sproutwatch.pen.SproutDeathSystem;
 import dev.hytalemodding.sproutwatch.pen.SproutSpawner;
-import dev.hytalemodding.sproutwatch.twitch.ChatRoster;
-import dev.hytalemodding.sproutwatch.twitch.SproutQueue;
 import dev.hytalemodding.sproutwatch.twitch.TwitchMembershipClient;
 import dev.hytalemodding.sproutwatch.ui.ActionsHost;
 import dev.hytalemodding.sproutwatch.ui.OpenPages;
 import dev.hytalemodding.sproutwatch.ui.SproutwatchActions;
 import dev.hytalemodding.sproutwatch.ui.StatusSnapshot;
 import dev.hytalemodding.sproutwatch.ui.YouTubeStatus;
-import dev.hytalemodding.sproutwatch.youtube.Endpoint;
-import dev.hytalemodding.sproutwatch.youtube.QuotaPacer;
 import dev.hytalemodding.sproutwatch.youtube.QuotaStore;
-import dev.hytalemodding.sproutwatch.youtube.YouTubeApi;
 import dev.hytalemodding.sproutwatch.youtube.YouTubeChatSource;
+import dev.hytalemodding.sproutwatch.youtube.YouTubeService;
 
 import javax.annotation.Nonnull;
 import java.time.Clock;
@@ -57,6 +56,7 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
     private final PenRegistry registry;
     private final SproutSpawner spawner;
     private final PenTicker ticker;
+    private final SeatedPlayers seatedPlayers = new SeatedPlayers();
     private final ChairCameraService cameraService;
     private final SproutwatchActions actions;
     private final OpenPages openPages;
@@ -66,18 +66,8 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
      * threads while stopListener joins them, so status reads must never take the monitor).
      */
     private volatile List<ChatSource> sources = List.of();
-    /** The running YouTube source's pacer (null when YouTube is not started); read by youTubeStatus. */
-    private volatile QuotaPacer youTubePacer;
-    /** One shared client per plugin, recreated when the key changes. Guarded by the plugin monitor. */
-    private YouTubeApi youTubeApi;
-    private String youTubeApiKey;
-    private final QuotaStore quotaStore;
-    /** Allow/ignore @handle lookups: one daemon thread, so a lookup never blocks a world or command thread. */
-    private final java.util.concurrent.ExecutorService youTubeLookups = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
-        Thread thread = new Thread(r, "Sproutwatch-YouTube-lookup");
-        thread.setDaemon(true);
-        return thread;
-    });
+    /** The shared YouTube client, the running pacer and the @handle lookups (its own lock, never the plugin monitor). */
+    private final YouTubeService youTubeService;
     private final AtomicBoolean bootSweepDone = new AtomicBoolean();
 
     public SproutwatchPlugin(@Nonnull JavaPluginInit init) {
@@ -92,10 +82,11 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
         this.spawner = new SproutSpawner(config::get, registry, displayNames, bridgeLogger);
         this.ticker = new PenTicker(config::get, roster, registry, spawner, bridgeLogger);
         ticker.setOnWorldReady(this::bootSweep);
-        this.cameraService = new ChairCameraService(config::get, bridgeLogger);
+        this.cameraService = new ChairCameraService(config::get, bridgeLogger, seatedPlayers);
         this.actions = new SproutwatchActions(this);
         this.openPages = new OpenPages(bridgeLogger);
-        this.quotaStore = new QuotaStore(config::get, this::saveConfig, System::currentTimeMillis);
+        this.youTubeService = new YouTubeService(config::get, new QuotaStore(config::get, this::saveConfig, System::currentTimeMillis),
+            bridgeLogger);
         // Live status for open settings pages: after every tick, on the pen world thread.
         ticker.setAfterTick(openPages::refreshAll);
     }
@@ -137,7 +128,7 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
             getLogger().atSevere().withCause(exception).log("Sproutwatch chair camera failed to register");
         }
         try {
-            getEntityStoreRegistry().registerSystem(new SeatedInvulnerabilitySystem(cameraService));
+            getEntityStoreRegistry().registerSystem(new SeatedInvulnerabilitySystem(seatedPlayers));
         } catch (RuntimeException exception) {
             getLogger().atSevere().withCause(exception).log("Sproutwatch seated invulnerability failed to register");
         }
@@ -158,16 +149,9 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
     @Override
     protected void shutdown() {
         // Lookups first: queued ones are failed (LookupUnavailable), an in-flight one is interrupted.
-        for (Runnable r : youTubeLookups.shutdownNow()) {
-            if (r instanceof LookupTask task) task.future.completeExceptionally(new ActionsHost.LookupUnavailable());
-        }
+        youTubeService.shutdownLookups();
         stopListener();   // flushes the quota usage into a config save
-        closeYouTubeApi();
-        try {
-            youTubeLookups.awaitTermination(1, java.util.concurrent.TimeUnit.SECONDS);   // its quota unit may still land
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-        }
+        youTubeService.close();   // closes the client, then waits up to 1 s for the lookup thread
         try {
             config.save().get(2, java.util.concurrent.TimeUnit.SECONDS);   // let the last usage reach disk before exit
         } catch (Exception exception) {
@@ -244,7 +228,7 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
 
     @Override
     public YouTubeStatus youTubeStatus() {
-        return YouTubeStatus.of(config.get(), youTubePacer, Clock.systemDefaultZone());
+        return YouTubeStatus.of(config.get(), youTubeService.currentPacer(), Clock.systemDefaultZone());
     }
 
     /**
@@ -265,7 +249,7 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
             next.add(new TwitchMembershipClient(currentConfig.getTwitchChannel(), roster, bridgeLogger)); // one-shot per start
         }
         if (currentConfig.youTubeConfigured()) {
-            ChatSource youTube = newYouTubeSource(currentConfig);
+            ChatSource youTube = youTubeService.newSource(currentConfig, roster, displayNames);
             if (youTube != null) next.add(youTube);
         }
         List<ChatSource> started = new ArrayList<>();
@@ -277,7 +261,7 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
             } catch (RuntimeException exception) {
                 // Class name only: a message could in theory echo configuration.
                 bridgeLogger.warning("Sproutwatch: a chat source failed to start: " + exception.getClass().getSimpleName());
-                if (s instanceof YouTubeChatSource) youTubePacer = null;
+                if (s instanceof YouTubeChatSource) youTubeService.sourceFailedToStart();
             }
         }
         if (started.isEmpty()) return "No chat source could start (see the server log).";
@@ -297,119 +281,16 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
         ticker.stop();
         roster.clear();
         displayNames.clear();   // names belong to the session's roster
-        QuotaPacer pacer = youTubePacer;
-        youTubePacer = null;
-        if (pacer != null) pacer.setUsageListener(null);   // a call still in flight after the join may not save
-        quotaStore.flush(pacer);
-        if (!config.get().youTubeConfigured()) closeYouTubeApi();   // no idle HttpClient once YouTube is off
+        youTubeService.stopped();   // saves the quota usage; closes the client once YouTube is off
         // True when a Start was in effect, even if every source has since ended on its own (chat
         // ended): the ticker was still running, so Stop did stop something.
         return !old.isEmpty();
     }
 
-    /** Fresh pacer (restored from the saved usage) and source on the shared API client; null if it cannot be built. */
-    private ChatSource newYouTubeSource(SproutwatchConfig currentConfig) {
-        try {
-            String key = currentConfig.getYouTubeApiKey();
-            if (youTubeApi == null || !key.equals(youTubeApiKey)) {
-                closeYouTubeApi();
-                youTubeApi = new YouTubeApi(key);
-                youTubeApiKey = key;
-            }
-            QuotaPacer pacer = new QuotaPacer(currentConfig.getYouTubeStreamHours(), Clock.systemDefaultZone());
-            quotaStore.attach(pacer);
-            ChatSource source = new YouTubeChatSource(currentConfig.getYouTubeHandle(), currentConfig.getYouTubeVideo(), youTubeApi, pacer,
-                roster, displayNames, bridgeLogger);
-            youTubePacer = pacer;
-            return source;
-        } catch (RuntimeException exception) {
-            // Class name only: a message could in theory echo configuration.
-            bridgeLogger.warning("Sproutwatch: YouTube source could not start: " + exception.getClass().getSimpleName());
-            return null;
-        }
-    }
-
-    /**
-     * Detaches the shared client under the monitor and closes it on a virtual thread:
-     * HttpClient.close() waits for in-flight requests (a lookup or poll, up to the call timeout), and
-     * that wait must never hold the plugin monitor or block a world or command thread.
-     */
-    private void closeYouTubeApi() {
-        YouTubeApi api;
-        synchronized (this) {
-            api = youTubeApi;
-            youTubeApi = null;
-            youTubeApiKey = null;
-        }
-        if (api != null) Thread.startVirtualThread(api::close);
-    }
-
-    /**
-     * Resolves an allow/ignore @handle on the lookup thread with the shared client (created for the
-     * configured key when the listener has not made one). The plugin monitor is only taken on the
-     * lookup thread, never the caller's. Each call that reaches the API is counted as 1 quota unit.
-     * Failures carry the YouTubeException kind only, never the key.
-     */
+    /** Resolves an allow/ignore @handle on the YouTube lookup thread (see {@link YouTubeService}). */
     @Override
     public java.util.concurrent.CompletableFuture<String> lookUpViewerChannelId(String viewerHandle) {
-        LookupTask task = new LookupTask(viewerHandle);
-        try {
-            youTubeLookups.execute(task);
-        } catch (java.util.concurrent.RejectedExecutionException exception) {
-            task.future.completeExceptionally(new ActionsHost.LookupUnavailable());
-        }
-        return task.future;
-    }
-
-    /** One queued lookup; shutdown() fails the future of any task it never ran. */
-    private final class LookupTask implements Runnable {
-        final String handle;
-        final java.util.concurrent.CompletableFuture<String> future = new java.util.concurrent.CompletableFuture<>();
-
-        LookupTask(String handle) {
-            this.handle = handle;
-        }
-
-        @Override
-        public void run() {
-            try {
-                YouTubeApi api = lookupApi();
-                if (api == null) throw new ActionsHost.NoYouTubeKey();
-                try {
-                    future.complete(api.channelIdForHandle(handle));
-                } finally {
-                    countLookupUnit();
-                    releaseLookupApi(api);
-                }
-            } catch (Throwable throwable) {
-                future.completeExceptionally(throwable);
-            }
-        }
-    }
-
-    /** One channels lookup: into the running pacer (which persists it), else straight into the saved usage. */
-    private void countLookupUnit() {
-        QuotaPacer pacer = youTubePacer;
-        if (pacer != null) pacer.recordCall(Endpoint.CHANNELS.cost());
-        else quotaStore.addUnits(Endpoint.CHANNELS.cost(), java.time.LocalDate.now(QuotaPacer.QUOTA_ZONE));
-    }
-
-    /** The shared client for the configured key (made if needed), or null when no key is set. */
-    private synchronized YouTubeApi lookupApi() {
-        String key = config.get().getYouTubeApiKey();
-        if (key.isEmpty()) return null;
-        if (youTubeApi == null || !key.equals(youTubeApiKey)) {
-            if (youTubePacer != null && youTubeApi != null) return youTubeApi;   // a running source keeps its client until restart
-            closeYouTubeApi();
-            youTubeApi = new YouTubeApi(key);
-            youTubeApiKey = key;
-        }
-        return youTubeApi;
-    }
-
-    /** Same rule as stopListener: no idle HttpClient once YouTube is off and nothing else uses it. */
-    private synchronized void releaseLookupApi(YouTubeApi used) {
-        if (youTubeApi == used && youTubePacer == null && !config.get().youTubeConfigured()) closeYouTubeApi();
+        return youTubeService.lookUpViewerChannelId(viewerHandle);
     }
 
     /** The started Twitch client, or null. Lock-free (volatile read). */

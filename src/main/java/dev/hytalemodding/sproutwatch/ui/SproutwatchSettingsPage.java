@@ -74,7 +74,7 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
 
     /** The last YouTube handle lookup (pending or its outcome) for the Viewers tab; "" when none. */
     private String lookupLine() {
-        return actions.lastLookupMessage().orElse("");
+        return actions.viewerLists().lastLookupMessage().orElse("");
     }
 
     /**
@@ -110,31 +110,31 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
                 case null -> "Unknown action: " + action;
                 case TAB -> message; // handled above (partial update, no rebuild); never reached
                 case BEGIN -> message; // begin() already set the error
-                case SAVE_CHANNEL -> actions.setChannel(event.channel);
-                case SET_TWITCH_ENABLED -> actions.setTwitchEnabled(Boolean.TRUE.equals(event.twitchOn));
-                case SET_YOUTUBE_ENABLED -> actions.setYouTubeEnabled(Boolean.TRUE.equals(event.youTubeOn));
-                case SAVE_YOUTUBE_HANDLE -> actions.setYouTubeHandle(event.youTubeHandle);
-                case SAVE_YOUTUBE_KEY -> actions.setYouTubeKey(event.youTubeKey); // reply is masked; the field is rebuilt empty
-                case SAVE_YOUTUBE_VIDEO -> actions.setYouTubeVideo(event.youTubeVideo); // blank clears
-                case REMOVE_CHANNEL -> actions.removeChannel();
-                case REMOVE_YOUTUBE_HANDLE -> actions.removeYouTubeHandle();
-                case REMOVE_YOUTUBE_KEY -> actions.removeYouTubeKey();
-                case REMOVE_YOUTUBE_VIDEO -> actions.setYouTubeVideo("");
-                case SAVE_MAX -> event.max == null ? "Enter a number of sprouts (min 1)." : actions.setMaxSprouts(event.max);
-                case SET_FILTER -> actions.setFilter("allow".equals(event.filter));
-                case ADD_ALLOW -> actions.addAllow(event.allowInput);
-                case REMOVE_ALLOW -> actions.removeAllow(event.viewerKey);
-                case ADD_IGNORE -> actions.addIgnore(event.ignoreInput);
-                case REMOVE_IGNORE -> actions.removeIgnore(event.viewerKey);
-                case START_LISTENER -> actions.startListener();
-                case STOP_LISTENER -> actions.stopListener();
-                case SET_PERSIST -> actions.setPersist(Boolean.TRUE.equals(event.persist));
-                case SET_AUTO_START -> actions.setAutoStart(Boolean.TRUE.equals(event.autoStart));
-                case SAVE_INTERVAL -> event.interval == null ? "Enter a number of seconds (min 5)." : actions.setTickSeconds(event.interval);
-                case SELECT_PREFAB -> actions.selectPrefab(event.prefab);
-                case SELECT_CREATURES -> actions.setCreatures(event.creatures);
-                case PLACE -> actions.place(playerRef);
-                case CLEAR -> actions.clear();
+                case SAVE_CHANNEL -> actions.chatSources().setChannel(event.channel);
+                case SET_TWITCH_ENABLED -> actions.chatSources().setTwitchEnabled(Boolean.TRUE.equals(event.twitchOn));
+                case SET_YOUTUBE_ENABLED -> actions.chatSources().setYouTubeEnabled(Boolean.TRUE.equals(event.youTubeOn));
+                case SAVE_YOUTUBE_HANDLE -> actions.chatSources().setYouTubeHandle(event.youTubeHandle);
+                case SAVE_YOUTUBE_KEY -> actions.chatSources().setYouTubeKey(event.youTubeKey); // reply is masked; the field is rebuilt empty
+                case SAVE_YOUTUBE_VIDEO -> actions.chatSources().setYouTubeVideo(event.youTubeVideo); // blank clears
+                case REMOVE_CHANNEL -> actions.chatSources().removeChannel();
+                case REMOVE_YOUTUBE_HANDLE -> actions.chatSources().removeYouTubeHandle();
+                case REMOVE_YOUTUBE_KEY -> actions.chatSources().removeYouTubeKey();
+                case REMOVE_YOUTUBE_VIDEO -> actions.chatSources().setYouTubeVideo("");
+                case SAVE_MAX -> event.max == null ? "Enter a number of sprouts (min 1)." : actions.pen().setMaxSprouts(event.max);
+                case SET_FILTER -> actions.viewerLists().setFilter("allow".equals(event.filter));
+                case ADD_ALLOW -> actions.viewerLists().addAllow(event.allowInput);
+                case REMOVE_ALLOW -> actions.viewerLists().removeAllow(event.viewerKey);
+                case ADD_IGNORE -> actions.viewerLists().addIgnore(event.ignoreInput);
+                case REMOVE_IGNORE -> actions.viewerLists().removeIgnore(event.viewerKey);
+                case START_LISTENER -> actions.chatSources().startListener();
+                case STOP_LISTENER -> actions.chatSources().stopListener();
+                case SET_PERSIST -> actions.pen().setPersist(Boolean.TRUE.equals(event.persist));
+                case SET_AUTO_START -> actions.chatSources().setAutoStart(Boolean.TRUE.equals(event.autoStart));
+                case SAVE_INTERVAL -> event.interval == null ? "Enter a number of seconds (min 5)." : actions.pen().setTickSeconds(event.interval);
+                case SELECT_PREFAB -> actions.pen().selectPrefab(event.prefab);
+                case SELECT_CREATURES -> actions.pen().setCreatures(event.creatures);
+                case PLACE -> actions.pen().place(playerRef);
+                case CLEAR -> actions.pen().clear();
             };
         } catch (RuntimeException exception) {
             logger.log(Level.WARNING, "Sproutwatch settings page action '" + action + "' failed", exception);
@@ -150,7 +150,7 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
     /** Begin: start the listener (unless running) and close the page. @return true when closed; false leaves the error for the rebuild. */
     private boolean begin() {
         try {
-            Optional<String> beginError = actions.begin();
+            Optional<String> beginError = actions.chatSources().begin();
             if (beginError.isPresent()) {
                 message = beginError.get();
                 return false;

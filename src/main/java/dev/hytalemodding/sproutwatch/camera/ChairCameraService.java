@@ -42,7 +42,7 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
 
     private final Supplier<SproutwatchConfig> config;
     private final Logger logger;
-    private final Set<UUID> seated = ConcurrentHashMap.newKeySet();
+    private final SeatedPlayers seatedPlayers;
     private final Set<UUID> manual = ConcurrentHashMap.newKeySet();
     /** HUD components each seated player had visible before we hid the bottom UI; restored on stand.
      *  A game-mode change while seated is last-writer-wins (engine behavior); the pre-seat set is restored regardless. */
@@ -54,9 +54,10 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
         HudComponent.Mana, HudComponent.Oxygen, HudComponent.Abilities, HudComponent.AmmoIndicator,
         HudComponent.StatusIcons, HudComponent.Reticle, HudComponent.InputBindings, HudComponent.Compass);
 
-    public ChairCameraService(Supplier<SproutwatchConfig> config, Logger logger) {
+    public ChairCameraService(Supplier<SproutwatchConfig> config, Logger logger, SeatedPlayers seatedPlayers) {
         this.config = config;
         this.logger = logger;
+        this.seatedPlayers = seatedPlayers;
     }
 
     @Override
@@ -80,7 +81,7 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
             if (player == null) return;
             if (!currentConfig.getPenWorld().equals(String.valueOf(player.getWorldUuid()))) return;
             if (!isPenSeat(currentConfig, seatBlock(mounted))) return;
-            seated.add(player.getUuid());
+            seatedPlayers.add(player.getUuid());
             player.getPacketHandler().writeNoCache(CameraPackets.penCamera(currentConfig));
             TransformComponent transform = store.getComponent(ref, TransformComponent.getComponentType());
             if (transform != null) SeatLook.apply(player, new org.joml.Vector3d(transform.getPosition()), PenBounds.fromConfig(currentConfig));
@@ -103,7 +104,7 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
         try {
             PlayerRef player = store.getComponent(ref, PlayerRef.getComponentType());
             if (player == null) return;
-            if (seated.remove(player.getUuid())) {
+            if (seatedPlayers.remove(player.getUuid())) {
                 manual.remove(player.getUuid());
                 player.getPacketHandler().writeNoCache(CameraPackets.reset());
                 restoreBottomUi(ref, store, player);
@@ -136,11 +137,6 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
         return bm == null ? null : bm.getBlockPos();
     }
 
-    /** True while the player sits on the pen chair (not for the manual camera toggle). Any thread. */
-    public boolean isSeated(UUID player) {
-        return player != null && seated.contains(player);
-    }
-
     /** /sproutwatch camera: toggles the fixed camera for a player without sitting. @return true if now on. */
     public boolean toggleManual(PlayerRef player) {
         UUID id = player.getUuid();
@@ -163,7 +159,7 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
 
     /** Player left the server: drop any camera state so a later reconnect starts clean (disconnect never fires onComponentRemoved). */
     public void forget(UUID id) {
-        seated.remove(id);
+        seatedPlayers.forget(id);
         manual.remove(id);
         hudBeforeSeat.remove(id);
     }
@@ -203,7 +199,7 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
     public void refresh(Collection<PlayerRef> players) {
         SproutwatchConfig currentConfig = config.get();
         for (PlayerRef p : players) {
-            if (seated.contains(p.getUuid()) || manual.contains(p.getUuid())) {
+            if (seatedPlayers.isSeated(p.getUuid()) || manual.contains(p.getUuid())) {
                 try {
                     p.getPacketHandler().writeNoCache(CameraPackets.penCamera(currentConfig));
                 } catch (Exception exception) {

@@ -1,11 +1,11 @@
 package dev.hytalemodding.sproutwatch.youtube;
 
+import dev.hytalemodding.sproutwatch.chat.ChatRoster;
 import dev.hytalemodding.sproutwatch.chat.ChatSource;
 import dev.hytalemodding.sproutwatch.chat.DisplayNames;
+import dev.hytalemodding.sproutwatch.chat.RosterEvent;
 import dev.hytalemodding.sproutwatch.chat.SourceLifecycle;
 import dev.hytalemodding.sproutwatch.chat.ViewerKey;
-import dev.hytalemodding.sproutwatch.twitch.ChatRoster;
-import dev.hytalemodding.sproutwatch.twitch.RosterEvent;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -157,7 +157,7 @@ public final class YouTubeChatSource implements ChatSource {
                 Thread.currentThread().interrupt();
             }
             if (worker.isAlive()) {
-                safeLog(Level.WARNING, "YouTube listener thread did not end within " + JOIN_MILLIS
+                lifecycle.safeLog(Level.WARNING, "YouTube listener thread did not end within " + JOIN_MILLIS
                         + " ms of stop; it starts no new roster updates (at most one in-flight message may still land)");
             }
         }
@@ -171,24 +171,6 @@ public final class YouTubeChatSource implements ChatSource {
     @Override
     public String getState() {
         return lifecycle.state();
-    }
-
-    // ---- state ----
-
-    private void setState(long generation, String next) {
-        lifecycle.setState(generation, next);
-    }
-
-    private void finish(long generation, String reason) {
-        lifecycle.finish(generation, reason);
-    }
-
-    private void safeLog(Level level, String message) {
-        lifecycle.safeLog(level, message);
-    }
-
-    private boolean live(long generation) {
-        return lifecycle.live(generation);
     }
 
     // ---- loop ----
@@ -209,7 +191,7 @@ public final class YouTubeChatSource implements ChatSource {
         Run run = new Run();
         run.videoId = videoOverride;
         try {
-            while (live(generation)) {
+            while (lifecycle.live(generation)) {
                 long delay;
                 try {
                     try {
@@ -219,24 +201,24 @@ public final class YouTubeChatSource implements ChatSource {
                     }
                 } catch (Throwable throwable) {
                     // Never let the thread die silently.
-                    if (!live(generation)) break;
-                    safeLog(Level.WARNING, "YouTube chat loop failed (" + describe(throwable) + "); retrying in "
+                    if (!lifecycle.live(generation)) break;
+                    lifecycle.safeLog(Level.WARNING, "YouTube chat loop failed (" + describe(throwable) + "); retrying in "
                             + (run.backoffMillis / 1000) + "s");
                     delay = nextBackoff(run);
                     try {
-                        setState(generation, RECONNECTING);
+                        lifecycle.setState(generation, RECONNECTING);
                     } catch (Throwable ignored) {
                         // hook/logger trouble: the backoff below still applies
                     }
                 }
-                if (delay < 0 || !live(generation)) break;
+                if (delay < 0 || !lifecycle.live(generation)) break;
                 if (delay == 0) continue;
                 if (!sleep(generation, delay)) break;
             }
         } finally {
-            if (live(generation)) {
-                finish(generation, STOPPED);
-                safeLog(Level.SEVERE, "YouTube listener thread ended unexpectedly - run /sproutwatch stop then start");
+            if (lifecycle.live(generation)) {
+                lifecycle.finish(generation, STOPPED);
+                lifecycle.safeLog(Level.SEVERE, "YouTube listener thread ended unexpectedly - run /sproutwatch stop then start");
             }
         }
     }
@@ -251,9 +233,9 @@ public final class YouTubeChatSource implements ChatSource {
         while (true) {
             try {
                 sleeper.sleep(remaining);
-                return live(generation);
+                return lifecycle.live(generation);
             } catch (InterruptedException interruption) {
-                if (!live(generation)) return false;
+                if (!lifecycle.live(generation)) return false;
                 Thread.interrupted(); // stray: clear and carry on
                 remaining = (end - System.nanoTime()) / 1_000_000L;
                 if (remaining <= 0) return true;
@@ -285,7 +267,7 @@ public final class YouTubeChatSource implements ChatSource {
         } finally {
             pacer.recordCall(Endpoint.CHAT_MESSAGES.cost());
         }
-        if (!live(generation)) return -1; // stopped during the read: the plugin may already have cleared the roster
+        if (!lifecycle.live(generation)) return -1; // stopped during the read: the plugin may already have cleared the roster
         run.rejectedStreak = 0;
 
         if (run.primed) {
@@ -297,9 +279,9 @@ public final class YouTubeChatSource implements ChatSource {
         // Only after the page is applied: the hook may block (plugin locks), and a stop() that
         // times out meanwhile must never be followed by a late apply.
         run.backoffMillis = INITIAL_BACKOFF_MILLIS; // after apply: a page that keeps failing keeps backing off
-        setState(generation, connectedState);
+        lifecycle.setState(generation, connectedState);
         if (page.chatEnded()) {
-            finish(generation, CHAT_ENDED);
+            lifecycle.finish(generation, CHAT_ENDED);
             return -1;
         }
         return pacer.nextDelayMillis(page.pollingIntervalMillis());
@@ -309,7 +291,7 @@ public final class YouTubeChatSource implements ChatSource {
     private void apply(long generation, ChatPage page) {
         long now = clock.millis();
         for (YouTubeMessage message : page.messages()) {
-            if (!live(generation)) return;
+            if (!lifecycle.live(generation)) return;
             try {
                 String key = ViewerKey.youtube(message.channelId());
                 // Name first: a tick between the two must never spawn a sprout named "yt:UC…".
@@ -360,18 +342,18 @@ public final class YouTubeChatSource implements ChatSource {
     private long lookupMiss(long generation, Run run) {
         if (videoOverride == null) run.videoId = null; // auto-detect again next time
         if (run.lookupMisses >= LOOKUP_RETRIES) {
-            finish(generation, NOT_LIVE);
+            lifecycle.finish(generation, NOT_LIVE);
             return -1;
         }
         run.lookupMisses++;
-        setState(generation, NO_STREAM);
+        lifecycle.setState(generation, NO_STREAM);
         return LOOKUP_RETRY_MILLIS;
     }
 
     /** Waits until the daily quota resets, then resumes from a fresh first page. */
     private long quotaWait(long generation, Run run) {
         Instant reset = pacer.resetsAt();
-        setState(generation, "quota exhausted (resets " + HOUR_MINUTE_FORMAT.withZone(clock.getZone()).format(reset) + ")");
+        lifecycle.setState(generation, "quota exhausted (resets " + HOUR_MINUTE_FORMAT.withZone(clock.getZone()).format(reset) + ")");
         run.primed = false;
         run.pageToken = null;
         run.backoffMillis = INITIAL_BACKOFF_MILLIS;
@@ -380,36 +362,36 @@ public final class YouTubeChatSource implements ChatSource {
     }
 
     private long onError(long generation, Run run, YouTubeException exception) {
-        if (!live(generation)) return -1; // e.g. the "interrupted" failure of a call cut short by stop()
+        if (!lifecycle.live(generation)) return -1; // e.g. the "interrupted" failure of a call cut short by stop()
         String phase = run.liveChatId == null ? "lookup" : "chat read";
         switch (exception.kind()) {
             case KEY_INVALID -> {
-                safeLog(Level.WARNING, "YouTube " + phase + " failed: " + exception.getMessage());
-                finish(generation, KEY_REJECTED);
+                lifecycle.safeLog(Level.WARNING, "YouTube " + phase + " failed: " + exception.getMessage());
+                lifecycle.finish(generation, KEY_REJECTED);
                 return -1;
             }
             case CHAT_ENDED -> {
-                safeLog(Level.INFO, "YouTube " + phase + ": " + exception.getMessage());
-                finish(generation, CHAT_ENDED);
+                lifecycle.safeLog(Level.INFO, "YouTube " + phase + ": " + exception.getMessage());
+                lifecycle.finish(generation, CHAT_ENDED);
                 return -1;
             }
             case QUOTA_EXCEEDED -> {
-                safeLog(Level.WARNING, "YouTube " + phase + " failed: " + exception.getMessage());
+                lifecycle.safeLog(Level.WARNING, "YouTube " + phase + " failed: " + exception.getMessage());
                 return quotaWait(generation, run);
             }
             case NOT_FOUND -> {
-                safeLog(Level.WARNING, "YouTube " + phase + " failed: " + exception.getMessage());
+                lifecycle.safeLog(Level.WARNING, "YouTube " + phase + " failed: " + exception.getMessage());
                 if (run.liveChatId == null) return lookupMiss(generation, run);
                 // The chat vanished mid-stream: find the stream again after a backoff.
                 run.liveChatId = null;
                 if (videoOverride == null) run.videoId = null;
-                setState(generation, RECONNECTING);
+                lifecycle.setState(generation, RECONNECTING);
                 return nextBackoff(run);
             }
             case REJECTED -> {
-                safeLog(Level.WARNING, "YouTube " + phase + " failed: " + exception.getMessage());
+                lifecycle.safeLog(Level.WARNING, "YouTube " + phase + " failed: " + exception.getMessage());
                 if (++run.rejectedStreak >= 2) {
-                    finish(generation, REJECTED);
+                    lifecycle.finish(generation, REJECTED);
                     return -1;
                 }
                 // Drop the page token; the next read is a fresh first page (backlog skipped again).
@@ -418,8 +400,8 @@ public final class YouTubeChatSource implements ChatSource {
                 return pacer.nextDelayMillis(0);
             }
             default -> { // TRANSIENT
-                setState(generation, RECONNECTING);
-                safeLog(Level.WARNING, "YouTube " + phase + " failed: " + exception.getMessage() + "; retrying in "
+                lifecycle.setState(generation, RECONNECTING);
+                lifecycle.safeLog(Level.WARNING, "YouTube " + phase + " failed: " + exception.getMessage() + "; retrying in "
                         + (run.backoffMillis / 1000) + "s");
                 return nextBackoff(run);
             }

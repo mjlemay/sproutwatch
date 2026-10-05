@@ -1,4 +1,4 @@
-package dev.hytalemodding.sproutwatch.twitch;
+package dev.hytalemodding.sproutwatch.chat;
 
 import org.junit.jupiter.api.Test;
 

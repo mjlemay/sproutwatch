@@ -1,8 +1,12 @@
-package dev.hytalemodding.sproutwatch.twitch;
+package dev.hytalemodding.sproutwatch.chat;
 
 import java.util.List;
 
-/** One roster change parsed from a Twitch IRC line. Logins are always lowercase. */
+/**
+ * One roster change reported by a chat source: parsed from a Twitch IRC line by
+ * {@code twitch.MembershipParser}, or built from a YouTube chat message (Chat only).
+ * Twitch logins are always lowercase; YouTube viewer keys ({@code yt:<channelId>}) are case-sensitive.
+ */
 public sealed interface RosterEvent
     permits RosterEvent.Names, RosterEvent.Join, RosterEvent.Part, RosterEvent.Chat {
 

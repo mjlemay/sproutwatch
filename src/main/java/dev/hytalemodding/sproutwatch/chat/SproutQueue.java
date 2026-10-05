@@ -1,4 +1,4 @@
-package dev.hytalemodding.sproutwatch.twitch;
+package dev.hytalemodding.sproutwatch.chat;
 
 import java.util.LinkedHashSet;
 import java.util.List;

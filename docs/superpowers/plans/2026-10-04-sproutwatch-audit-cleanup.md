@@ -291,3 +291,10 @@ return from another thread.
 - 2026-10-04: Tier 1.4 Endpoint done: 554 tests.
 - 2026-10-04: Tier 1.5 SourceLifecycle done: 563 tests.
 - 2026-10-05: Tier 1 complete (1.1-1.5 reviewed; 1.5 review fixes applied, mutation-checked); 563 tests; deployed; headless boot clean. Waiting for Mertie to commit Tier 1 before Tier 2.
+- 2026-10-05: Tier 2.4 YouTubeJson done: 577 tests.
+- 2026-10-05: Tier 2.3 roster moved to chat/, Presence record: 581 tests.
+- 2026-10-05: Tier 2.5 SeatedPlayers done (SproutTag skipped): 586 tests.
+- 2026-10-05: Tier 2.2 YouTubeService done: 601 tests.
+- 2026-10-05: Tier 2.1 actions split (ChatSourceActions, PenActions, ViewerListActions): 601 tests.
+- 2026-10-05: Tier 2.6 smaller methods done: 601 tests.
+- 2026-10-05: Tier 2 complete (2.1-2.6; 2.2 reviewed + mutation-checked); 601 tests; deployed; headless boot clean. Waiting for Mertie to commit Tier 2 before Tier 4.

@@ -24,19 +24,19 @@ public final class ChatSourceCommands {
     }
 
     /** {@code /sproutwatch youtube on|off}. */
-    public static String youTube(SproutwatchActions a, String state) {
+    public static String youTube(SproutwatchActions actions, String state) {
         Boolean on = onOff(state);
-        return on == null ? YOUTUBE_USAGE : a.setYouTubeEnabled(on);
+        return on == null ? YOUTUBE_USAGE : actions.chatSources().setYouTubeEnabled(on);
     }
 
     /** {@code /sproutwatch youtube handle|key|video|hours <value>}. */
-    public static String youTube(SproutwatchActions a, String setting, String value) {
+    public static String youTube(SproutwatchActions actions, String setting, String value) {
         String which = setting == null ? "" : setting.trim().toLowerCase(Locale.ROOT);
         return switch (which) {
-            case "handle" -> a.setYouTubeHandle(value);
-            case "key" -> a.setYouTubeKey(value);
-            case "video" -> a.setYouTubeVideo(value != null && value.trim().equalsIgnoreCase("clear") ? "" : value);
-            case "hours" -> streamHours(a, parseHours(value));
+            case "handle" -> actions.chatSources().setYouTubeHandle(value);
+            case "key" -> actions.chatSources().setYouTubeKey(value);
+            case "video" -> actions.chatSources().setYouTubeVideo(value != null && value.trim().equalsIgnoreCase("clear") ? "" : value);
+            case "hours" -> streamHours(actions, parseHours(value));
             default -> YOUTUBE_USAGE;
         };
     }
@@ -47,15 +47,15 @@ public final class ChatSourceCommands {
     }
 
     /** {@code /sproutwatch twitch on|off}. */
-    public static String twitch(SproutwatchActions a, String state) {
+    public static String twitch(SproutwatchActions actions, String state) {
         Boolean on = onOff(state);
-        return on == null ? TWITCH_USAGE : a.setTwitchEnabled(on);
+        return on == null ? TWITCH_USAGE : actions.chatSources().setTwitchEnabled(on);
     }
 
     /** Stream length from the page or the command: 1 to 24 hours, else {@link #HOURS_HINT}. */
-    public static String streamHours(SproutwatchActions a, Double hours) {
+    public static String streamHours(SproutwatchActions actions, Double hours) {
         if (hours == null || !Double.isFinite(hours) || hours < 1 || hours > 24) return HOURS_HINT;
-        return a.setYouTubeStreamHours(hours);
+        return actions.chatSources().setYouTubeStreamHours(hours);
     }
 
     /** Whole hours 1 to 24 only ("6", not "2.5"); null for anything else. */

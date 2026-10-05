@@ -1,5 +1,6 @@
 package dev.hytalemodding.sproutwatch.twitch;
 
+import dev.hytalemodding.sproutwatch.chat.RosterEvent;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

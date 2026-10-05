@@ -1,4 +1,4 @@
-package dev.hytalemodding.sproutwatch.twitch;
+package dev.hytalemodding.sproutwatch.chat;
 
 import org.junit.jupiter.api.Test;
 
@@ -57,6 +57,51 @@ class ChatRosterTest {
         assertEquals(Map.of("alice", 40L), r.lastActiveMap());
         r.clear();
         assertEquals(Map.of(), r.lastActiveMap());
+    }
+
+    @Test void chatAfterJoinKeepsFirstSeenAndMovesLastActive() {
+        ChatRoster roster = roster();
+        roster.apply(new RosterEvent.Join("alice"), 10L);
+        roster.apply(new RosterEvent.Chat("alice", "hi"), 25L);
+        assertEquals(Map.of("alice", 10L), roster.snapshot());
+        assertEquals(Map.of("alice", 25L), roster.lastActiveMap());
+    }
+
+    @Test void repeatedJoinResetsNeitherTimestamp() {
+        ChatRoster roster = roster();
+        roster.apply(new RosterEvent.Join("alice"), 10L);
+        roster.apply(new RosterEvent.Chat("alice", "hi"), 20L);
+        roster.apply(new RosterEvent.Join("alice"), 30L);
+        roster.apply(new RosterEvent.Names(List.of("alice")), 40L);
+        assertEquals(Map.of("alice", 10L), roster.snapshot());
+        assertEquals(Map.of("alice", 20L), roster.lastActiveMap());
+    }
+
+    @Test void partRemovesTheViewerFromBothViews() {
+        ChatRoster roster = roster();
+        roster.apply(new RosterEvent.Join("alice"), 10L);
+        roster.apply(new RosterEvent.Chat("alice", "hi"), 20L);
+        roster.apply(new RosterEvent.Part("alice"), 30L);
+        assertEquals(Map.of(), roster.snapshot());
+        assertEquals(Map.of(), roster.lastActiveMap());
+        assertEquals(0, roster.size());
+    }
+
+    @Test void snapshotAndLastActiveMapHoldTheSameKeysAfterMixedEvents() {
+        ChatRoster roster = roster("nightbot");
+        roster.apply(new RosterEvent.Names(List.of("alice", "bob", "nightbot", "justinfan7")), 1L);
+        roster.apply(new RosterEvent.Join("carol"), 2L);
+        roster.apply(new RosterEvent.Chat("dave", "hello"), 3L);
+        roster.apply(new RosterEvent.Chat("alice", "hi"), 4L);
+        roster.apply(new RosterEvent.Part("bob"), 5L);
+        roster.addGuest("guest", 0L);
+        roster.apply(new RosterEvent.Chat("nightbot", "!sprout"), 6L);
+        roster.addGuest("other guest", 0L);
+        roster.removeGuest("other guest");
+        Set<String> expected = Set.of("alice", "carol", "dave", "guest");
+        assertEquals(expected, roster.snapshot().keySet());
+        assertEquals(expected, roster.lastActiveMap().keySet());
+        assertEquals(expected.size(), roster.size());
     }
 
     @Test void namesJoinAndSeenAddPartRemoves() {

@@ -2,9 +2,9 @@ package dev.hytalemodding.sproutwatch.ui;
 
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
+import dev.hytalemodding.sproutwatch.chat.ChatRoster;
 import dev.hytalemodding.sproutwatch.config.SproutwatchConfig;
 import dev.hytalemodding.sproutwatch.pen.PenRegistry;
-import dev.hytalemodding.sproutwatch.twitch.ChatRoster;
 
 import java.util.Map;
 import java.util.Set;
@@ -13,8 +13,8 @@ import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 /**
- * Everything SproutwatchActions needs from the plugin, narrowed so a unit test can fake it
- * without threads, sockets or engine objects. SproutwatchPlugin implements it.
+ * Everything SproutwatchActions and its three action classes need from the plugin, narrowed so a
+ * unit test can fake it without threads, sockets or engine objects. SproutwatchPlugin implements it.
  */
 public interface ActionsHost {
 
@@ -97,22 +97,8 @@ public interface ActionsHost {
      * quota unit, counted against the daily quota) with the configured key. Never blocks the caller.
      * Completes with the channel ID, or exceptionally with a
      * {@link dev.hytalemodding.sproutwatch.youtube.YouTubeException} (its kind says why), a
-     * {@link NoYouTubeKey} when no key is configured, or a {@link LookupUnavailable} when the lookup
+     * {@link dev.hytalemodding.sproutwatch.youtube.NoYouTubeKey} when no key is configured, or a {@link dev.hytalemodding.sproutwatch.youtube.LookupUnavailable} when the lookup
      * thread has stopped (server shutting down). Completion runs on the lookup thread.
      */
     CompletableFuture<String> lookUpViewerChannelId(String viewerHandle);
-
-    /** No YouTube API key is configured, so a handle cannot be looked up. */
-    final class NoYouTubeKey extends RuntimeException {
-        public NoYouTubeKey() {
-            super("no YouTube API key", null, false, false);
-        }
-    }
-
-    /** The lookup thread no longer accepts or finishes work (the server is stopping). */
-    final class LookupUnavailable extends RuntimeException {
-        public LookupUnavailable() {
-            super("YouTube lookup thread stopped", null, false, false);
-        }
-    }
 }

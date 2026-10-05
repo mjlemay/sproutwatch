@@ -12,7 +12,6 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -105,8 +104,8 @@ public final class YouTubeApi implements AutoCloseable {
         parameters.put("part", "id");
         parameters.put("forHandle", atHandle);
         BsonDocument root = get("channelIdForHandle", Endpoint.CHANNELS, parameters);
-        for (BsonDocument item : items(root)) {
-            String id = str(item, "id");
+        for (BsonDocument item : YouTubeJson.items(root)) {
+            String id = YouTubeJson.stringField(item, "id");
             if (id != null && !id.isEmpty()) return id;
         }
         throw new YouTubeException(YouTubeException.Kind.NOT_FOUND, "channelIdForHandle: no channel for that handle");
@@ -124,8 +123,8 @@ public final class YouTubeApi implements AutoCloseable {
         q.put("type", "video");
         BsonDocument root = get("liveVideoId", Endpoint.SEARCH, q);
         List<String> ids = new ArrayList<>();
-        for (BsonDocument item : items(root)) {
-            String id = str(doc(item, "id"), "videoId");
+        for (BsonDocument item : YouTubeJson.items(root)) {
+            String id = YouTubeJson.stringField(YouTubeJson.childDocument(item, "id"), "videoId");
             if (id != null && !id.isEmpty() && !ids.contains(id)) ids.add(id);
         }
         if (ids.isEmpty()) return Optional.empty();
@@ -144,9 +143,9 @@ public final class YouTubeApi implements AutoCloseable {
         }
         String best = ids.get(0);
         Instant bestStart = null;
-        for (BsonDocument item : items(videos)) {
-            String id = str(item, "id");
-            Instant start = instant(str(doc(item, "liveStreamingDetails"), "actualStartTime"));
+        for (BsonDocument item : YouTubeJson.items(videos)) {
+            String id = YouTubeJson.stringField(item, "id");
+            Instant start = YouTubeJson.parseInstant(YouTubeJson.stringField(YouTubeJson.childDocument(item, "liveStreamingDetails"), "actualStartTime"));
             if (id == null || start == null || !ids.contains(id)) continue;
             if (bestStart == null || start.isAfter(bestStart)) {
                 best = id;
@@ -161,11 +160,11 @@ public final class YouTubeApi implements AutoCloseable {
         Map<String, String> q = new LinkedHashMap<>();
         q.put("part", "liveStreamingDetails");
         q.put("id", videoId);
-        List<BsonDocument> items = items(get("activeLiveChatId", Endpoint.VIDEOS, q));
+        List<BsonDocument> items = YouTubeJson.items(get("activeLiveChatId", Endpoint.VIDEOS, q));
         if (items.isEmpty()) {
             throw new YouTubeException(YouTubeException.Kind.NOT_FOUND, "activeLiveChatId: no such video");
         }
-        String chatId = str(doc(items.get(0), "liveStreamingDetails"), "activeLiveChatId");
+        String chatId = YouTubeJson.stringField(YouTubeJson.childDocument(items.get(0), "liveStreamingDetails"), "activeLiveChatId");
         if (chatId == null || chatId.isEmpty()) {
             throw new YouTubeException(YouTubeException.Kind.CHAT_ENDED, "activeLiveChatId: video has no active live chat");
         }
@@ -270,12 +269,12 @@ public final class YouTubeApi implements AutoCloseable {
         String reason = null;
         String message = "";
         try {
-            BsonDocument errorBody = doc(BsonDocument.parse(body), "error");
+            BsonDocument errorBody = YouTubeJson.childDocument(BsonDocument.parse(body), "error");
             BsonValue errors = errorBody.get("errors");
             if (errors != null && errors.isArray() && !errors.asArray().isEmpty() && errors.asArray().get(0).isDocument()) {
-                reason = str(errors.asArray().get(0).asDocument(), "reason");
+                reason = YouTubeJson.stringField(errors.asArray().get(0).asDocument(), "reason");
             }
-            String m = str(errorBody, "message");
+            String m = YouTubeJson.stringField(errorBody, "message");
             if (m != null) message = m;
         } catch (RuntimeException | StackOverflowError ignored) {
             // Unparsable error body: classify by status alone.
@@ -328,35 +327,5 @@ public final class YouTubeApi implements AutoCloseable {
 
     private static String urlEncode(String text) {
         return URLEncoder.encode(text, StandardCharsets.UTF_8);
-    }
-
-    // ---- JSON helpers ----
-
-    private static List<BsonDocument> items(BsonDocument root) {
-        List<BsonDocument> out = new ArrayList<>();
-        BsonValue items = root.get("items");
-        if (items != null && items.isArray()) {
-            for (BsonValue v : items.asArray()) if (v.isDocument()) out.add(v.asDocument());
-        }
-        return out;
-    }
-
-    private static BsonDocument doc(BsonDocument d, String key) {
-        BsonValue v = d.get(key);
-        return v != null && v.isDocument() ? v.asDocument() : new BsonDocument();
-    }
-
-    private static String str(BsonDocument d, String key) {
-        BsonValue v = d.get(key);
-        return v != null && v.isString() ? v.asString().getValue() : null;
-    }
-
-    private static Instant instant(String text) {
-        if (text == null) return null;
-        try {
-            return Instant.parse(text);
-        } catch (DateTimeParseException exception) {
-            return null;
-        }
     }
 }

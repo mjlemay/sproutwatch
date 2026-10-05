@@ -1,9 +1,8 @@
 package dev.hytalemodding.sproutwatch.ui;
 
-import dev.hytalemodding.sproutwatch.ui.SproutwatchActionsTest.FakeHost;
 import org.junit.jupiter.api.Test;
 
-import static dev.hytalemodding.sproutwatch.ui.SproutwatchActionsYouTubeTest.KEY;
+import static dev.hytalemodding.sproutwatch.ui.ChatSourceActionsYouTubeTest.KEY;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Task 9: the Details "YouTube quota" row, the Connect tab key placeholder, and the youtube / twitch commands. */

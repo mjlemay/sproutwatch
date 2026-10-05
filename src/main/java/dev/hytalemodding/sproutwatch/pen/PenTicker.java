@@ -5,8 +5,8 @@ import com.hypixel.hytale.component.RemoveReason;
 import com.hypixel.hytale.server.core.universe.Universe;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import dev.hytalemodding.sproutwatch.chat.ChatRoster;
 import dev.hytalemodding.sproutwatch.config.SproutwatchConfig;
-import dev.hytalemodding.sproutwatch.twitch.ChatRoster;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -144,87 +144,120 @@ public final class PenTicker {
             SproutwatchConfig currentConfig = config.get();
             long now = System.currentTimeMillis();
 
-            // Drop entries whose entity is already gone (missed PenDespawnSystem eviction, e.g. plugin
-            // reload) or that live in a different world (pen re-placed in another world) so a phantom
-            // sprout can never hold a cap slot forever. Re-placing via /sproutwatch place sweeps the old pen
-            // itself; here only the registry entry is dropped.
-            UUID here = world.getWorldConfig().getUuid();
-            for (PenRegistry.Entry e : registry.snapshot()) {
-                Ref<EntityStore> ref = e.ref();
-                if (ref == null || !ref.isValid() || (e.worldUuid() != null && !e.worldUuid().equals(here))) {
-                    registry.remove(e.viewerKey());
-                    logger.fine("Sproutwatch: dropping sprout entry for " + e.viewerKey() + " (entity gone or in another world)");
-                }
-            }
-
+            dropPhantomEntries(world.getWorldConfig().getUuid());
             Map<String, Long> live = roster.snapshot();
-            // Retirement (a player killed their sprout) lasts only while the viewer stays in chat.
-            registry.retainRetired(live.keySet());
-            // Likewise the "!sprout" queue: a viewer who left chat leaves the queue (Part already
-            // drops them, but NAMES-only presence and a missed PART are covered by this pass).
-            roster.queue().retain(live.keySet());
-
-            // Retired viewers (a player killed their sprout; entry already dropped on death) are not eligible to respawn.
-            Map<String, Long> eligible = new HashMap<>(live);
-            eligible.keySet().removeAll(registry.retiredViewers());
-            // Viewer filter: in allow mode only AllowUsers may get a sprout. The ignore list has already
-            // been applied by ChatRoster (ignored viewer keys never enter the roster), so it always wins.
-            if (currentConfig.isAllowMode()) eligible.keySet().retainAll(currentConfig.allowedViewers());
+            forgetDepartedViewers(live);
+            Map<String, Long> eligible = eligibleViewers(live, currentConfig);
             // Presence is refreshed only for ELIGIBLE viewer keys: a viewer who was ignored or dropped off the
             // allow list while in chat stops being touched, so their sprout ages out after GraceSeconds.
             // Invariant: the same `now` passed to touch must be passed to reconcile; its strict `<` cutoff relies on it for grace 0.
             for (String viewerKey : eligible.keySet()) registry.touch(viewerKey, now);
-            // The queue is a priority over first-seen order: the first queued viewer key that is eligible
-            // and not yet in the pen spawns next; otherwise the earliest-seen eligible viewer does.
-            // PersistSprouts: grace is ignored; at the cap the sprout whose viewer has been gone the
-            // longest (smallest untouched lastSeen) is replaced by the candidate, one swap per tick.
             boolean persist = currentConfig.isPersistSprouts();
-            PenPlan plan = PenReconciler.reconcile(
-                ReconcileRequest.builder(eligible, registry.lastSeenMap(), currentConfig.getMaxSprouts(), now)
-                    .graceMillis(currentConfig.getGraceSeconds() * 1000L)
-                    .queue(roster.queue().snapshot())
-                    .persist(persist)
-                    .guests(roster.guests())
-                    .quiet(roster.lastActiveMap(), currentConfig.getQuietSeconds() * 1000L)
-                    .build());
-
-            for (String viewerKey : plan.despawn()) {
-                PenRegistry.Entry entry = registry.remove(viewerKey);
-                if (entry == null) continue;
-                Ref<EntityStore> ref = entry.ref();
-                if (ref != null && ref.isValid()) {
-                    try {
-                        ref.getStore().removeEntity(ref, RemoveReason.REMOVE);
-                    } catch (Exception exception) {
-                        logger.log(Level.WARNING, "Sproutwatch: failed to despawn sprout for " + viewerKey, exception);
-                        continue;
-                    }
-                }
-                logger.info(persist
-                    ? "Sproutwatch: " + viewerKey + " replaced to make room (viewer gone or no longer eligible)"
-                    : "Sproutwatch: " + viewerKey + " no longer eligible (left chat, ignored, or not allowed); sprout despawned");
-            }
-            // A queue entry is consumed only by a successful spawn, so a failed attempt (no free
-            // spot, role missing) keeps the viewer at the front for the next tick.
-            boolean spawned = false;
-            if (plan.spawn().isPresent()) {
-                String viewerKey = plan.spawn().get();
-                spawned = spawner.spawn(world, viewerKey);
-                if (spawned) roster.queue().remove(viewerKey);
-            }
+            PenPlan plan = reconcile(eligible, currentConfig, persist, now);
+            applyDespawns(plan, persist);
+            boolean spawned = spawnNext(world, plan);
             outcome = new TickOutcome(plan.spawn(), spawned);
-
-            Runnable after = afterTick;
-            if (after != null) {
-                try {
-                    after.run();
-                } catch (Exception exception) {
-                    logger.log(Level.WARNING, "Sproutwatch after-tick hook failed", exception);
-                }
-            }
+            runAfterTick();
         } catch (Exception exception) {
             logger.log(Level.WARNING, "Sproutwatch tick failed", exception);
         }
         return outcome;
+    }
+
+    /**
+     * Drops entries whose entity is already gone (missed PenDespawnSystem eviction, e.g. plugin
+     * reload) or that live in a different world (pen re-placed in another world) so a phantom
+     * sprout can never hold a cap slot forever. Re-placing via /sproutwatch place sweeps the old pen
+     * itself; here only the registry entry is dropped.
+     */
+    private void dropPhantomEntries(UUID penWorldUuid) {
+        for (PenRegistry.Entry e : registry.snapshot()) {
+            Ref<EntityStore> ref = e.ref();
+            if (ref == null || !ref.isValid() || (e.worldUuid() != null && !e.worldUuid().equals(penWorldUuid))) {
+                registry.remove(e.viewerKey());
+                logger.fine("Sproutwatch: dropping sprout entry for " + e.viewerKey() + " (entity gone or in another world)");
+            }
+        }
+    }
+
+    /** Forgets per-viewer state that lasts only while the viewer stays in chat. */
+    private void forgetDepartedViewers(Map<String, Long> live) {
+        // Retirement (a player killed their sprout) lasts only while the viewer stays in chat.
+        registry.retainRetired(live.keySet());
+        // Likewise the "!sprout" queue: a viewer who left chat leaves the queue (Part already
+        // drops them, but NAMES-only presence and a missed PART are covered by this pass).
+        roster.queue().retain(live.keySet());
+    }
+
+    /** The viewers in chat who may hold a sprout, with their first-seen times. */
+    private Map<String, Long> eligibleViewers(Map<String, Long> live, SproutwatchConfig currentConfig) {
+        // Retired viewers (a player killed their sprout; entry already dropped on death) are not eligible to respawn.
+        Map<String, Long> eligible = new HashMap<>(live);
+        eligible.keySet().removeAll(registry.retiredViewers());
+        // Viewer filter: in allow mode only AllowUsers may get a sprout. The ignore list has already
+        // been applied by ChatRoster (ignored viewer keys never enter the roster), so it always wins.
+        if (currentConfig.isAllowMode()) eligible.keySet().retainAll(currentConfig.allowedViewers());
+        return eligible;
+    }
+
+    /**
+     * The queue is a priority over first-seen order: the first queued viewer key that is eligible
+     * and not yet in the pen spawns next; otherwise the earliest-seen eligible viewer does.
+     * PersistSprouts: grace is ignored; at the cap the sprout whose viewer has been gone the
+     * longest (smallest untouched lastSeen) is replaced by the candidate, one swap per tick.
+     */
+    private PenPlan reconcile(Map<String, Long> eligible, SproutwatchConfig currentConfig, boolean persist, long now) {
+        return PenReconciler.reconcile(
+            ReconcileRequest.builder(eligible, registry.lastSeenMap(), currentConfig.getMaxSprouts(), now)
+                .graceMillis(currentConfig.getGraceSeconds() * 1000L)
+                .queue(roster.queue().snapshot())
+                .persist(persist)
+                .guests(roster.guests())
+                .quiet(roster.lastActiveMap(), currentConfig.getQuietSeconds() * 1000L)
+                .build());
+    }
+
+    private void applyDespawns(PenPlan plan, boolean persist) {
+        for (String viewerKey : plan.despawn()) {
+            PenRegistry.Entry entry = registry.remove(viewerKey);
+            if (entry == null) continue;
+            Ref<EntityStore> ref = entry.ref();
+            if (ref != null && ref.isValid()) {
+                try {
+                    ref.getStore().removeEntity(ref, RemoveReason.REMOVE);
+                } catch (Exception exception) {
+                    logger.log(Level.WARNING, "Sproutwatch: failed to despawn sprout for " + viewerKey, exception);
+                    continue;
+                }
+            }
+            logger.info(persist
+                ? "Sproutwatch: " + viewerKey + " replaced to make room (viewer gone or no longer eligible)"
+                : "Sproutwatch: " + viewerKey + " no longer eligible (left chat, ignored, or not allowed); sprout despawned");
+        }
+    }
+
+    /**
+     * A queue entry is consumed only by a successful spawn, so a failed attempt (no free
+     * spot, role missing) keeps the viewer at the front for the next tick.
+     */
+    private boolean spawnNext(World world, PenPlan plan) {
+        boolean spawned = false;
+        if (plan.spawn().isPresent()) {
+            String viewerKey = plan.spawn().get();
+            spawned = spawner.spawn(world, viewerKey);
+            if (spawned) roster.queue().remove(viewerKey);
+        }
+        return spawned;
+    }
+
+    private void runAfterTick() {
+        Runnable after = afterTick;
+        if (after != null) {
+            try {
+                after.run();
+            } catch (Exception exception) {
+                logger.log(Level.WARNING, "Sproutwatch after-tick hook failed", exception);
+            }
+        }
     }
 }

@@ -175,7 +175,7 @@ public class SproutwatchCommand extends AbstractCommand {
         }
 
         @Override void run(CommandContext context) {
-            reply(context, actions().setChannel(context.get(nameArg)));
+            reply(context, actions().chatSources().setChannel(context.get(nameArg)));
         }
     }
 
@@ -185,7 +185,7 @@ public class SproutwatchCommand extends AbstractCommand {
         }
 
         @Override void run(CommandContext context) {
-            reply(context, actions().startListener());
+            reply(context, actions().chatSources().startListener());
         }
     }
 
@@ -195,7 +195,7 @@ public class SproutwatchCommand extends AbstractCommand {
         }
 
         @Override void run(CommandContext context) {
-            reply(context, actions().stopListener());
+            reply(context, actions().chatSources().stopListener());
         }
     }
 
@@ -217,7 +217,7 @@ public class SproutwatchCommand extends AbstractCommand {
         @Override void run(CommandContext context) {
             PlayerRef sender = player(context);
             if (sender == null) return;
-            reply(context, actions().place(sender));
+            reply(context, actions().pen().place(sender));
         }
     }
 
@@ -227,7 +227,7 @@ public class SproutwatchCommand extends AbstractCommand {
         }
 
         @Override void run(CommandContext context) {
-            reply(context, actions().clear());
+            reply(context, actions().pen().clear());
         }
     }
 
@@ -284,7 +284,7 @@ public class SproutwatchCommand extends AbstractCommand {
         }
 
         @Override void run(CommandContext context) {
-            reply(context, actions().setTickSeconds(context.get(secondsArg)));
+            reply(context, actions().pen().setTickSeconds(context.get(secondsArg)));
         }
     }
 
@@ -325,7 +325,7 @@ public class SproutwatchCommand extends AbstractCommand {
         @Override void run(CommandContext context) {
             String when = context.get(whenArg);
             if ("remove".equalsIgnoreCase(when)) {
-                reply(context, actions().removeGuest(context.get(loginArg)));
+                reply(context, actions().pen().removeGuest(context.get(loginArg)));
                 return;
             }
             if (!"now".equalsIgnoreCase(when)) {
@@ -418,8 +418,8 @@ public class SproutwatchCommand extends AbstractCommand {
 
         @Override void run(CommandContext context) {
             String mode = context.get(modeArg);
-            if ("allow".equalsIgnoreCase(mode)) reply(context, actions().setFilter(true));
-            else if ("ignore".equalsIgnoreCase(mode)) reply(context, actions().setFilter(false));
+            if ("allow".equalsIgnoreCase(mode)) reply(context, actions().viewerLists().setFilter(true));
+            else if ("ignore".equalsIgnoreCase(mode)) reply(context, actions().viewerLists().setFilter(false));
             else reply(context, "Usage: /sproutwatch filter [allow|ignore]");
         }
     }
@@ -462,9 +462,9 @@ public class SproutwatchCommand extends AbstractCommand {
             String action = context.get(actionArg);
             String viewer = context.get(viewerArg);
             if ("add".equalsIgnoreCase(action)) {
-                reply(context, actions().addAllow(viewer, laterReply(context)));
+                reply(context, actions().viewerLists().addAllow(viewer, laterReply(context)));
             } else if ("remove".equalsIgnoreCase(action)) {
-                reply(context, actions().removeAllow(viewer, laterReply(context)));
+                reply(context, actions().viewerLists().removeAllow(viewer, laterReply(context)));
             } else {
                 reply(context, AllowCommand.USAGE);
             }
@@ -510,9 +510,9 @@ public class SproutwatchCommand extends AbstractCommand {
             String action = context.get(actionArg);
             String viewer = context.get(viewerArg);
             if ("add".equalsIgnoreCase(action)) {
-                reply(context, actions().addIgnore(viewer, laterReply(context)));
+                reply(context, actions().viewerLists().addIgnore(viewer, laterReply(context)));
             } else if ("remove".equalsIgnoreCase(action)) {
-                reply(context, actions().removeIgnore(viewer, laterReply(context)));
+                reply(context, actions().viewerLists().removeIgnore(viewer, laterReply(context)));
             } else {
                 reply(context, IgnoreCommand.USAGE);
             }
@@ -585,7 +585,7 @@ public class SproutwatchCommand extends AbstractCommand {
         }
 
         @Override void run(CommandContext context) {
-            reply(context, actions().setPersist(!config().isPersistSprouts()));
+            reply(context, actions().pen().setPersist(!config().isPersistSprouts()));
         }
     }
 
@@ -601,9 +601,9 @@ public class SproutwatchCommand extends AbstractCommand {
         @Override void run(CommandContext context) {
             String state = context.get(stateArg);
             if ("on".equalsIgnoreCase(state)) {
-                reply(context, actions().setPersist(true));
+                reply(context, actions().pen().setPersist(true));
             } else if ("off".equalsIgnoreCase(state)) {
-                reply(context, actions().setPersist(false));
+                reply(context, actions().pen().setPersist(false));
             } else {
                 reply(context, PersistCommand.USAGE);
             }

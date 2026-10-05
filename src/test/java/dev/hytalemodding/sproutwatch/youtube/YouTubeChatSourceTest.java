@@ -2,10 +2,10 @@ package dev.hytalemodding.sproutwatch.youtube;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import dev.hytalemodding.sproutwatch.chat.ChatRoster;
 import dev.hytalemodding.sproutwatch.chat.DisplayNames;
+import dev.hytalemodding.sproutwatch.chat.SproutQueue;
 import dev.hytalemodding.sproutwatch.chat.ViewerKey;
-import dev.hytalemodding.sproutwatch.twitch.ChatRoster;
-import dev.hytalemodding.sproutwatch.twitch.SproutQueue;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -2,7 +2,7 @@ package dev.hytalemodding.sproutwatch.chat;
 
 /**
  * One live chat (a Twitch channel, a YouTube live stream) feeding the shared
- * {@link dev.hytalemodding.sproutwatch.twitch.ChatRoster}. Each source owns its own background
+ * {@link ChatRoster}. Each source owns its own background
  * thread; the plugin starts, stops and reports on all enabled sources together.
  *
  * {@link #getState()} is a short human-readable string shown on the settings page and in

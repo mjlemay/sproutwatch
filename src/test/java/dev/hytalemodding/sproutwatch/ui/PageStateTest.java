@@ -1,6 +1,5 @@
 package dev.hytalemodding.sproutwatch.ui;
 
-import dev.hytalemodding.sproutwatch.ui.SproutwatchActionsTest.FakeHost;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

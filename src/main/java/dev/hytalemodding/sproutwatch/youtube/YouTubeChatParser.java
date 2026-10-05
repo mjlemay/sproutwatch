@@ -43,7 +43,7 @@ public final class YouTubeChatParser {
             for (BsonValue v : items.asArray()) {
                 if (!v.isDocument()) continue;
                 BsonDocument item = v.asDocument();
-                String type = str(doc(item, "snippet"), "type");
+                String type = YouTubeJson.stringField(YouTubeJson.childDocument(item, "snippet"), "type");
                 if (CHAT_ENDED_EVENT.equals(type)) {
                     ended = true;
                     continue;
@@ -65,17 +65,17 @@ public final class YouTubeChatParser {
 
     /** The item as a message, or null when it has no author channel id. */
     private static YouTubeMessage toMessage(BsonDocument item) {
-        BsonDocument snippet = doc(item, "snippet");
-        BsonDocument author = doc(item, "authorDetails");
-        String channelId = str(author, "channelId");
-        if (channelId == null || channelId.isEmpty()) channelId = str(snippet, "authorChannelId");
+        BsonDocument snippet = YouTubeJson.childDocument(item, "snippet");
+        BsonDocument author = YouTubeJson.childDocument(item, "authorDetails");
+        String channelId = YouTubeJson.stringField(author, "channelId");
+        if (channelId == null || channelId.isEmpty()) channelId = YouTubeJson.stringField(snippet, "authorChannelId");
         if (channelId == null || channelId.isEmpty()) return null;
 
-        String text = str(snippet, "displayMessage");
-        if (text == null) text = str(doc(snippet, "textMessageDetails"), "messageText");
+        String text = YouTubeJson.stringField(snippet, "displayMessage");
+        if (text == null) text = YouTubeJson.stringField(YouTubeJson.childDocument(snippet, "textMessageDetails"), "messageText");
         if (text == null) text = "";
 
-        return new YouTubeMessage(channelId, str(author, "displayName"), text, str(snippet, "publishedAt"));
+        return new YouTubeMessage(channelId, YouTubeJson.stringField(author, "displayName"), text, YouTubeJson.stringField(snippet, "publishedAt"));
     }
 
     /** YouTube's suggestion when it is a finite number within 1..60 000 ms, else the default. */
@@ -101,17 +101,5 @@ public final class YouTubeChatParser {
             // StackOverflowError: deeply nested input exhausts the recursive reader.
             throw new IllegalArgumentException("YouTube chat response was not a valid JSON object");
         }
-    }
-
-    /** Sub-document {@code key} of {@code d}, or an empty document when missing / not an object. */
-    private static BsonDocument doc(BsonDocument d, String key) {
-        BsonValue v = d.get(key);
-        return v != null && v.isDocument() ? v.asDocument() : new BsonDocument();
-    }
-
-    /** String field {@code key} of {@code d}, or null when missing / not a string. */
-    private static String str(BsonDocument d, String key) {
-        BsonValue v = d.get(key);
-        return v != null && v.isString() ? v.asString().getValue() : null;
     }
 }

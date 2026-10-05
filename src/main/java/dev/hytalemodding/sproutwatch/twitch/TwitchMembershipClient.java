@@ -1,6 +1,8 @@
 package dev.hytalemodding.sproutwatch.twitch;
 
+import dev.hytalemodding.sproutwatch.chat.ChatRoster;
 import dev.hytalemodding.sproutwatch.chat.ChatSource;
+import dev.hytalemodding.sproutwatch.chat.RosterEvent;
 import dev.hytalemodding.sproutwatch.chat.SourceLifecycle;
 import dev.hytalemodding.sproutwatch.config.SproutwatchConfig;
 
