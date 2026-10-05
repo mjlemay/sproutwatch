@@ -104,7 +104,7 @@ class StatusPusherTest {
     }
 
     private static PageState state(String label, String listsKey) {
-        return new PageState(Collections.nCopies(PageState.SELECTORS.size(), label), "ValueGood", true, "start", listsKey);
+        return new PageState(Collections.nCopies(PageState.SELECTORS.size(), label), "ValueGood", true, RunButton.START, listsKey);
     }
 
     @Test void anUnchangedStateTouchesNeitherTheWorldNorTheSink() {

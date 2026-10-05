@@ -50,6 +50,8 @@ class YouTubeApiTest {
     private String base;
     private final Map<String, Reply> replies = new ConcurrentHashMap<>();
     private final List<Req> requests = Collections.synchronizedList(new ArrayList<>());
+    /** Quota units {@link YouTubeApi#liveVideoId} charged, one entry per call it made. */
+    private final List<Integer> charges = new ArrayList<>();
 
     @BeforeEach
     void start() throws IOException {
@@ -185,7 +187,7 @@ class YouTubeApiTest {
     @Test
     void noLiveVideoIsEmpty() throws Exception {
         reply("search", 200, "{\"items\":[]}");
-        assertEquals(Optional.empty(), api().liveVideoId("UCabc"));
+        assertEquals(Optional.empty(), api().liveVideoId("UCabc", charges::add));
 
         Req r = requests.get(0);
         assertEquals("search", r.path());
@@ -199,7 +201,7 @@ class YouTubeApiTest {
     @Test
     void oneLiveVideoNeedsNoVideosCall() throws Exception {
         reply("search", 200, "{\"items\":[{\"id\":{\"kind\":\"youtube#video\",\"videoId\":\"vid1\"}}]}");
-        assertEquals(Optional.of("vid1"), api().liveVideoId("UCabc"));
+        assertEquals(Optional.of("vid1"), api().liveVideoId("UCabc", charges::add));
         assertEquals(1, requests.size());
     }
 
@@ -214,7 +216,7 @@ class YouTubeApiTest {
                   {"id":"mid","liveStreamingDetails":{"actualStartTime":"2026-10-02T09:00:00Z"}}
                 ]}""");
 
-        assertEquals(Optional.of("newest"), api().liveVideoId("UCabc"));
+        assertEquals(Optional.of("newest"), api().liveVideoId("UCabc", charges::add));
 
         assertEquals(2, requests.size());
         Req v = requests.get(1);
@@ -227,7 +229,41 @@ class YouTubeApiTest {
     void severalLiveVideosWithoutStartTimesFallBackToFirst() throws Exception {
         reply("search", 200, "{\"items\":[{\"id\":{\"videoId\":\"a\"}},{\"id\":{\"videoId\":\"b\"}}]}");
         reply("videos", 200, "{\"items\":[{\"id\":\"a\",\"liveStreamingDetails\":{}},{\"id\":\"b\"}]}");
-        assertEquals(Optional.of("a"), api().liveVideoId("UCabc"));
+        assertEquals(Optional.of("a"), api().liveVideoId("UCabc", charges::add));
+    }
+
+    @Test
+    void oneLiveVideoChargesOnlyTheSearch() throws Exception {
+        reply("search", 200, "{\"items\":[{\"id\":{\"videoId\":\"vid1\"}}]}");
+        assertEquals(Optional.of("vid1"), api().liveVideoId("UCabc", charges::add));
+        assertEquals(List.of(Endpoint.SEARCH.cost()), charges);
+    }
+
+    @Test
+    void severalLiveVideosChargeTheSearchAndTheTieBreak() throws Exception {
+        reply("search", 200, "{\"items\":[{\"id\":{\"videoId\":\"a\"}},{\"id\":{\"videoId\":\"b\"}}]}");
+        reply("videos", 200, """
+                {"items":[
+                  {"id":"a","liveStreamingDetails":{"actualStartTime":"2026-10-02T09:00:00Z"}},
+                  {"id":"b","liveStreamingDetails":{"actualStartTime":"2026-10-03T18:30:00Z"}}
+                ]}""");
+        assertEquals(Optional.of("b"), api().liveVideoId("UCabc", charges::add));
+        assertEquals(List.of(Endpoint.SEARCH.cost(), Endpoint.VIDEOS.cost()), charges);
+    }
+
+    @Test
+    void failedTieBreakIsStillChargedAndFallsBackToFirst() throws Exception {
+        reply("search", 200, "{\"items\":[{\"id\":{\"videoId\":\"a\"}},{\"id\":{\"videoId\":\"b\"}}]}");
+        reply("videos", 500, error(500, "backendError", "Backend Error"));
+        assertEquals(Optional.of("a"), api().liveVideoId("UCabc", charges::add));
+        assertEquals(List.of(Endpoint.SEARCH.cost(), Endpoint.VIDEOS.cost()), charges);
+    }
+
+    @Test
+    void failedSearchIsStillCharged() {
+        reply("search", 500, error(500, "backendError", "Backend Error"));
+        assertEquals(YouTubeException.Kind.TRANSIENT, kindOf(() -> api().liveVideoId("UCabc", charges::add)));
+        assertEquals(List.of(Endpoint.SEARCH.cost()), charges);
     }
 
     @Test
@@ -333,7 +369,7 @@ class YouTubeApiTest {
         assertEquals(expected, kindOf(() -> api().chatPage("CHAT1", null)), "chatPage");
         assertEquals(expected, kindOf(() -> api().channelIdForHandle("@x")), "channels");
         assertEquals(expected, kindOf(() -> api().activeLiveChatId("v")), "videos");
-        assertEquals(expected, kindOf(() -> api().liveVideoId("UC")), "search");
+        assertEquals(expected, kindOf(() -> api().liveVideoId("UC", charges::add)), "search");
     }
 
     @Test
@@ -362,7 +398,7 @@ class YouTubeApiTest {
         assertEquals(YouTubeException.Kind.CHAT_ENDED, kindOf(() -> api().chatPage("CHAT1", "t")));
         assertEquals(YouTubeException.Kind.REJECTED, kindOf(() -> api().channelIdForHandle("@x")));
         assertEquals(YouTubeException.Kind.REJECTED, kindOf(() -> api().activeLiveChatId("v")));
-        assertEquals(YouTubeException.Kind.REJECTED, kindOf(() -> api().liveVideoId("UC")));
+        assertEquals(YouTubeException.Kind.REJECTED, kindOf(() -> api().liveVideoId("UC", charges::add)));
     }
 
     @Test
@@ -375,14 +411,14 @@ class YouTubeApiTest {
     void severalLiveVideosFallBackToFirstWhenVideosCallIsTransient() throws Exception {
         reply("search", 200, "{\"items\":[{\"id\":{\"videoId\":\"a\"}},{\"id\":{\"videoId\":\"b\"}}]}");
         reply("videos", 503, error(503, "backendError", "Backend Error"));
-        assertEquals(Optional.of("a"), api().liveVideoId("UCabc"));
+        assertEquals(Optional.of("a"), api().liveVideoId("UCabc", charges::add));
     }
 
     @Test
     void severalLiveVideosStillFailOnNonTransientVideosError() {
         reply("search", 200, "{\"items\":[{\"id\":{\"videoId\":\"a\"}},{\"id\":{\"videoId\":\"b\"}}]}");
         reply("videos", 403, error(403, "quotaExceeded", "q"));
-        assertEquals(YouTubeException.Kind.QUOTA_EXCEEDED, kindOf(() -> api().liveVideoId("UCabc")));
+        assertEquals(YouTubeException.Kind.QUOTA_EXCEEDED, kindOf(() -> api().liveVideoId("UCabc", charges::add)));
     }
 
     @Test

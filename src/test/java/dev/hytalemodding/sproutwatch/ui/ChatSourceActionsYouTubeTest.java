@@ -365,11 +365,11 @@ class ChatSourceActionsYouTubeTest {
         StatusSnapshot s = new SproutwatchActions(host).snapshot();
         assertEquals("Listener: connected to #streamer", s.listenerLine());
         assertEquals("ValueGood", s.listenerTone());
-        assertEquals("stop", s.runButton());
+        assertEquals(RunButton.STOP, s.runButton());
         host.states = states("Twitch", "reconnecting");
         s = new SproutwatchActions(host).snapshot();
         assertEquals("ValueBad", s.listenerTone());
-        assertEquals("connecting", s.runButton());
+        assertEquals(RunButton.CONNECTING, s.runButton());
     }
 
     @Test void listenerLineToneAndButtonYouTubeOnly() {
@@ -379,16 +379,16 @@ class ChatSourceActionsYouTubeTest {
         StatusSnapshot s = new SproutwatchActions(host).snapshot();
         assertEquals("Listener: connecting (finding stream)", s.listenerLine());
         assertEquals("ValueWarn", s.listenerTone());
-        assertEquals("connecting", s.runButton());
+        assertEquals(RunButton.CONNECTING, s.runButton());
         host.states = states("YouTube", "connected to YouTube (@Streamer)");
         s = new SproutwatchActions(host).snapshot();
         assertEquals("ValueGood", s.listenerTone());
-        assertEquals("stop", s.runButton());
+        assertEquals(RunButton.STOP, s.runButton());
         host.states = states("YouTube", "quota exhausted (resets 00:00)");
-        assertEquals("stop", new SproutwatchActions(host).snapshot().runButton(), "waiting for the reset is settled, not connecting");
+        assertEquals(RunButton.STOP, new SproutwatchActions(host).snapshot().runButton(), "waiting for the reset is settled, not connecting");
         host.running = false;
         host.states = states("YouTube", "not live");
-        assertEquals("start", new SproutwatchActions(host).snapshot().runButton(), "an ended source runs no more");
+        assertEquals(RunButton.START, new SproutwatchActions(host).snapshot().runButton(), "an ended source runs no more");
     }
 
     @Test void listenerLineToneAndButtonBothSources() {
@@ -400,12 +400,12 @@ class ChatSourceActionsYouTubeTest {
         assertEquals("Listener: Twitch: connected to #streamer · YouTube: connected to YouTube (@Streamer)", s.listenerLine());
         assertEquals("Twitch: connected to #streamer · YouTube: connected to YouTube (@Streamer)", s.detailValues().get(1));
         assertEquals("ValueGood", s.listenerTone());
-        assertEquals("stop", s.runButton());
+        assertEquals(RunButton.STOP, s.runButton());
 
         host.states = states("Twitch", "connected to #streamer", "YouTube", "connecting (finding stream)");
         s = new SproutwatchActions(host).snapshot();
         assertEquals("ValueWarn", s.listenerTone(), "worst tone wins");
-        assertEquals("connecting", s.runButton(), "one source still connecting");
+        assertEquals(RunButton.CONNECTING, s.runButton(), "one source still connecting");
 
         host.states = states("Twitch", "reconnecting", "YouTube", "connecting (finding stream)");
         assertEquals("ValueBad", new SproutwatchActions(host).snapshot().listenerTone());
@@ -413,14 +413,14 @@ class ChatSourceActionsYouTubeTest {
         host.states = states("Twitch", "connected to #streamer", "YouTube", "chat ended");
         s = new SproutwatchActions(host).snapshot();
         assertEquals("ValuePlain", s.listenerTone());
-        assertEquals("stop", s.runButton(), "an ended source is not running; the rest are connected");
+        assertEquals(RunButton.STOP, s.runButton(), "an ended source is not running; the rest are connected");
 
         host.running = false;
         host.states = states("Twitch", "stopped", "YouTube", "stopped");
         s = new SproutwatchActions(host).snapshot();
         assertEquals("Listener: stopped", s.listenerLine());
         assertEquals("ValuePlain", s.listenerTone());
-        assertEquals("start", s.runButton());
+        assertEquals(RunButton.START, s.runButton());
     }
 
     @Test void statusReportShowsYouTubeLinesWithAMaskedKey() {

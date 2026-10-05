@@ -248,24 +248,24 @@ public record StatusSnapshot(
     private static final List<String> TONE_RANK = List.of("ValueGood", "ValuePlain", "ValueWarn", "ValueBad");
 
     /**
-     * Which Listener-tab button shows, for any number of sources: "start" (nothing runs),
-     * "connecting" (a source is still connecting / retrying), else "stop". A source that ended on its
+     * Which Listener-tab button shows, for any number of sources: START (nothing runs),
+     * CONNECTING (a source is still connecting / retrying), else STOP. A source that ended on its
      * own (chat ended, not live, key rejected) or waits for the quota reset counts as settled.
      */
-    public String runButton() {
+    public RunButton runButton() {
         return runButtonFor(listenerRunning, sourceStates.isEmpty() ? java.util.Collections.singletonList(listenerState) : sourceStates.values());
     }
 
-    public static String runButtonFor(boolean running, String state) {
+    public static RunButton runButtonFor(boolean running, String state) {
         return runButtonFor(running, java.util.Collections.singletonList(state));
     }
 
-    public static String runButtonFor(boolean running, java.util.Collection<String> states) {
-        if (!running) return "start";
+    public static RunButton runButtonFor(boolean running, java.util.Collection<String> states) {
+        if (!running) return RunButton.START;
         for (String state : states) {
-            if (state != null && (state.startsWith("connecting") || state.startsWith("reconnecting"))) return "connecting";
+            if (state != null && (state.startsWith("connecting") || state.startsWith("reconnecting"))) return RunButton.CONNECTING;
         }
-        return "stop";
+        return RunButton.STOP;
     }
 
     public static String toneFor(String state) {

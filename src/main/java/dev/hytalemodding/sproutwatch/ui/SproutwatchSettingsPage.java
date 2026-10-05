@@ -85,10 +85,18 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
         for (int i = 0; i < PageState.SELECTORS.size(); i++) commands.set(PageState.SELECTORS.get(i), labels.get(i));
         commands.set("#ListenerValue.Style", Value.<String>ref(DOCUMENT, state.listenerTone()));
         commands.set("#BeginButton.Disabled", !state.penSet());
-        String runButton = state.runButton();
-        commands.set("#StartButton.Visible", runButton.equals("start"));
-        commands.set("#ConnectingButton.Visible", runButton.equals("connecting"));
-        commands.set("#StopButton.Visible", runButton.equals("stop"));
+        for (RunButton button : RunButton.values()) {
+            commands.set(runButtonSelector(button) + ".Visible", button == state.runButton());
+        }
+    }
+
+    /** The page element of each run button; no default, so a new RunButton fails to compile here. */
+    private static String runButtonSelector(RunButton button) {
+        return switch (button) {
+            case START -> "#StartButton";
+            case CONNECTING -> "#ConnectingButton";
+            case STOP -> "#StopButton";
+        };
     }
 
     @Override

@@ -42,22 +42,22 @@ class PageStateTest {
     }
 
     @Test void aChangeInOnlyTheRunButtonCountsAsAChange() {
-        PageState starting = new PageState(labels("x"), "ValueGood", true, "start", "lists");
-        PageState stopping = new PageState(labels("x"), "ValueGood", true, "stop", "lists");
+        PageState starting = new PageState(labels("x"), "ValueGood", true, RunButton.START, "lists");
+        PageState stopping = new PageState(labels("x"), "ValueGood", true, RunButton.STOP, "lists");
         assertNotEquals(starting, stopping);
     }
 
     @Test void aChangeInOnlyTheListsKeyCountsAsAChange() {
-        PageState before = new PageState(labels("x"), "ValueGood", true, "start", "a|b|c");
-        PageState after = new PageState(labels("x"), "ValueGood", true, "start", "a|b|c,d");
+        PageState before = new PageState(labels("x"), "ValueGood", true, RunButton.START, "a|b|c");
+        PageState after = new PageState(labels("x"), "ValueGood", true, RunButton.START, "a|b|c,d");
         assertNotEquals(before, after);
     }
 
     @Test void aChangeInOnlyTheListenerToneOrPenCountsAsAChange() {
-        PageState base = new PageState(labels("x"), "ValueGood", true, "start", "lists");
-        assertNotEquals(base, new PageState(labels("x"), "ValueBad", true, "start", "lists"));
-        assertNotEquals(base, new PageState(labels("x"), "ValueGood", false, "start", "lists"));
-        assertNotEquals(base, new PageState(labels("y"), "ValueGood", true, "start", "lists"));
+        PageState base = new PageState(labels("x"), "ValueGood", true, RunButton.START, "lists");
+        assertNotEquals(base, new PageState(labels("x"), "ValueBad", true, RunButton.START, "lists"));
+        assertNotEquals(base, new PageState(labels("x"), "ValueGood", false, RunButton.START, "lists"));
+        assertNotEquals(base, new PageState(labels("y"), "ValueGood", true, RunButton.START, "lists"));
     }
 
     @Test void identicalInputsAreEqual() {
@@ -67,21 +67,21 @@ class PageStateTest {
         assertEquals(first, second);
         assertEquals(first.hashCode(), second.hashCode());
         // Equality is by value, not by list implementation.
-        assertEquals(new PageState(new ArrayList<>(labels("x")), "ValueGood", true, "start", "lists"),
-            new PageState(labels("x"), "ValueGood", true, "start", "lists"));
+        assertEquals(new PageState(new ArrayList<>(labels("x")), "ValueGood", true, RunButton.START, "lists"),
+            new PageState(labels("x"), "ValueGood", true, RunButton.START, "lists"));
     }
 
     @Test void aWrongLabelCountFailsLoudly() {
         List<String> tooMany = new ArrayList<>(labels("x"));
         tooMany.add("ValueGood"); // a control value appended to the labels, as the old list did
-        assertThrows(IllegalArgumentException.class, () -> new PageState(tooMany, "ValueGood", true, "start", "lists"));
+        assertThrows(IllegalArgumentException.class, () -> new PageState(tooMany, "ValueGood", true, RunButton.START, "lists"));
         List<String> tooFew = labels("x").subList(1, PageState.SELECTORS.size());
-        assertThrows(IllegalArgumentException.class, () -> new PageState(tooFew, "ValueGood", true, "start", "lists"));
+        assertThrows(IllegalArgumentException.class, () -> new PageState(tooFew, "ValueGood", true, RunButton.START, "lists"));
     }
 
     @Test void labelsAreCopiedSoALaterChangeToTheSourceListDoesNotLeakIn() {
         List<String> source = new ArrayList<>(labels("x"));
-        PageState state = new PageState(source, "ValueGood", true, "start", "lists");
+        PageState state = new PageState(source, "ValueGood", true, RunButton.START, "lists");
         source.set(0, "changed");
         assertEquals(labels("x"), state.labels());
     }

@@ -262,9 +262,9 @@ return from another thread.
 
 - (found in 1.4) `YouTubeApi.liveVideoId` makes an extra `videos` call to break a tie when several
   streams are live at once; that call is not charged to the quota. Charge `Endpoint.VIDEOS.cost()`
-  for it (needs the call count surfaced to `YouTubeChatSource.resolve`, or the API reporting units).
+  for it (needs the call count surfaced to `YouTubeChatSource.resolve`, or the API reporting units). (done 2026-10-05)
 - (found in 1.2) `PageState.runButton` is still the strings "start" / "connecting" / "stop"; an
-  enum would match the 1.1 approach.
+  enum would match the 1.1 approach. (done 2026-10-05)
 
 ## 3. Still owed outside this backlog
 
@@ -301,3 +301,4 @@ return from another thread.
 - 2026-10-05: Tier 4.1 locking rule enforced (ListenerController + tests): 613 tests.
 - 2026-10-05: Tier 4.2 StatusPusher + WorldExecutor/PageSink seams: 622 tests.
 - 2026-10-05: Tier 4 complete (4.1, 4.2; shared scheduler skipped); 622 tests; deployed; headless boot clean. Remaining: the two follow-ups and the YouTube Task 11 in-game checks.
+- 2026-10-05: Follow-ups A (tie-break videos call charged) and B (RunButton enum) done: 626 tests.

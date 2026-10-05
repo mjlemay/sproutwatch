@@ -11,11 +11,11 @@ import java.util.List;
  *                     begin caption, the Viewers tab's YouTube lookup line. Never a field value.
  * @param listenerTone style name of the Listener cell (see {@link StatusSnapshot#listenerTone()})
  * @param penSet       whether a pen is placed, which enables Wrangle
- * @param runButton    which run button shows: "start", "connecting" or "stop"
+ * @param runButton    which run button shows
  * @param listsKey     fingerprint of what the Viewers lists show; a change rebuilds the page so new
  *                     rows appear. Never pushed as a label.
  */
-record PageState(List<String> labels, String listenerTone, boolean penSet, String runButton, String listsKey) {
+record PageState(List<String> labels, String listenerTone, boolean penSet, RunButton runButton, String listsKey) {
 
     /** Selectors of the labels, in {@link #labels()} order. */
     static final List<String> SELECTORS = selectors();

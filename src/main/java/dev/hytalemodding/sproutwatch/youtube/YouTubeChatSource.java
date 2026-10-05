@@ -41,9 +41,9 @@ import java.util.logging.Logger;
  *       drops the page token and restarts from a fresh first page).
  * - {@code stopped}: after {@link #stop()}.
  *
- * Every API call's cost is recorded in the pacer, failed calls included. When the channel has
- * several live streams, {@link YouTubeApi#liveVideoId} makes one extra videos call that is not
- * visible here and so not recorded (1 unit, covered by the pacer's reserve).
+ * Every API call's cost is recorded in the pacer, failed calls included. {@link YouTubeApi#liveVideoId}
+ * charges its own calls through the pacer: the search, plus the extra videos call it makes to pick
+ * the newest stream when the channel has several live at once.
  *
  * Secret hygiene: logs carry {@link YouTubeException} messages (key-free by construction) or
  * exception class names only, never a URL or the key.
@@ -317,12 +317,7 @@ public final class YouTubeChatSource implements ChatSource {
                     pacer.recordCall(Endpoint.CHANNELS.cost());
                 }
             }
-            Optional<String> video;
-            try {
-                video = api.liveVideoId(run.channelId);
-            } finally {
-                pacer.recordCall(Endpoint.SEARCH.cost());
-            }
+            Optional<String> video = api.liveVideoId(run.channelId, pacer::recordCall);
             if (video.isEmpty()) return lookupMiss(generation, run);
             run.videoId = video.get();
         }

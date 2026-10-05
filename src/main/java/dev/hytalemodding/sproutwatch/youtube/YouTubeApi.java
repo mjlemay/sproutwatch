@@ -23,6 +23,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.IntConsumer;
 import java.util.regex.Pattern;
 
 /**
@@ -114,14 +115,22 @@ public final class YouTubeApi implements AutoCloseable {
     /**
      * The channel's current live video, or empty when it is not live. A channel can run several live
      * streams at once; then the one with the latest {@code actualStartTime} wins (one extra videos call).
+     *
+     * @param chargeUnits receives the quota cost of each call this method makes, failed calls
+     *                    included: the search always, the tie-break videos call when there is one
      */
-    public Optional<String> liveVideoId(String channelId) throws YouTubeException {
-        Map<String, String> q = new LinkedHashMap<>();
-        q.put("part", "id");
-        q.put("channelId", channelId);
-        q.put("eventType", "live");
-        q.put("type", "video");
-        BsonDocument root = get("liveVideoId", Endpoint.SEARCH, q);
+    public Optional<String> liveVideoId(String channelId, IntConsumer chargeUnits) throws YouTubeException {
+        Map<String, String> searchQuery = new LinkedHashMap<>();
+        searchQuery.put("part", "id");
+        searchQuery.put("channelId", channelId);
+        searchQuery.put("eventType", "live");
+        searchQuery.put("type", "video");
+        BsonDocument root;
+        try {
+            root = get("liveVideoId", Endpoint.SEARCH, searchQuery);
+        } finally {
+            chargeUnits.accept(Endpoint.SEARCH.cost());
+        }
         List<String> ids = new ArrayList<>();
         for (BsonDocument item : YouTubeJson.items(root)) {
             String id = YouTubeJson.stringField(YouTubeJson.childDocument(item, "id"), "videoId");
@@ -130,16 +139,18 @@ public final class YouTubeApi implements AutoCloseable {
         if (ids.isEmpty()) return Optional.empty();
         if (ids.size() == 1) return Optional.of(ids.get(0));
 
-        Map<String, String> vq = new LinkedHashMap<>();
-        vq.put("part", "liveStreamingDetails");
-        vq.put("id", String.join(",", ids));
+        Map<String, String> videosQuery = new LinkedHashMap<>();
+        videosQuery.put("part", "liveStreamingDetails");
+        videosQuery.put("id", String.join(",", ids));
         BsonDocument videos;
         try {
-            videos = get("liveVideoId", Endpoint.VIDEOS, vq);
+            videos = get("liveVideoId", Endpoint.VIDEOS, videosQuery);
         } catch (YouTubeException exception) {
             // Tie-break lookup failed transiently: a live video is better than none.
             if (exception.kind() == YouTubeException.Kind.TRANSIENT) return Optional.of(ids.get(0));
             throw exception;
+        } finally {
+            chargeUnits.accept(Endpoint.VIDEOS.cost());
         }
         String best = ids.get(0);
         Instant bestStart = null;

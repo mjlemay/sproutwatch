@@ -133,10 +133,10 @@ class SproutwatchActionsTest {
         assertEquals("ValueWarn", StatusSnapshot.toneFor("connecting"));
         assertEquals("ValueBad", StatusSnapshot.toneFor("reconnecting"));
         assertEquals("ValuePlain", StatusSnapshot.toneFor("stopped"));
-        assertEquals("start", StatusSnapshot.runButtonFor(false, "stopped"));
-        assertEquals("connecting", StatusSnapshot.runButtonFor(true, "connecting"));
-        assertEquals("connecting", StatusSnapshot.runButtonFor(true, "reconnecting"));
-        assertEquals("stop", StatusSnapshot.runButtonFor(true, "connected to #streamer"));
+        assertEquals(RunButton.START, StatusSnapshot.runButtonFor(false, "stopped"));
+        assertEquals(RunButton.CONNECTING, StatusSnapshot.runButtonFor(true, "connecting"));
+        assertEquals(RunButton.CONNECTING, StatusSnapshot.runButtonFor(true, "reconnecting"));
+        assertEquals(RunButton.STOP, StatusSnapshot.runButtonFor(true, "connected to #streamer"));
 
         // The loaded-world branch needs a world name, which the fake host never supplies: build the record directly.
         StatusSnapshot loaded = new StatusSnapshot(
