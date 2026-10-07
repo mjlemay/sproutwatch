@@ -16,8 +16,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class SproutwatchConfigTest {
 
     private static BsonDocument loadShippedJson() throws IOException {
-        try (InputStream in = SproutwatchConfigTest.class.getResourceAsStream("/Sproutwatch_config.json")) {
-            assertNotNull(in, "Sproutwatch_config.json must be on the test classpath");
+        try (InputStream in = SproutwatchConfigTest.class.getResourceAsStream("/Sproutwatch_config.defaults.json")) {
+            assertNotNull(in, "Sproutwatch_config.defaults.json must be on the test classpath");
             return BsonDocument.parse(new String(in.readAllBytes(), StandardCharsets.UTF_8));
         }
     }

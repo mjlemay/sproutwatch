@@ -14,8 +14,9 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Codec-backed config for Sproutwatch_config.json. Defaults here must match
- * src/main/resources/Sproutwatch_config.json. Getters clamp; the on-disk value is left as written.
+ * Codec-backed config for Sproutwatch_config.json. Defaults here must match the reference copy
+ * src/test/resources/Sproutwatch_config.defaults.json (SproutwatchConfigTest checks it). Getters clamp;
+ * the on-disk value is left as written.
  * BuilderCodec-based, verified working on 0.6.3.
  *
  * AllowUsers / IgnoreUsers entries are Twitch logins or YouTube keys. When hand-editing the JSON,

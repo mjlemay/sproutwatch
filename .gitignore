@@ -15,3 +15,8 @@ run/
 # Local secrets (YouTube API key for dev spikes; streamers enter their key in the settings page)
 .sproutwatch-yt-key
 *.key
+
+# Written by ./gradlew runServer (it uses src/main/resources as the mod data folder): live test-server
+# data, never shipped. The reference defaults live in src/test/resources/Sproutwatch_config.defaults.json.
+src/main/resources/Sproutwatch_config.json*
+src/main/resources/pen-restore.json*

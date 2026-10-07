@@ -37,6 +37,12 @@ repositories {
     mavenCentral()
 }
 
+// runServer uses src/main/resources as the mod's data folder, so the live config and saved pen ground
+// land there; keep them out of the shipped jar.
+tasks.named<ProcessResources>("processResources") {
+    exclude("Sproutwatch_config.json*", "pen-restore.json*")
+}
+
 tasks.named<Jar>("jar") {
     archiveBaseName.set(rootProject.name)
     archiveVersion.set(project.property("version").toString())
