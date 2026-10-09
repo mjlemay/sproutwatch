@@ -20,3 +20,7 @@ run/
 # data, never shipped. The reference defaults live in src/test/resources/Sproutwatch_config.defaults.json.
 src/main/resources/Sproutwatch_config.json*
 src/main/resources/pen-restore.json*
+
+# Prefab editor side files (backups and .lpf), excluded from the jar in build.gradle.kts
+*.prefab.json.bak
+*.prefab.json.lpf

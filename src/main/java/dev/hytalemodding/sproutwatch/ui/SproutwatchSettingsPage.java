@@ -139,7 +139,7 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
                 case SET_PERSIST -> actions.pen().setPersist(Boolean.TRUE.equals(event.persist));
                 case SET_AUTO_START -> actions.chatSources().setAutoStart(Boolean.TRUE.equals(event.autoStart));
                 case SAVE_INTERVAL -> event.interval == null ? "Enter a number of seconds (min 5)." : actions.pen().setTickSeconds(event.interval);
-                case SELECT_PREFAB -> actions.pen().selectPrefab(event.prefab);
+                case SELECT_PREFAB -> actions.pen().selectPrefab(playerRef, event.prefab);
                 case SELECT_CREATURES -> actions.pen().setCreatures(event.creatures);
                 case PLACE -> actions.pen().place(playerRef);
                 case REMOVE_PEN -> actions.pen().removePen(playerRef);

@@ -84,8 +84,17 @@ public final class PenActions {
      * @throws IOException if the bundled prefab is missing (the old pen is already taken away and forgotten)
      */
     String placeAt(World world, Vector3i feet) throws IOException {
+        return placeAt(world, feet, null);
+    }
+
+    /**
+     * @param prefab the prefab to switch to once the old pen is taken away (under its own prefab name),
+     *               or null to keep the configured one
+     */
+    private String placeAt(World world, Vector3i feet, String prefab) throws IOException {
         OldPen oldPen = takeAwayOldPen(world);
         if (!oldPen.proceed()) return oldPen.message();
+        if (prefab != null) host.config().setPenPrefab(prefab);
         PenPlacer.Placement placement = host.penTerrain().place(world, feet, host.config());
         String saved = placement.ground() != null && host.penTerrain().remember(placement.ground())
             ? ""
@@ -351,14 +360,69 @@ public final class PenActions {
         return "Tick interval is now " + host.config().getTickSeconds() + "s.";
     }
 
-    public String selectPrefab(String raw) {
+    /**
+     * Prefab dropdown: with no pen placed, just remembers the choice for the next placement. With a pen
+     * placed, swaps it for the chosen prefab centred on the same spot, queued on the pen world thread;
+     * the outcome reaches the sender as a chat message (or the server log when sender is null).
+     */
+    public String selectPrefab(PlayerRef sender, String raw) {
+        return selectPrefab(raw, message -> {
+            if (sender != null) sender.sendMessage(Message.raw(message));
+            else host.logger().info("Sproutwatch: " + message);
+        });
+    }
+
+    /** @param reply receives the swap outcome on the pen world thread (unused when no pen is placed) */
+    String selectPrefab(String raw, Consumer<String> reply) {
         String name = PenPrefabCatalog.normalize(raw);
         if (!PenPrefabCatalog.contains(name)) {
             return "Unknown pen prefab '" + (raw == null ? "" : raw) + "'. Available: "
                 + String.join(", ", PenPrefabCatalog.names()) + ".";
         }
-        host.config().setPenPrefab(name);
-        host.saveConfig();
-        return "Pen prefab set to " + PenPrefabCatalog.labelFor(name) + ". Place the pen to paste it.";
+        SproutwatchConfig config = host.config();
+        String label = PenPrefabCatalog.labelFor(name);
+        if (!config.isPenSet()) {
+            config.setPenPrefab(name);
+            host.saveConfig();
+            return "Pen prefab set to " + label + ". Place the pen to paste it.";
+        }
+        if (name.equals(config.getPenPrefab())) return label + " is already the placed pen.";
+        PenSite queuedSite = PenSite.of(config);
+        ActionsHost.WorldQueue queued = host.runOnPenWorld(world -> swapOnWorldThread(world, queuedSite, name, reply));
+        return switch (queued) {
+            case QUEUED -> "Swapping the pen to " + label + "...";
+            case NOT_LOADED -> "Pen world not loaded; the pen was not swapped. Go to the pen's world and try again.";
+            case REJECTED -> "Pen world is unloading; try again.";
+        };
+    }
+
+    /**
+     * Re-places the pen with prefab, centred where the old pen's interior was centred, when the
+     * configured pen is still the one the swap was queued for. Runs on the pen world thread.
+     */
+    private void swapOnWorldThread(World world, PenSite queuedSite, String prefab, Consumer<String> reply) {
+        try {
+            SproutwatchConfig config = host.config();
+            if (!config.isPenSet() || !PenSite.of(config).sameSpot(queuedSite)) {
+                reply.accept("The pen changed before it could be swapped; nothing was swapped.");
+                return;
+            }
+            reply.accept(placeAt(world, centerFeet(config), prefab));
+        } catch (Exception exception) {
+            host.logger().log(Level.WARNING, "Sproutwatch pen swap failed", exception);
+            reply.accept("Pen swap failed: " + exception.getMessage() + " (see server log)");
+        }
+        // Outside the swap try, like place: the page shows the new pen here.
+        try {
+            host.statusChanged();
+        } catch (Exception exception) {
+            host.logger().log(Level.WARNING, "Sproutwatch page refresh failed", exception);
+        }
+    }
+
+    /** The feet position PenPlacer centres a pen on, recovered from the placed pen's interior. */
+    static Vector3i centerFeet(SproutwatchConfig config) {
+        return new Vector3i(config.getPenX() + config.getPenSizeX() / 2, config.getPenY() + 1,
+            config.getPenZ() + config.getPenSizeZ() / 2);
     }
 }

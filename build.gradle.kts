@@ -38,9 +38,9 @@ repositories {
 }
 
 // runServer uses src/main/resources as the mod's data folder, so the live config and saved pen ground
-// land there; keep them out of the shipped jar.
+// land there; keep them out of the shipped jar, along with the prefab editor's .bak/.lpf side files.
 tasks.named<ProcessResources>("processResources") {
-    exclude("Sproutwatch_config.json*", "pen-restore.json*")
+    exclude("Sproutwatch_config.json*", "pen-restore.json*", "**/*.prefab.json.bak", "**/*.prefab.json.lpf")
 }
 
 tasks.named<Jar>("jar") {

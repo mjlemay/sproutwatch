@@ -31,8 +31,13 @@ public final class CameraPackets {
     private CameraPackets() {}
 
     public static SetServerCamera penCamera(SproutwatchConfig config) {
+        return penCamera(config, PenFacing.parse(config.getPenFacing()));
+    }
+
+    /** The pen camera looking {@code facing} (a seated player's own seat side, see PenFacing.forSeat). */
+    public static SetServerCamera penCamera(SproutwatchConfig config, PenFacing facing) {
         PenBounds bounds = PenBounds.fromConfig(config);
-        PenCamera cam = PenCamera.of(bounds, PenFacing.parse(config.getPenFacing()), config.getCameraHeight(), config.getCameraBack());
+        PenCamera cam = PenCamera.of(bounds, facing, config.getCameraHeight(), config.getCameraBack());
         return penCamera(cam, config.getCameraFov(), config.isCameraFlip());
     }
 

@@ -2,7 +2,7 @@
     "Group": "Mertie",
     "Name": "sproutwatch",
     "Version": "0.1.0",
-    "Description": "Twitch viewers become baby Kweebecs in a pen with a fixed 4:3 landscape camera",
+    "Description": "Twitch and YouTube chatters become baby Kweebecs in a pen with a fixed 4:3 landscape camera",
     "Authors": [
         {
             "Name": "Mertie",
@@ -10,7 +10,7 @@
             "Url": "https://thinklikemike.com"
         }
     ],
-    "Website": "",
+    "Website": "https://www.curseforge.com/hytale/mods/sproutwatch",
     "ServerVersion": ">=0.5.3 <0.7.0",
     "Dependencies": {
         "Hytale:AssetModule": "*"
@@ -22,6 +22,6 @@
     "Main": "dev.hytalemodding.sproutwatch.SproutwatchPlugin",
     "IncludesAssetPack": true,
     "UpdateChecker": {
-        "CurseForge": ""
+        "CurseForge": "1734667"
     }
 }

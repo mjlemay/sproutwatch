@@ -111,14 +111,64 @@ class PenActionsTest {
     @Test void selectPrefabRejectsUnknownAndSavesKnown() {
         FakeHost host = new FakeHost();
         PenActions pen = new PenActions(host);
-        assertEquals("Unknown pen prefab 'castle'. Available: default, kweebec_nursery, cobble_pasture.", pen.selectPrefab("castle"));
-        assertEquals("Unknown pen prefab ''. Available: default, kweebec_nursery, cobble_pasture.", pen.selectPrefab(null));
+        List<String> replies = new ArrayList<>();
+        assertEquals("Unknown pen prefab 'castle'. Available: default, kweebec_nursery, cobble_pasture.", pen.selectPrefab("castle", replies::add));
+        assertEquals("Unknown pen prefab ''. Available: default, kweebec_nursery, cobble_pasture.", pen.selectPrefab(null, replies::add));
         assertEquals(0, host.saveCalls);
-        assertEquals("Pen prefab set to Default Lawn. Place the pen to paste it.", pen.selectPrefab(" Default "));
+        assertEquals("Pen prefab set to Default Lawn. Place the pen to paste it.", pen.selectPrefab(" Default ", replies::add));
         assertEquals("default", host.config.getPenPrefab());
         assertEquals(1, host.saveCalls);
-        assertEquals("Pen prefab set to Kweebec Nursery. Place the pen to paste it.", pen.selectPrefab("kweebec_nursery"));
+        assertEquals("Pen prefab set to Kweebec Nursery. Place the pen to paste it.", pen.selectPrefab("kweebec_nursery", replies::add));
         assertEquals("kweebec_nursery", host.config.getPenPrefab());
+        assertEquals(List.of(), replies);
+    }
+
+    @Test void selectingAnotherPrefabSwapsThePlacedPenInPlace() throws IOException {
+        FakeHost host = hostWithPen();
+        host.penQueue = ActionsHost.WorldQueue.QUEUED;
+        host.terrain.saved = new PenSnapshot("world-1", 10, 64, 20, 4, 63, 14, new BsonDocument());
+        PenActions pen = new PenActions(host);
+        List<String> replies = new ArrayList<>();
+        assertEquals("Swapping the pen to Kweebec Nursery...", pen.selectPrefab("kweebec_nursery", replies::add));
+        assertEquals("default", host.config.getPenPrefab(), "nothing changes until the world thread runs");
+        host.penTasks.get(0).accept(null);
+        assertEquals(List.of(new Vector3i(16, 65, 28)), host.terrain.placedAt, "centred on the old pen's centre");
+        assertEquals(List.of(new PenSite("world-1", 10, 64, 20, "default")), host.terrain.restoredSites,
+            "the old pen is taken away under its own prefab name");
+        assertEquals("kweebec_nursery", host.config.getPenPrefab());
+        assertEquals(List.of("Pen placed. Cleared 0 sprout(s) from the old pen and restored the ground."), replies);
+        assertEquals(1, host.changedCalls);
+    }
+
+    @Test void selectingAPrefabWhileThePenWorldIsNotLoadedChangesNothing() {
+        FakeHost host = hostWithPen();
+        PenActions pen = new PenActions(host);
+        assertEquals("Pen world not loaded; the pen was not swapped. Go to the pen's world and try again.",
+            pen.selectPrefab("cobble_pasture", message -> {}));
+        host.penQueue = ActionsHost.WorldQueue.REJECTED;
+        assertEquals("Pen world is unloading; try again.", pen.selectPrefab("cobble_pasture", message -> {}));
+        assertEquals("default", host.config.getPenPrefab());
+        assertEquals(0, host.saveCalls);
+    }
+
+    @Test void selectingThePlacedPrefabAgainDoesNothing() {
+        FakeHost host = hostWithPen();
+        host.penQueue = ActionsHost.WorldQueue.QUEUED;
+        assertEquals("Default Lawn is already the placed pen.", new PenActions(host).selectPrefab("default", message -> {}));
+        assertEquals(List.of(), host.penTasks);
+    }
+
+    @Test void aSwapQueuedForAPenThatMovedDoesNothing() {
+        FakeHost host = hostWithPen();
+        host.penQueue = ActionsHost.WorldQueue.QUEUED;
+        PenActions pen = new PenActions(host);
+        List<String> replies = new ArrayList<>();
+        pen.selectPrefab("kweebec_nursery", replies::add);
+        host.config.setPen("world-1", 50, 64, 20, 12, 4, 16);
+        host.penTasks.get(0).accept(null);
+        assertEquals(List.of("The pen changed before it could be swapped; nothing was swapped."), replies);
+        assertEquals(List.of(), host.terrain.placedAt);
+        assertEquals("default", host.config.getPenPrefab());
     }
 
     @Test void placeReportsQueueOutcome() {

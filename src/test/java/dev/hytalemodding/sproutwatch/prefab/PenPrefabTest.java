@@ -27,7 +27,7 @@ class PenPrefabTest {
         String json = PenPrefab.readBundledJson();
         List<PrefabBlock> blocks = PenPrefab.parseBlocks(json);
         assertTrue(blocks.size() > 1000, "expected a full pen, got " + blocks.size());
-        assertTrue(blocks.stream().anyMatch(b -> b.name().equals("Furniture_Village_Chair")));
+        assertTrue(blocks.stream().anyMatch(b -> b.name().contains("Chair") || b.name().contains("Bench")));
         assertTrue(blocks.stream().anyMatch(b -> b.name().equals("Wood_Hardwood_Fence")));
         assertTrue(blocks.stream().anyMatch(b -> b.name().equals("Empty")));
         assertEquals(4, blocks.stream().filter(b -> b.name().contains("Fence_State_Definitions_Corner")).count(),

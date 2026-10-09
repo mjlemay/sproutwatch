@@ -2,7 +2,7 @@ package dev.hytalemodding.sproutwatch.config;
 
 import java.util.Locale;
 
-/** Horizontal direction the pen camera looks: from the chair side into the pen. */
+/** Horizontal direction the pen camera looks (see forSeat for how a seat picks one). */
 public enum PenFacing {
     NORTH(0, -1), SOUTH(0, 1), EAST(1, 0), WEST(-1, 0);
 
@@ -33,5 +33,17 @@ public enum PenFacing {
     public static PenFacing toward(double dx, double dz) {
         if (Math.abs(dx) > Math.abs(dz)) return dx > 0 ? EAST : WEST;
         return dz >= 0 ? SOUTH : NORTH;
+    }
+
+    /**
+     * Camera facing for a seat at (seatX, seatZ) around a pen centred on (centerX, centerZ). A north or
+     * south seat is looked back at from the far side, so the sitter is at the top of the screen; east
+     * and west seats keep the landscape view (east faces north, west faces south).
+     */
+    public static PenFacing forSeat(double seatX, double seatZ, double centerX, double centerZ) {
+        return switch (toward(seatX - centerX, seatZ - centerZ)) {
+            case NORTH, EAST -> NORTH;
+            case SOUTH, WEST -> SOUTH;
+        };
     }
 }

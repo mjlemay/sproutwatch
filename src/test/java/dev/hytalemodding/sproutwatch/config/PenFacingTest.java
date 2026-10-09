@@ -41,6 +41,17 @@ class PenFacingTest {
         }
     }
 
+    @Test void seatCameraLooksBackAtTheSeatSoTheSitterIsAtTheTopOfTheScreen() {
+        // pen centre (9, 7); seats just outside each side
+        assertEquals(PenFacing.NORTH, PenFacing.forSeat(8.5, -0.5, 9, 7));   // north seat: look north at it
+        assertEquals(PenFacing.SOUTH, PenFacing.forSeat(8.5, 14.5, 9, 7));   // south seat: look south at it
+    }
+
+    @Test void sideSeatsKeepTheLandscapeView() {
+        assertEquals(PenFacing.NORTH, PenFacing.forSeat(18.5, 7.5, 9, 7));   // east seat faces north
+        assertEquals(PenFacing.SOUTH, PenFacing.forSeat(-0.5, 6.5, 9, 7));   // west seat faces south
+    }
+
     @Test void towardBreaksNegativeTieTowardNorth() {
         assertEquals(PenFacing.NORTH, PenFacing.toward(-3, -3));
     }

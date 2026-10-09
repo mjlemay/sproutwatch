@@ -6,7 +6,7 @@ import org.joml.Vector3d;
 
 /**
  * Where the fixed pen camera sits and what it looks at. Pure geometry.
- * The camera is centered on the chair side (the side opposite to the facing direction),
+ * The camera is centered on the side opposite to the facing direction,
  * pushed `back` blocks away from the pen and raised `height` blocks above the floor, looking at
  * the pen center at foot level. Tune with config CameraHeight / CameraBack / CameraFov until a
  * 4:3 landscape crop of the game window is filled by the 16x12 pen.

@@ -17,6 +17,7 @@ import com.hypixel.hytale.server.core.modules.entity.component.TransformComponen
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import dev.hytalemodding.sproutwatch.config.PenFacing;
 import dev.hytalemodding.sproutwatch.config.SproutwatchConfig;
 import dev.hytalemodding.sproutwatch.pen.PenBounds;
 import org.joml.Vector3i;
@@ -33,7 +34,8 @@ import java.util.logging.Logger;
 
 /**
  * Sends the fixed pen camera to a player who sits or lies on any seat or bed at the pen
- * (PenBounds.inGuardZone: interior plus 4 blocks) and resets it when they get up. ECS RefChangeSystem on the engine's MountedComponent (builtin/mounts): the
+ * (PenBounds.inGuardZone: interior plus 4 blocks), looking the way their seat's side picks
+ * (PenFacing.forSeat), and resets it when they get up. ECS RefChangeSystem on the engine's MountedComponent (builtin/mounts): the
  * exact shape vanilla's MountSystems$PlayerMount and beds' WakeUpOnDismountSystem use (R2).
  * Callbacks run inside the store's write lock: reads and packet sends only, no store mutation.
  * Also backs /sproutwatch camera (manual toggle for tuning).
@@ -47,6 +49,8 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
     /** HUD components each seated player had visible before we hid the bottom UI; restored on stand.
      *  A game-mode change while seated is last-writer-wins (engine behavior); the pre-seat set is restored regardless. */
     private final Map<UUID, Set<HudComponent>> hudBeforeSeat = new ConcurrentHashMap<>();
+    /** The camera facing each seated player got from their seat's side of the pen (PenFacing.forSeat). */
+    private final Map<UUID, PenFacing> seatFacing = new ConcurrentHashMap<>();
 
     /** The bottom-of-screen UI hidden while seated on the pen chair (chat and notifications stay). */
     static final Set<HudComponent> HIDE_WHILE_SEATED = EnumSet.of(
@@ -80,11 +84,15 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
             PlayerRef player = store.getComponent(ref, PlayerRef.getComponentType());
             if (player == null) return;
             if (!currentConfig.getPenWorld().equals(String.valueOf(player.getWorldUuid()))) return;
-            if (!isPenSeat(currentConfig, seatBlock(mounted))) return;
+            Vector3i seat = seatBlock(mounted);
+            if (!isPenSeat(currentConfig, seat)) return;
+            PenBounds bounds = PenBounds.fromConfig(currentConfig);
+            PenFacing facing = PenFacing.forSeat(seat.x + 0.5, seat.z + 0.5, bounds.centerX(), bounds.centerZ());
             seatedPlayers.add(player.getUuid());
-            player.getPacketHandler().writeNoCache(CameraPackets.penCamera(currentConfig));
+            seatFacing.put(player.getUuid(), facing);
+            player.getPacketHandler().writeNoCache(CameraPackets.penCamera(currentConfig, facing));
             TransformComponent transform = store.getComponent(ref, TransformComponent.getComponentType());
-            if (transform != null) SeatLook.apply(player, new org.joml.Vector3d(transform.getPosition()), PenBounds.fromConfig(currentConfig));
+            if (transform != null) SeatLook.apply(player, new org.joml.Vector3d(transform.getPosition()), bounds);
             hideBottomUi(ref, store, player);
             player.sendMessage(Message.raw("Sproutwatch camera on. Stand up to reset."));
         } catch (Exception exception) {
@@ -104,6 +112,7 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
         try {
             PlayerRef player = store.getComponent(ref, PlayerRef.getComponentType());
             if (player == null) return;
+            seatFacing.remove(player.getUuid());
             if (seatedPlayers.remove(player.getUuid())) {
                 manual.remove(player.getUuid());
                 player.getPacketHandler().writeNoCache(CameraPackets.reset());
@@ -162,6 +171,7 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
         seatedPlayers.forget(id);
         manual.remove(id);
         hudBeforeSeat.remove(id);
+        seatFacing.remove(id);
     }
 
     /** Hides the bottom UI for the seated player, remembering what was visible (same call vanilla game modes use). */
@@ -201,7 +211,10 @@ public final class ChairCameraService extends RefChangeSystem<EntityStore, Mount
         for (PlayerRef p : players) {
             if (seatedPlayers.isSeated(p.getUuid()) || manual.contains(p.getUuid())) {
                 try {
-                    p.getPacketHandler().writeNoCache(CameraPackets.penCamera(currentConfig));
+                    PenFacing facing = seatFacing.get(p.getUuid());
+                    p.getPacketHandler().writeNoCache(facing != null
+                        ? CameraPackets.penCamera(currentConfig, facing)
+                        : CameraPackets.penCamera(currentConfig));
                 } catch (Exception exception) {
                     logger.log(Level.WARNING, "Sproutwatch camera refresh failed", exception);
                 }
