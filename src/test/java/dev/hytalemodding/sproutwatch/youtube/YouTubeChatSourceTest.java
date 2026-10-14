@@ -89,6 +89,8 @@ class YouTubeChatSourceTest {
     /** Extra per-test behavior run inside the state-change hook. */
     private volatile Runnable hookExtra = () -> {};
     private Clock sourceClock = CLOCK;
+    /** Runs on every fake sleep with its length (a test moves its pacer's clock across the reset). */
+    private java.util.function.LongConsumer onSleep = millis -> {};
 
     private DisplayNames names;
     private ChatRoster roster;
@@ -104,7 +106,7 @@ class YouTubeChatSourceTest {
         base = "http://127.0.0.1:" + server.getAddress().getPort() + "/youtube/v3";
         names = new DisplayNames();
         roster = new ChatRoster(Set::of);
-        pacer = new QuotaPacer(6, CLOCK);
+        pacer = new QuotaPacer(() -> 20, CLOCK);
     }
 
     @AfterEach
@@ -229,6 +231,7 @@ class YouTubeChatSourceTest {
         return millis -> {
             poller = Thread.currentThread();
             sleeps.add(millis);
+            onSleep.accept(millis);
             if (drained()) {
                 parked.release();
                 new CountDownLatch(1).await(); // until stop() interrupts
@@ -303,7 +306,7 @@ class YouTubeChatSourceTest {
     }
 
     private static long budgetFloor() {
-        return 4_400; // 6 h at 2 units over a 9,800-unit budget, ~4.41 s
+        return 20_000; // the 20 s check interval
     }
 
     // ---- tests ----
@@ -321,7 +324,7 @@ class YouTubeChatSourceTest {
         assertEquals(VIDEO, requests.get(2).params().get("id"));
         assertEquals(CHAT, requests.get(3).params().get("liveChatId"));
         assertNull(requests.get(3).params().get("pageToken"));
-        assertEquals(1 + 1 + 1 + 2, pacer.usedToday());
+        assertEquals(1 + 1 + 1 + 5, pacer.usedToday());
         assertEquals("connected to YouTube (@Mertie)", source.getState());
         assertTrue(source.isRunning());
         assertEquals(List.of(YouTubeChatSource.FINDING, "connected to YouTube (@Mertie)"), states);
@@ -355,7 +358,7 @@ class YouTubeChatSourceTest {
         assertFalse(roster.snapshot().containsKey("yt:UCbacklog"));
         for (int i = 0; i < FIXTURE_KEYS.size(); i++) assertEquals(FIXTURE_NAMES.get(i), names.nameFor(FIXTURE_KEYS.get(i)));
         assertEquals(List.of("yt:UCbbbbbbbbbbbbbbbbbbbbb2", "yt:UCaaaaaaaaaaaaaaaaaaaaa1"), roster.queue().snapshot());
-        assertEquals(1 + 1 + 1 + 2 + 2, pacer.usedToday());
+        assertEquals(1 + 1 + 1 + 5 + 5, pacer.usedToday());
     }
 
     @Test
@@ -406,7 +409,7 @@ class YouTubeChatSourceTest {
 
     @Test
     void spentPacerBudgetWaitsUntilResetWithoutAnyCall() throws Exception {
-        pacer = new QuotaPacer(10, 0, 2, 6, CLOCK);
+        pacer = new QuotaPacer(10, 0, 2, () -> 20, CLOCK);
         pacer.recordCall(9); // less than one read left: spent, so not even the lookups run
         start("@Mertie", null);
         awaitParked();
@@ -419,6 +422,9 @@ class YouTubeChatSourceTest {
 
     @Test
     void quotaExceededWaitsUntilResetThenResumesFromAFreshFirstPage() throws Exception {
+        QuotaPacerTest.MutableClock pacerClock = new QuotaPacerTest.MutableClock(CLOCK.instant());
+        pacer = new QuotaPacer(() -> 20, pacerClock);
+        onSleep = millis -> pacerClock.advance(Duration.ofMillis(millis)); // the wait really passes the reset
         scriptHandleLookup();
         ok("liveChat/messages", page("T1", 1000));
         on("liveChat/messages", 403, error(403, "quotaExceeded"));
@@ -436,6 +442,28 @@ class YouTubeChatSourceTest {
         assertEquals("T2", reads.get(3).params().get("pageToken"));
         assertEquals(Set.of("yt:UCnew"), roster.snapshot().keySet());
         assertEquals("connected to YouTube (@Mertie)", source.getState());
+    }
+
+    @Test
+    void quotaExceededCountsTheDayAsSpent() throws Exception {
+        scriptHandleLookup();
+        ok("liveChat/messages", page("T1", 1000));
+        on("liveChat/messages", 403, error(403, "quotaExceeded"));
+        start("@Mertie", null);
+        awaitParked();
+
+        assertEquals(pacer.chatBudget(), pacer.usedToday(), "Google's quotaExceeded wins over the local count");
+        assertTrue(pacer.exhausted());
+    }
+
+    @Test
+    void chatReadsAskForTheLargestPage() throws Exception {
+        scriptVideo();
+        ok("liveChat/messages", page("T1", 1000));
+        start("", VIDEO);
+        awaitParked();
+
+        assertEquals("2000", chatReads().get(0).params().get("maxResults"));
     }
 
     @Test
@@ -557,7 +585,7 @@ class YouTubeChatSourceTest {
 
         assertEquals(60_000L, sleeps.get(0));
         assertEquals("connected to YouTube (@Mertie)", source.getState());
-        assertEquals(1 + 1 + 1 + 1 + 2, pacer.usedToday(), "the failed call is charged too");
+        assertEquals(1 + 1 + 1 + 1 + 5, pacer.usedToday(), "the failed call is charged too");
     }
 
     @Test

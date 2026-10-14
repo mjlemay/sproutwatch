@@ -45,7 +45,7 @@ class PageActionTest {
             "tab", "begin",
             "saveChannel", "removeChannel", "setTwitchEnabled", "setYouTubeEnabled",
             "saveYouTubeHandle", "removeYouTubeHandle", "saveYouTubeKey", "removeYouTubeKey",
-            "saveYouTubeVideo", "removeYouTubeVideo", "saveMax",
+            "saveYouTubeVideo", "removeYouTubeVideo", "saveYouTubeCheck", "saveMax",
             "setFilter", "addAllow", "removeAllow", "addIgnore", "removeIgnore",
             "startListener", "stopListener", "setPersist", "setAutoStart", "saveInterval", "saveHudMessage", "setHudEnabled",
             "selectCreatures", "selectPrefab", "place", "removePen", "clear");

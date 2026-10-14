@@ -128,6 +128,7 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
                 case REMOVE_YOUTUBE_HANDLE -> actions.chatSources().removeYouTubeHandle();
                 case REMOVE_YOUTUBE_KEY -> actions.chatSources().removeYouTubeKey();
                 case REMOVE_YOUTUBE_VIDEO -> actions.chatSources().setYouTubeVideo("");
+                case SAVE_YOUTUBE_CHECK -> ChatSourceCommands.checkSeconds(actions, event.youTubeCheck);
                 case SAVE_MAX -> event.max == null ? "Enter a number of sprouts (min 1)." : actions.pen().setMaxSprouts(event.max);
                 case SET_FILTER -> actions.viewerLists().setFilter("allow".equals(event.filter));
                 case ADD_ALLOW -> actions.viewerLists().addAllow(event.allowInput);

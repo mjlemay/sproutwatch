@@ -62,33 +62,42 @@ class QuotaPacerTest {
 
     private final MutableClock clock = new MutableClock(la(2026, 10, 3, 12, 0, 0));
 
+    private static final java.util.function.IntSupplier TWENTY_SECONDS = () -> 20;
+
     @Test
-    void defaultsMatchTheMeasuredNumbers() {
+    void defaultsMatchGooglesNumbers() {
         assertEquals(10_000, QuotaPacer.DAILY_QUOTA);
         assertEquals(200, QuotaPacer.RESERVE);
-        assertEquals(2, QuotaPacer.COST_PER_POLL);
+        assertEquals(5, QuotaPacer.COST_PER_POLL);
         assertEquals(LA, QuotaPacer.QUOTA_ZONE);
     }
 
     @Test
-    void freshPacerAtSixHoursPacesAboutFourPointFourSeconds() {
-        QuotaPacer pacer = new QuotaPacer(6, clock);
-        // startedAt == now, so the horizon is the full 6 h: ceil(6 * 3.6e6 * 2 / 9800) = ceil(4408.16)
-        assertEquals(4_409, pacer.nextDelayMillis(1_901));
+    void freshPacerWaitsTheCheckInterval() {
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
+        assertEquals(20_000, pacer.nextDelayMillis(1_901));
         assertEquals(9_800, pacer.remainingToday());
         assertEquals(0, pacer.usedToday());
     }
 
     @Test
     void honorsALargerSuggestion() {
-        QuotaPacer pacer = new QuotaPacer(6, clock);
-        assertEquals(10_000, pacer.nextDelayMillis(10_000));
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
+        assertEquals(30_000, pacer.nextDelayMillis(30_000));
+    }
+
+    @Test
+    void readsTheIntervalLiveSoAChangeNeedsNoRestart() {
+        java.util.concurrent.atomic.AtomicInteger seconds = new java.util.concurrent.atomic.AtomicInteger(20);
+        QuotaPacer pacer = new QuotaPacer(seconds::get, clock);
+        assertEquals(20_000, pacer.nextDelayMillis(1));
+        seconds.set(45);
+        assertEquals(45_000, pacer.nextDelayMillis(1));
     }
 
     @Test
     void neverFasterThanOneSecond() {
-        // Huge budget, tiny stream: budget delay is far below 1 s.
-        QuotaPacer pacer = new QuotaPacer(1_000_000, 0, 1, 0.01, clock);
+        QuotaPacer pacer = new QuotaPacer(1_000_000, 0, 1, () -> 0, clock);
         assertEquals(1_000, pacer.nextDelayMillis(10));
         assertEquals(1_000, pacer.nextDelayMillis(1));
     }
@@ -96,38 +105,36 @@ class QuotaPacerTest {
     @ParameterizedTest
     @CsvSource({"0", "-1", "-5000"})
     void nonPositiveSuggestionIsTreatedAsFiveSeconds(long suggested) {
-        QuotaPacer pacer = new QuotaPacer(1_000_000, 0, 1, 0.01, clock);
+        QuotaPacer pacer = new QuotaPacer(1_000_000, 0, 1, () -> 1, clock);
         assertEquals(5_000, pacer.nextDelayMillis(suggested));
     }
 
     @Test
-    void delayGrowsAsBudgetIsSpent() {
-        QuotaPacer pacer = new QuotaPacer(6, clock);
-        long before = pacer.nextDelayMillis(1);
-        pacer.recordCall(4_900);
-        assertEquals(4_900, pacer.usedToday());
-        assertEquals(4_900, pacer.remainingToday());
-        long after = pacer.nextDelayMillis(1);
-        assertTrue(Math.abs(after - 2 * before) <= 2, before + " -> " + after);
+    void lastHourOfBudgetIsStretchedToLastAnHour() {
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
+        pacer.recordCall(9_000); // 800 units left: 160 reads, under 180 an hour at 20 s
+        assertEquals(22_500, pacer.nextDelayMillis(1)); // 1 h * 5 / 800
+        pacer.recordCall(400); // 400 left
+        assertEquals(45_000, pacer.nextDelayMillis(1));
     }
 
     @Test
     void exhaustedExactlyWhenRemainingBelowCostPerPoll() {
-        QuotaPacer pacer = new QuotaPacer(6, clock);
-        pacer.recordCall(9_797);
-        assertEquals(3, pacer.remainingToday());
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
+        pacer.recordCall(9_794);
+        assertEquals(6, pacer.remainingToday());
         assertFalse(pacer.exhausted());
         pacer.recordCall(1);
-        assertEquals(2, pacer.remainingToday());
+        assertEquals(5, pacer.remainingToday());
         assertFalse(pacer.exhausted());
         pacer.recordCall(1);
-        assertEquals(1, pacer.remainingToday());
+        assertEquals(4, pacer.remainingToday());
         assertTrue(pacer.exhausted());
     }
 
     @Test
     void remainingNeverNegativeAndDelayStaysFinite() {
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         pacer.recordCall(20_000);
         assertEquals(0, pacer.remainingToday());
         assertTrue(pacer.exhausted());
@@ -136,69 +143,69 @@ class QuotaPacerTest {
         assertTrue(delay <= Duration.between(clock.instant(), pacer.resetsAt()).toMillis(), "delay " + delay);
     }
 
-    /** Simulated stream: one chat read per delay, suggestion 2 s, recording costPerPoll per read. */
-    private record Sim(long gapAtH1, long gapAtH5, long maxGapAfterH6, long minGapAfterH6, int used, boolean exhausted) {}
-
-    private Sim simulate(QuotaPacer pacer, double actualHours) {
-        Instant start = clock.instant();
-        long end = (long) (actualHours * 3_600_000);
-        long gapAtH1 = -1;
-        long gapAtH5 = -1;
-        long maxAfterH6 = -1;
-        long minAfterH6 = Long.MAX_VALUE;
+    @Test
+    void twentySecondChecksRunFlatForNineHoursThenStretchWithoutOverspending() {
+        clock.set(la(2026, 10, 3, 8, 0, 0));
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         long elapsed = 0;
-        while (elapsed < end) {
-            assertFalse(pacer.exhausted(), "exhausted at " + elapsed + " ms");
+        while (elapsed < 9 * 3_600_000L) { // 9 h of reads, suggestion 2 s
             long gap = pacer.nextDelayMillis(2_000);
-            assertTrue(gap >= 1_000 && gap < 3_600_000, "gap " + gap + " at " + elapsed);
-            if (gapAtH1 < 0 && elapsed >= 3_600_000) gapAtH1 = gap;
-            if (gapAtH5 < 0 && elapsed >= 5 * 3_600_000) gapAtH5 = gap;
-            if (elapsed >= 6 * 3_600_000) {
-                maxAfterH6 = Math.max(maxAfterH6, gap);
-                minAfterH6 = Math.min(minAfterH6, gap);
-            }
+            assertEquals(20_000, gap, "flat at the interval until the last hour of budget");
             pacer.recordCall(QuotaPacer.COST_PER_POLL);
-            assertTrue(pacer.usedToday() <= QuotaPacer.DAILY_QUOTA - QuotaPacer.RESERVE, "over budget");
             clock.advance(Duration.ofMillis(gap));
-            elapsed = Duration.between(start, clock.instant()).toMillis();
+            elapsed += gap;
         }
-        return new Sim(gapAtH1, gapAtH5, maxAfterH6, minAfterH6, pacer.usedToday(), pacer.exhausted());
+        assertEquals(8_100, pacer.usedToday());
+        // The rest stretches: still reading at 22:00 (14 h in), never over budget.
+        long lastGap = 0;
+        while (clock.instant().isBefore(la(2026, 10, 3, 22, 0, 0))) {
+            assertFalse(pacer.exhausted(), "exhausted at " + clock.instant());
+            lastGap = pacer.nextDelayMillis(2_000);
+            pacer.recordCall(QuotaPacer.COST_PER_POLL);
+            clock.advance(Duration.ofMillis(lastGap));
+        }
+        assertTrue(lastGap > 20_000, "slowed down: " + lastGap);
+        assertTrue(pacer.usedToday() <= QuotaPacer.DAILY_QUOTA - QuotaPacer.RESERVE);
     }
 
     @Test
-    void sixHourStreamPacesNearlyFlatAndFinishesWithinBudget() {
-        clock.set(la(2026, 10, 3, 8, 0, 0));
-        Sim s = simulate(new QuotaPacer(6, clock), 6);
-        assertTrue(s.gapAtH1() >= 4_300 && s.gapAtH1() <= 4_700, "h1 gap " + s.gapAtH1());
-        assertTrue(s.gapAtH5() >= 4_300 && s.gapAtH5() <= 4_700, "h5 gap " + s.gapAtH5());
-        assertFalse(s.exhausted());
+    void hoursPerDayEstimate() {
+        assertEquals(10.89, QuotaPacer.hoursPerDay(20), 0.01); // 1,960 reads * 20 s
+        assertEquals(5.44, QuotaPacer.hoursPerDay(10), 0.01);
+        assertEquals(16.33, QuotaPacer.hoursPerDay(30), 0.01);
+        assertEquals(24.0, QuotaPacer.hoursPerDay(60), 0.0); // capped at a day
+        assertEquals(24.0, QuotaPacer.hoursPerDay(300), 0.0);
     }
 
     @Test
-    void streamRunningPastItsPlanSlowsDownButNeverOverspends() {
-        clock.set(la(2026, 10, 3, 8, 0, 0));
-        Sim s = simulate(new QuotaPacer(6, clock), 10);
-        assertTrue(s.minGapAfterH6() > s.gapAtH1(), "after h6 " + s.minGapAfterH6() + " vs h1 " + s.gapAtH1());
-        assertTrue(s.maxGapAfterH6() > 0);
-        assertTrue(s.used() <= QuotaPacer.DAILY_QUOTA - QuotaPacer.RESERVE);
-        assertFalse(s.exhausted());
+    void hoursLeftTodayFollowsRemainingAndInterval() {
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
+        assertEquals(10.89, pacer.hoursLeftToday(), 0.01);
+        pacer.recordCall(4_900);
+        assertEquals(5.44, pacer.hoursLeftToday(), 0.01);
+        pacer.recordCall(10_000);
+        assertEquals(0.0, pacer.hoursLeftToday(), 0.0);
     }
 
     @Test
-    void horizonUsesPlannedTimeLeftWithAOneHourFloor() {
-        clock.set(la(2026, 10, 3, 8, 0, 0));
-        QuotaPacer pacer = new QuotaPacer(6, clock);
-        pacer.recordCall(9_000); // 800 units left
-        clock.advance(Duration.ofHours(3)); // 3 h of the plan left
-        assertEquals(27_000, pacer.nextDelayMillis(1)); // 3 h * 2 / 800
-        clock.advance(Duration.ofHours(4)); // past the plan: 1 h floor
-        assertEquals(9_000, pacer.nextDelayMillis(1)); // 1 h * 2 / 800
+    void markSpentCountsTheWholeChatBudgetAndFiresTheListener() {
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
+        java.util.List<Integer> seen = new java.util.ArrayList<>();
+        pacer.setUsageListener(() -> seen.add(pacer.usedToday()));
+        pacer.recordCall(1_000);
+        pacer.markSpent();
+        assertEquals(9_800, pacer.usedToday());
+        assertTrue(pacer.exhausted());
+        assertEquals(java.util.List.of(1_000, 9_800), seen);
+        pacer.recordCall(500);
+        pacer.markSpent(); // never lowers usage
+        assertEquals(10_300, pacer.usedToday());
     }
 
     @Test
     void neverSleepsPastTheRefill() {
         clock.set(la(2026, 10, 3, 23, 59, 0));
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         pacer.recordCall(9_800);
         long delay = pacer.nextDelayMillis(2_000);
         assertTrue(delay <= 60_000 && delay >= 1_000, "delay " + delay);
@@ -209,18 +216,18 @@ class QuotaPacerTest {
     @Test
     void delayDropsBackToFreshRightAfterMidnight() {
         clock.set(la(2026, 10, 3, 23, 59, 59));
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         pacer.recordCall(9_000);
         clock.advance(Duration.ofSeconds(2));
-        // 2 s of the planned 6 h have elapsed: ceil((21_600_000 - 2_000) * 2 / 9800) = 4408
-        assertEquals(4_408, pacer.nextDelayMillis(1));
+        // a new quota day: back to the plain interval
+        assertEquals(20_000, pacer.nextDelayMillis(1));
         assertEquals(9_800, pacer.remainingToday());
     }
 
     @Test
     void clockSteppingBackwardsDoesNotResetUsage() {
         clock.set(la(2026, 10, 4, 0, 30, 0));
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         pacer.recordCall(300);
         clock.advance(Duration.ofHours(-1)); // back across midnight to Oct 3
         assertEquals(300, pacer.usedToday());
@@ -232,7 +239,7 @@ class QuotaPacerTest {
 
     @Test
     void restoreTodayReducesRemaining() {
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         pacer.restore(LocalDate.of(2026, 10, 3), 1_234);
         assertEquals(1_234, pacer.usedToday());
         assertEquals(9_800 - 1_234, pacer.remainingToday());
@@ -241,7 +248,7 @@ class QuotaPacerTest {
 
     @Test
     void restoreYesterdayIsIgnored() {
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         pacer.restore(LocalDate.of(2026, 10, 2), 1_234);
         assertEquals(0, pacer.usedToday());
         pacer.restore(null, 1_234);
@@ -251,7 +258,7 @@ class QuotaPacerTest {
     @Test
     void restoreNeverLowersUsage() {
         // A late restore with a stale saved value must not hand back units already spent this run.
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         pacer.recordCall(500);
         pacer.restore(LocalDate.of(2026, 10, 3), 200);
         assertEquals(500, pacer.usedToday());
@@ -261,7 +268,7 @@ class QuotaPacerTest {
 
     @Test
     void restoreClampsUsage() {
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         pacer.restore(LocalDate.of(2026, 10, 3), -50);
         assertEquals(0, pacer.usedToday());
         pacer.restore(LocalDate.of(2026, 10, 3), 1_000_000);
@@ -273,7 +280,7 @@ class QuotaPacerTest {
     @Test
     void quotaDayRollsOver() {
         clock.set(la(2026, 10, 3, 23, 59, 59));
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         assertEquals(LocalDate.of(2026, 10, 3), pacer.quotaDay());
         clock.advance(Duration.ofSeconds(2));
         assertEquals(LocalDate.of(2026, 10, 4), pacer.quotaDay());
@@ -281,14 +288,14 @@ class QuotaPacerTest {
 
     @Test
     void resetsAtIsNextMidnightInLosAngeles() {
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         assertEquals(la(2026, 10, 4, 0, 0, 0), pacer.resetsAt());
     }
 
     @Test
     void usageResetsAfterCrossingMidnightLosAngeles() {
         clock.set(la(2026, 10, 3, 23, 59, 59));
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         pacer.recordCall(500);
         assertEquals(500, pacer.usedToday());
         clock.advance(Duration.ofSeconds(2));
@@ -301,7 +308,7 @@ class QuotaPacerTest {
     void usageDoesNotResetAtUtcMidnight() {
         // 17:30 LA (PDT) = 00:30 UTC next day.
         clock.set(la(2026, 10, 3, 16, 0, 0));
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         pacer.recordCall(100);
         clock.set(la(2026, 10, 3, 17, 30, 0));
         assertEquals(100, pacer.usedToday());
@@ -321,7 +328,7 @@ class QuotaPacerTest {
     })
     void resetsAtIsLocalMidnightAcrossDst(int y, int mo, int d, int h, int mi, LocalDate nextDay) {
         clock.set(la(y, mo, d, h, mi, 0));
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         Instant reset = pacer.resetsAt();
         ZonedDateTime local = reset.atZone(LA);
         assertEquals(nextDay, local.toLocalDate());
@@ -333,7 +340,7 @@ class QuotaPacerTest {
     @Test
     void fallBackDayIsTwentyFiveHoursLongAndUsageSurvivesTheRepeatedHour() {
         clock.set(la(2026, 11, 1, 0, 0, 0));
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         pacer.recordCall(42);
         assertEquals(Duration.ofHours(25), Duration.between(clock.instant(), pacer.resetsAt()));
         clock.advance(Duration.ofHours(24).plusMinutes(59));
@@ -345,7 +352,7 @@ class QuotaPacerTest {
     @Test
     void springForwardDayIsTwentyThreeHoursLong() {
         clock.set(la(2027, 3, 14, 0, 0, 0));
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         pacer.recordCall(42);
         assertEquals(Duration.ofHours(23), Duration.between(clock.instant(), pacer.resetsAt()));
         clock.advance(Duration.ofHours(23));
@@ -354,21 +361,18 @@ class QuotaPacerTest {
 
     @Test
     void constructorValidation() {
-        assertThrows(IllegalArgumentException.class, () -> new QuotaPacer(0, clock));
-        assertThrows(IllegalArgumentException.class, () -> new QuotaPacer(-1, clock));
-        assertThrows(IllegalArgumentException.class, () -> new QuotaPacer(Double.NaN, clock));
-        assertThrows(IllegalArgumentException.class, () -> new QuotaPacer(Double.POSITIVE_INFINITY, clock));
-        assertThrows(NullPointerException.class, () -> new QuotaPacer(6, null));
-        assertThrows(IllegalArgumentException.class, () -> new QuotaPacer(0, 0, 2, 6, clock));
-        assertThrows(IllegalArgumentException.class, () -> new QuotaPacer(10_000, -1, 2, 6, clock));
-        assertThrows(IllegalArgumentException.class, () -> new QuotaPacer(10_000, 10_000, 2, 6, clock));
-        assertThrows(IllegalArgumentException.class, () -> new QuotaPacer(10_000, 200, 0, 6, clock));
-        assertThrows(IllegalArgumentException.class, () -> new QuotaPacer(10_000, 200, 9_801, 6, clock));
+        assertThrows(NullPointerException.class, () -> new QuotaPacer(null, clock));
+        assertThrows(NullPointerException.class, () -> new QuotaPacer(TWENTY_SECONDS, null));
+        assertThrows(IllegalArgumentException.class, () -> new QuotaPacer(0, 0, 2, TWENTY_SECONDS, clock));
+        assertThrows(IllegalArgumentException.class, () -> new QuotaPacer(10_000, -1, 2, TWENTY_SECONDS, clock));
+        assertThrows(IllegalArgumentException.class, () -> new QuotaPacer(10_000, 10_000, 2, TWENTY_SECONDS, clock));
+        assertThrows(IllegalArgumentException.class, () -> new QuotaPacer(10_000, 200, 0, TWENTY_SECONDS, clock));
+        assertThrows(IllegalArgumentException.class, () -> new QuotaPacer(10_000, 200, 9_801, TWENTY_SECONDS, clock));
     }
 
     @Test
     void recordCallRejectsNegativeUnits() {
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         assertThrows(IllegalArgumentException.class, () -> pacer.recordCall(-1));
         pacer.recordCall(0);
         assertEquals(0, pacer.usedToday());
@@ -376,7 +380,7 @@ class QuotaPacerTest {
 
     @Test
     void usageListenerFiresAfterRecordAndRestoreOutsideTheLock() {
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         java.util.List<Integer> seen = new java.util.ArrayList<>();
         java.util.List<Boolean> locked = new java.util.ArrayList<>();
         pacer.setUsageListener(() -> {
@@ -397,7 +401,7 @@ class QuotaPacerTest {
 
     @Test
     void aThrowingUsageListenerDoesNotBreakTheCaller() {
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(TWENTY_SECONDS, clock);
         pacer.setUsageListener(() -> { throw new RuntimeException("boom"); });
         pacer.recordCall(2);
         assertEquals(2, pacer.usedToday());

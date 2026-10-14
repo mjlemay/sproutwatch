@@ -234,6 +234,32 @@ $C.@PageOverlay {
           Anchor: (Bottom: 12);
           Style: (...$C.@DefaultLabelStyle, FontSize: 13, Wrap: true);
         }
+
+        // How often YouTube chat is read: the free daily quota pays for a fixed number of reads.
+        $C.@Subtitle {
+          @Text = "Check YouTube Chat Every (seconds, 10 to 300)";
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 6);
+
+          $C.@NumberField #YouTubeCheckField {
+            @Anchor = (Width: 140, Right: 8);
+            Format: (MaxDecimalPlaces: 0, Step: 1);
+          }
+
+          $C.@TextButton #SaveYouTubeCheckButton {
+            @Text = "Update";
+            @Anchor = (Width: 120);
+          }
+        }
+
+        Label #YouTubeCheckHint {
+          Text: "";
+          Anchor: (Bottom: 12);
+          Style: (...$C.@DefaultLabelStyle, FontSize: 13, Wrap: true);
+        }
       }
 
       // ---------------- Details tab (live) ----------------

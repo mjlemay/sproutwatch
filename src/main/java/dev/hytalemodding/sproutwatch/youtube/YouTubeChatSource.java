@@ -372,6 +372,7 @@ public final class YouTubeChatSource implements ChatSource {
             }
             case QUOTA_EXCEEDED -> {
                 lifecycle.safeLog(Level.WARNING, "YouTube " + phase + " failed: " + exception.getMessage());
+                pacer.markSpent(); // Google's count wins: the page shows the day as spent
                 return quotaWait(generation, run);
             }
             case NOT_FOUND -> {

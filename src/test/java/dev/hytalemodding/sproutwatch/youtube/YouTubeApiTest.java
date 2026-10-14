@@ -448,7 +448,7 @@ class YouTubeApiTest {
 
     @Test
     void oversizedBodyIsTransientWithoutEcho() {
-        String big = "{\"items\":[{\"id\":\"" + "x".repeat(3 * 1024 * 1024) + "\"}]}";
+        String big = "{\"items\":[{\"id\":\"" + "x".repeat(9 * 1024 * 1024) + "\"}]}";
         reply("channels", 200, big);
         YouTubeException exception = assertThrows(YouTubeException.class, () -> api().channelIdForHandle("@x"));
         assertEquals(YouTubeException.Kind.TRANSIENT, exception.kind());

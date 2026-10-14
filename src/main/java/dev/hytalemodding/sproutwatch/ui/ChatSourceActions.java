@@ -1,8 +1,10 @@
 package dev.hytalemodding.sproutwatch.ui;
 
 import dev.hytalemodding.sproutwatch.config.SproutwatchConfig;
+import dev.hytalemodding.sproutwatch.youtube.QuotaPacer;
 import dev.hytalemodding.sproutwatch.youtube.YouTubeRef;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -142,14 +144,22 @@ public final class ChatSourceActions {
         return restartIfRunning(base, youTubeAffected(before));
     }
 
-    public String setYouTubeStreamHours(double hours) {
-        boolean before = host.config().youTubeConfigured();
-        host.config().setYouTubeStreamHours(hours);
+    /**
+     * How often YouTube chat is read (the caller checks the 10..300 s range). A running listener picks
+     * it up on its next read, so nothing restarts.
+     */
+    public String setYouTubeCheckSeconds(int seconds) {
+        host.config().setYouTubeCheckSeconds(seconds);
         host.saveConfig();
-        double streamHours = host.config().getYouTubeStreamHours();
-        String shown = streamHours == Math.rint(streamHours) ? Long.toString((long) streamHours) : Double.toString(streamHours);
-        return restartIfRunning("YouTube stream length is now " + shown
-            + "h (chat reads are paced so the daily quota lasts that long)", youTubeAffected(before));
+        int checkSeconds = host.config().getYouTubeCheckSeconds();
+        return "YouTube chat is checked every " + checkSeconds + "s (" + youTubeCheckEstimate(checkSeconds) + ").";
+    }
+
+    /** "about 10.9 hours of chat a day", or "enough for the whole day" once the quota covers 24 h. */
+    public static String youTubeCheckEstimate(int checkSeconds) {
+        double hours = QuotaPacer.hoursPerDay(checkSeconds);
+        if (hours >= 24.0) return "enough for the whole day";
+        return String.format(Locale.US, "about %.1f hours of chat a day", hours);
     }
 
     /**

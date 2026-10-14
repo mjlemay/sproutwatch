@@ -68,7 +68,7 @@ class SproutwatchConfigTest {
         assertEquals(json.getString("YouTubeHandle").getValue(), c.getYouTubeHandle());
         assertEquals(json.getString("YouTubeVideo").getValue(), c.getYouTubeVideo());
         assertEquals(json.getString("YouTubeApiKey").getValue(), c.getYouTubeApiKey());
-        assertEquals(json.getDouble("YouTubeStreamHours").getValue(), c.getYouTubeStreamHours());
+        assertEquals(json.getInt32("YouTubeCheckSeconds").getValue(), c.getYouTubeCheckSeconds());
         assertEquals(json.getString("YouTubeQuotaDay").getValue(), c.getYouTubeQuotaDay());
         assertEquals(json.getInt32("YouTubeQuotaUsed").getValue(), c.getYouTubeQuotaUsed());
         assertEquals(0, json.getArray("YouTubeLabels").size());
@@ -76,7 +76,7 @@ class SproutwatchConfigTest {
         assertTrue(c.isTwitchEnabled());
         assertFalse(c.isYouTubeEnabled());
         assertEquals("", c.getYouTubeApiKey());
-        assertEquals(8.0, c.getYouTubeStreamHours());
+        assertEquals(20, c.getYouTubeCheckSeconds());
         assertEquals(0, c.getYouTubeQuotaUsed());
         assertFalse(c.isPenSet());
     }
@@ -103,14 +103,14 @@ class SproutwatchConfigTest {
         assertEquals("AIzaTESTKEY0123456789abcd", c.getYouTubeApiKey());
         c.setYouTubeHandle(null);
         assertEquals("", c.getYouTubeHandle());
-        c.setYouTubeStreamHours(0.2);
-        assertEquals(1.0, c.getYouTubeStreamHours());
-        c.setYouTubeStreamHours(99);
-        assertEquals(24.0, c.getYouTubeStreamHours());
-        c.setYouTubeStreamHours(Double.NaN);
-        assertEquals(8.0, c.getYouTubeStreamHours());
-        c.setYouTubeStreamHours(2.5);
-        assertEquals(2.5, c.getYouTubeStreamHours());
+        c.setYouTubeCheckSeconds(3);
+        assertEquals(10, c.getYouTubeCheckSeconds());
+        c.setYouTubeCheckSeconds(-1);
+        assertEquals(10, c.getYouTubeCheckSeconds());
+        c.setYouTubeCheckSeconds(9_999);
+        assertEquals(300, c.getYouTubeCheckSeconds());
+        c.setYouTubeCheckSeconds(45);
+        assertEquals(45, c.getYouTubeCheckSeconds());
         c.setYouTubeQuota(" 2026-10-03 ", -5);
         assertEquals("2026-10-03", c.getYouTubeQuotaDay());
         assertEquals(0, c.getYouTubeQuotaUsed());

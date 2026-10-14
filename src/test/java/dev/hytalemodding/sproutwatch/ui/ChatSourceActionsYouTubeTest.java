@@ -285,20 +285,20 @@ class ChatSourceActionsYouTubeTest {
         assertEquals(3, host.saveCalls);
     }
 
-    @Test void setStreamHoursClampsAndRestarts() {
+    @Test void setCheckSecondsSavesShowsTheEstimateAndNeverRestarts() {
         FakeHost host = new FakeHost();
         ChatSourceActions chatSources = new ChatSourceActions(host);
-        assertEquals("YouTube stream length is now 8h (chat reads are paced so the daily quota lasts that long).", chatSources.setYouTubeStreamHours(8));
-        assertEquals("YouTube stream length is now 2.5h (chat reads are paced so the daily quota lasts that long).", chatSources.setYouTubeStreamHours(2.5));
-        assertEquals("YouTube stream length is now 24h (chat reads are paced so the daily quota lasts that long).", chatSources.setYouTubeStreamHours(100));
-        assertEquals("YouTube stream length is now 1h (chat reads are paced so the daily quota lasts that long).", chatSources.setYouTubeStreamHours(0));
-        assertEquals(4, host.saveCalls);
+        assertEquals("YouTube chat is checked every 20s (about 10.9 hours of chat a day).", chatSources.setYouTubeCheckSeconds(20));
+        assertEquals("YouTube chat is checked every 10s (about 5.4 hours of chat a day).", chatSources.setYouTubeCheckSeconds(10));
+        assertEquals("YouTube chat is checked every 60s (enough for the whole day).", chatSources.setYouTubeCheckSeconds(60));
+        assertEquals(60, host.config.getYouTubeCheckSeconds());
+        assertEquals(3, host.saveCalls);
         host.config.setYouTubeEnabled(true);
         host.config.setYouTubeApiKey(KEY);
         host.config.setYouTubeHandle("@Streamer");
         host.running = true;
-        assertEquals("YouTube stream length is now 6h (chat reads are paced so the daily quota lasts that long); listener restarted.", chatSources.setYouTubeStreamHours(6));
-        assertEquals(1, host.startCalls);
+        assertEquals("YouTube chat is checked every 30s (about 16.3 hours of chat a day).", chatSources.setYouTubeCheckSeconds(30));
+        assertEquals(0, host.startCalls, "the running pacer reads the new interval itself");
     }
 
     @Test void removeClearsEachSavedFieldAndRestartsOnlyWhenItMattered() {
@@ -439,7 +439,7 @@ class ChatSourceActionsYouTubeTest {
             "YouTube: connected to YouTube (@Streamer)",
             "YouTube channel: @Streamer",
             "YouTube key: AIza...abcd",
-            "YouTube quota: 120 / 9,800 used today (resets 00:00)",
+            "YouTube quota: 120 / 9,800 used today, about 10.8 h left (resets 00:00)",
             "Seen in chat: 0")), r);
         assertFalse(r.contains(KEY));
 
@@ -449,7 +449,7 @@ class ChatSourceActionsYouTubeTest {
         host.states = null;
         r = new SproutwatchActions(host).statusReport();
         assertTrue(r.contains("YouTube: stopped\nYouTube channel: video dQw4w9WgXcQ\n"), r);
-        assertTrue(r.contains("YouTube quota: 0 / 9,800 used today (resets 00:00)\n"), "yesterday's usage does not count");
+        assertTrue(r.contains("YouTube quota: 0 / 9,800 used today, about 10.9 h left (resets 00:00)\n"), "yesterday's usage does not count");
 
         host.config.setYouTubeApiKey("");
         r = new SproutwatchActions(host).statusReport();

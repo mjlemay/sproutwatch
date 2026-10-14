@@ -24,7 +24,7 @@ class QuotaStoreTest {
     private final QuotaStore store = new QuotaStore(config, saves::incrementAndGet, millis::get);
 
     @Test void usageIsWrittenToConfigAndSavedAtMostOncePerMinute() {
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(() -> 20, clock);
         store.attach(pacer);
         pacer.recordCall(2);
         assertEquals("2026-10-03", config.getYouTubeQuotaDay());
@@ -43,14 +43,14 @@ class QuotaStoreTest {
     }
 
     @Test void aSecondStartTheSameDayStartsWithTheSavedUsage() {
-        QuotaPacer first = new QuotaPacer(6, clock);
+        QuotaPacer first = new QuotaPacer(() -> 20, clock);
         store.attach(first);
         first.recordCall(2);
         first.recordCall(5);
         store.flush(first);
 
         clock.advance(Duration.ofHours(2));
-        QuotaPacer second = new QuotaPacer(6, clock);
+        QuotaPacer second = new QuotaPacer(() -> 20, clock);
         new QuotaStore(config, saves::incrementAndGet, millis::get).attach(second);
         assertEquals(7, second.usedToday());
         second.recordCall(2);
@@ -59,12 +59,12 @@ class QuotaStoreTest {
 
     @Test void usageFromAnotherDayOrABadDateIsIgnored() {
         config.setYouTubeQuota("2026-10-02", 500);
-        QuotaPacer pacer = new QuotaPacer(6, clock);
+        QuotaPacer pacer = new QuotaPacer(() -> 20, clock);
         store.attach(pacer);
         assertEquals(0, pacer.usedToday());
 
         config.setYouTubeQuota("yesterday", 500);
-        QuotaPacer q = new QuotaPacer(6, clock);
+        QuotaPacer q = new QuotaPacer(() -> 20, clock);
         store.attach(q);
         assertEquals(0, q.usedToday());
     }
@@ -89,7 +89,7 @@ class QuotaStoreTest {
         store.addUnits(0, day.plusDays(1));
         assertEquals(1, config.getYouTubeQuotaUsed());
 
-        QuotaPacer pacer = new QuotaPacer(6, new QuotaPacerTest.MutableClock(
+        QuotaPacer pacer = new QuotaPacer(() -> 20, new QuotaPacerTest.MutableClock(
             java.time.LocalDateTime.of(2026, 10, 4, 9, 0).atZone(LA).toInstant()));
         store.restoreInto(pacer);
         assertEquals(1, pacer.usedToday(), "the next YouTube start restores the lookup's unit");

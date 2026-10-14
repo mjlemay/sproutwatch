@@ -1,5 +1,7 @@
 package dev.hytalemodding.sproutwatch.ui;
 
+import dev.hytalemodding.sproutwatch.config.SproutwatchConfig;
+
 import java.util.Locale;
 
 /**
@@ -10,10 +12,11 @@ import java.util.Locale;
 public final class ChatSourceCommands {
 
     public static final String YOUTUBE_USAGE =
-        "Usage: /sproutwatch youtube on|off | handle <@handle> | key <key> | video <link|clear> | hours <1-24>";
+        "Usage: /sproutwatch youtube on|off | handle <@handle> | key <key> | video <link|clear> | every <10-300>";
     public static final String TWITCH_USAGE = "Usage: /sproutwatch twitch on|off";
-    public static final String HOURS_HINT =
-        "Enter your stream length in hours (1 to 24). Set this to your longest stream.";
+    public static final String CHECK_HINT = "Enter how often to check YouTube chat, in seconds ("
+        + SproutwatchConfig.YOUTUBE_CHECK_MIN_SECONDS + " to " + SproutwatchConfig.YOUTUBE_CHECK_MAX_SECONDS
+        + "). Slower checks make the daily quota last longer.";
 
     private ChatSourceCommands() {}
 
@@ -29,14 +32,14 @@ public final class ChatSourceCommands {
         return on == null ? YOUTUBE_USAGE : actions.chatSources().setYouTubeEnabled(on);
     }
 
-    /** {@code /sproutwatch youtube handle|key|video|hours <value>}. */
+    /** {@code /sproutwatch youtube handle|key|video|every <value>}. */
     public static String youTube(SproutwatchActions actions, String setting, String value) {
         String which = setting == null ? "" : setting.trim().toLowerCase(Locale.ROOT);
         return switch (which) {
             case "handle" -> actions.chatSources().setYouTubeHandle(value);
             case "key" -> actions.chatSources().setYouTubeKey(value);
             case "video" -> actions.chatSources().setYouTubeVideo(value != null && value.trim().equalsIgnoreCase("clear") ? "" : value);
-            case "hours" -> streamHours(actions, parseHours(value));
+            case "every" -> checkSeconds(actions, parseSeconds(value));
             default -> YOUTUBE_USAGE;
         };
     }
@@ -52,18 +55,18 @@ public final class ChatSourceCommands {
         return on == null ? TWITCH_USAGE : actions.chatSources().setTwitchEnabled(on);
     }
 
-    /** Stream length from the page or the command: 1 to 24 hours, else {@link #HOURS_HINT}. */
-    public static String streamHours(SproutwatchActions actions, Double hours) {
-        if (hours == null || !Double.isFinite(hours) || hours < 1 || hours > 24) return HOURS_HINT;
-        return actions.chatSources().setYouTubeStreamHours(hours);
+    /** Check interval from the page or the command: 10 to 300 seconds, else {@link #CHECK_HINT}. */
+    public static String checkSeconds(SproutwatchActions actions, Integer seconds) {
+        if (seconds == null || seconds < SproutwatchConfig.YOUTUBE_CHECK_MIN_SECONDS
+            || seconds > SproutwatchConfig.YOUTUBE_CHECK_MAX_SECONDS) return CHECK_HINT;
+        return actions.chatSources().setYouTubeCheckSeconds(seconds);
     }
 
-    /** Whole hours 1 to 24 only ("6", not "2.5"); null for anything else. */
-    static Double parseHours(String raw) {
+    /** Whole seconds only ("20", not "20.5" or "20s"); null for anything else. */
+    static Integer parseSeconds(String raw) {
         String trimmed = raw == null ? "" : raw.trim();
-        if (!trimmed.matches("[0-9]{1,2}")) return null;
-        int wholeHours = Integer.parseInt(trimmed);
-        return wholeHours >= 1 && wholeHours <= 24 ? (double) wholeHours : null;
+        if (!trimmed.matches("[0-9]{1,4}")) return null;
+        return Integer.parseInt(trimmed);
     }
 
     /** "on"/"off" (also true/false, yes/no), any case; null for anything else. */

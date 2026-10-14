@@ -34,17 +34,17 @@ class YouTubeSettingsUiTest {
         FakeHost host = youTubeReady();
         host.config.setYouTubeQuota("2026-10-03", 1234);
         StatusSnapshot s = new SproutwatchActions(host).snapshot();
-        assertEquals("1,234 / 9,800 used today (resets 00:00)", s.youTubeQuotaValue());
-        assertEquals("1,234 / 9,800 used today (resets 00:00)", s.detailValues().get(index("#YouTubeQuotaValue")));
+        assertEquals("1,234 / 9,800 used today, about 9.5 h left (resets 00:00)", s.youTubeQuotaValue());
+        assertEquals("1,234 / 9,800 used today, about 9.5 h left (resets 00:00)", s.detailValues().get(index("#YouTubeQuotaValue")));
 
         host.config.setYouTubeQuota("2026-10-03", 7);
-        assertEquals("7 / 9,800 used today (resets 00:00)", new SproutwatchActions(host).snapshot().youTubeQuotaValue());
+        assertEquals("7 / 9,800 used today, about 10.9 h left (resets 00:00)", new SproutwatchActions(host).snapshot().youTubeQuotaValue());
 
-        YouTubeStatus y = new YouTubeStatus(true, true, "@Streamer", "AIza...abcd", null, 12345, 98000, "21:00");
+        YouTubeStatus y = new YouTubeStatus(true, true, "@Streamer", "AIza...abcd", null, 12345, 98000, "21:00", 2.25);
         StatusSnapshot big = new StatusSnapshot("stopped", false, false, "", 0, 0, "!sprout", false, 0, 0,
             0, 30, 0, 60, 300, 120, false, true, false, false, 0, 0, 0, 0, 0, "north", null, "", false, 0, 0, 0, "",
             java.util.Map.of(), y);
-        assertEquals("12,345 / 98,000 used today (resets 21:00)", big.youTubeQuotaValue());
+        assertEquals("12,345 / 98,000 used today, about 2.3 h left (resets 21:00)", big.youTubeQuotaValue());
     }
 
     @Test void quotaRowSitsAfterTheTwitchFeedAndTheListsStayAligned() {
@@ -95,9 +95,9 @@ class YouTubeSettingsUiTest {
         assertEquals("YouTube stream link cleared; the live stream is found from your @handle.",
             ChatSourceCommands.youTube(a, "video", "clear"));
         assertEquals("", host.config.getYouTubeVideo());
-        assertEquals("YouTube stream length is now 8h (chat reads are paced so the daily quota lasts that long).",
-            ChatSourceCommands.youTube(a, "hours", "8"));
-        assertEquals(8.0, host.config.getYouTubeStreamHours());
+        assertEquals("YouTube chat is checked every 30s (about 16.3 hours of chat a day).",
+            ChatSourceCommands.youTube(a, "every", "30"));
+        assertEquals(30, host.config.getYouTubeCheckSeconds());
     }
 
     @Test void youTubeKeyReplyIsMasked() {
@@ -108,31 +108,30 @@ class YouTubeSettingsUiTest {
         assertEquals(KEY, host.config.getYouTubeApiKey());
     }
 
-    @Test void youTubeHoursRejectsOutOfRangeAndNonNumbers() {
+    @Test void youTubeEveryRejectsOutOfRangeAndNonNumbers() {
         FakeHost host = new FakeHost();
         SproutwatchActions a = new SproutwatchActions(host);
-        for (String bad : new String[] {"0", "25", "-3", "six", "", "NaN", "Infinity"}) {
-            assertEquals(ChatSourceCommands.HOURS_HINT, ChatSourceCommands.youTube(a, "hours", bad), bad);
+        for (String bad : new String[] {"0", "9", "301", "-3", "twenty", "", "20.5", "20s", "+20", "1e2", "NaN"}) {
+            assertEquals(ChatSourceCommands.CHECK_HINT, ChatSourceCommands.youTube(a, "every", bad), bad);
         }
         assertEquals(0, host.saveCalls, "a rejected value is not saved");
-        assertEquals(ChatSourceCommands.HOURS_HINT, ChatSourceCommands.streamHours(a, null));
-        assertTrue(ChatSourceCommands.HOURS_HINT.contains("Set this to your longest stream."));
-        assertEquals("YouTube stream length is now 1h (chat reads are paced so the daily quota lasts that long).",
-            ChatSourceCommands.streamHours(a, 1.0));
-        assertEquals("YouTube stream length is now 24h (chat reads are paced so the daily quota lasts that long).",
-            ChatSourceCommands.streamHours(a, 24.0));
+        assertEquals(ChatSourceCommands.CHECK_HINT, ChatSourceCommands.checkSeconds(a, null));
+        assertTrue(ChatSourceCommands.CHECK_HINT.contains("(10 to 300)"));
+        assertEquals("YouTube chat is checked every 10s (about 5.4 hours of chat a day).", ChatSourceCommands.checkSeconds(a, 10));
+        assertEquals("YouTube chat is checked every 300s (enough for the whole day).", ChatSourceCommands.youTube(a, "every", " 300 "));
+        assertEquals(300, host.config.getYouTubeCheckSeconds());
     }
 
-    @Test void youTubeHoursAcceptsWholeHoursOnly() {
-        FakeHost host = new FakeHost();
-        SproutwatchActions a = new SproutwatchActions(host);
-        for (String bad : new String[] {"2.5", "6.0", "1e1", "+6", "006"}) {
-            assertEquals(ChatSourceCommands.HOURS_HINT, ChatSourceCommands.youTube(a, "hours", bad), bad);
-        }
-        assertEquals(0, host.saveCalls);
-        assertEquals("YouTube stream length is now 12h (chat reads are paced so the daily quota lasts that long).",
-            ChatSourceCommands.youTube(a, "hours", " 12 "));
-        assertEquals(12.0, host.config.getYouTubeStreamHours());
+    @Test void youTubeHoursIsRetired() {
+        SproutwatchActions a = new SproutwatchActions(new FakeHost());
+        assertEquals(ChatSourceCommands.YOUTUBE_USAGE, ChatSourceCommands.youTube(a, "hours", "8"));
+        assertTrue(ChatSourceCommands.YOUTUBE_USAGE.contains("every <10-300>"));
+    }
+
+    @Test void checkHintShowsTheEstimate() {
+        assertEquals("About 10.9 hours of chat a day on the free quota.",
+            SettingsPanes.youTubeCheckHint(20));
+        assertTrue(SettingsPanes.youTubeCheckHint(120).startsWith("Enough for the whole day"));
     }
 
     @Test void youTubeSummary() {
@@ -143,7 +142,7 @@ class YouTubeSettingsUiTest {
         on.config.setYouTubeQuota("2026-10-03", 40);
         String s = ChatSourceCommands.youTubeSummary(new SproutwatchActions(on).snapshot());
         assertEquals(String.join("\n", "YouTube: stopped", "YouTube channel: @Streamer", "YouTube key: AIza...abcd",
-            "YouTube quota: 40 / 9,800 used today (resets 00:00)"), s);
+            "YouTube quota: 40 / 9,800 used today, about 10.8 h left (resets 00:00)"), s);
         assertFalse(s.contains(KEY));
     }
 

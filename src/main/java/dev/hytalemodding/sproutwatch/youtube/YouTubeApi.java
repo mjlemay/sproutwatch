@@ -48,8 +48,10 @@ public final class YouTubeApi implements AutoCloseable {
 
     public static final String DEFAULT_BASE = "https://www.googleapis.com/youtube/v3";
     static final Duration TIMEOUT = Duration.ofSeconds(10);
-    /** Largest response body accepted; a real chat page is a few tens of KB. */
-    static final long MAX_BODY_BYTES = 2L * 1024 * 1024;
+    /** Largest response body accepted: a full page of {@link #CHAT_PAGE_SIZE} messages (about 1 KB each) fits. */
+    static final long MAX_BODY_BYTES = 8L * 1024 * 1024;
+    /** liveChatMessages maxResults: the API maximum. */
+    static final int CHAT_PAGE_SIZE = 2000;
 
     private static final Set<String> QUOTA_REASONS = Set.of("quotaExceeded", "dailyLimitExceeded");
     /** Short-term throttling: back off and retry, unlike the daily quota. */
@@ -187,6 +189,8 @@ public final class YouTubeApi implements AutoCloseable {
         Map<String, String> q = new LinkedHashMap<>();
         q.put("liveChatId", liveChatId);
         q.put("part", "snippet,authorDetails");
+        // The API maximum (default 500), at the same cost: a busy chat cannot overflow one page between checks.
+        q.put("maxResults", Integer.toString(CHAT_PAGE_SIZE));
         if (pageToken != null && !pageToken.isEmpty()) q.put("pageToken", pageToken);
         String body = fetch("chatPage", Endpoint.CHAT_MESSAGES, q);
         try {

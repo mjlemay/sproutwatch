@@ -624,7 +624,7 @@ public class SproutwatchCommand extends AbstractCommand {
     }
 
     /**
-     * {@code /sproutwatch youtube [on|off | handle <h> | key <k> | video <link|clear> | hours <n>]}; parsing
+     * {@code /sproutwatch youtube [on|off | handle <h> | key <k> | video <link|clear> | every <seconds>]}; parsing
      * and replies in ChatSourceCommands (the key is only ever echoed masked). The engine's
      * CommandManager logs every command's full text ({@code <player> executed command: ...}), so
      * {@code youtube key} puts the key in the server log; the Connect tab's key field does not, and
@@ -634,7 +634,7 @@ public class SproutwatchCommand extends AbstractCommand {
      */
     private static final class YouTubeCommand extends Sub {
         YouTubeCommand(SproutwatchPlugin plugin, String permission) {
-            super(plugin, "youtube", "YouTube chat: /sproutwatch youtube on|off | handle <@handle> | key <key> | video <link|clear> | hours <1-24>"
+            super(plugin, "youtube", "YouTube chat: /sproutwatch youtube on|off | handle <@handle> | key <key> | video <link|clear> | every <10-300>"
                 + " (the settings page is safer for the key: command text may appear in the server log)", permission);
             addUsageVariant(new YouTubeToggleVariant(plugin, permission));
             addUsageVariant(new YouTubeSetVariant(plugin, permission));
@@ -659,16 +659,16 @@ public class SproutwatchCommand extends AbstractCommand {
         }
     }
 
-    /** {@code /sproutwatch youtube handle|key|video|hours <value>}. */
+    /** {@code /sproutwatch youtube handle|key|video|every <value>}. */
     private static final class YouTubeSetVariant extends Sub {
         private final RequiredArg<String> settingArg;
         private final RequiredArg<String> valueArg;
 
         YouTubeSetVariant(SproutwatchPlugin plugin, String permission) {
             super(plugin, "Set the YouTube handle, API key (safer on the settings page: command text may appear in the server log),"
-                + " stream link (or 'clear') or stream hours", permission);
-            settingArg = withRequiredArg("setting", "handle, key, video or hours", ArgTypes.STRING);
-            valueArg = withRequiredArg("value", "@handle, API key, stream link or 'clear', hours 1-24", ArgTypes.STRING);
+                + " stream link (or 'clear') or chat check seconds", permission);
+            settingArg = withRequiredArg("setting", "handle, key, video or every", ArgTypes.STRING);
+            valueArg = withRequiredArg("value", "@handle, API key, stream link or 'clear', seconds 10-300", ArgTypes.STRING);
         }
 
         @Override void run(CommandContext context) {

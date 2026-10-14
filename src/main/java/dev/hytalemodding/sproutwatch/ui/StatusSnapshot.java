@@ -71,17 +71,17 @@ public record StatusSnapshot(
     }
 
     /**
-     * Details-table value of the "YouTube quota" row: "1,234 / 9,800 used today (resets 00:00)" while
+     * Details-table value of the "YouTube quota" row: "1,234 / 9,800 used today, about 5.9 h left (resets 00:00)" while
      * YouTube is enabled, else "YouTube off".
      */
     public String youTubeQuotaValue() {
         return youTube.enabled() ? quotaText() : "YouTube off";
     }
 
-    /** "1,234 / 9,800 used today (resets 00:00)": shared by the Details row and the status line. */
+    /** "1,234 / 9,800 used today, about 5.9 h left (resets 00:00)": shared by the Details row and the status line. */
     private String quotaText() {
-        return String.format(java.util.Locale.US, "%,d / %,d used today (resets %s)",
-            youTube.quotaUsed(), youTube.quotaBudget(), youTube.resetsAt());
+        return String.format(java.util.Locale.US, "%,d / %,d used today, about %.1f h left (resets %s)",
+            youTube.quotaUsed(), youTube.quotaBudget(), youTube.hoursLeft(), youTube.resetsAt());
     }
 
     /**

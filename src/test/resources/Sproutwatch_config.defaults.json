@@ -36,7 +36,7 @@
   "YouTubeHandle": "",
   "YouTubeVideo": "",
   "YouTubeApiKey": "",
-  "YouTubeStreamHours": 8.0,
+  "YouTubeCheckSeconds": 20,
   "YouTubeQuotaDay": "",
   "YouTubeQuotaUsed": 0,
   "YouTubeLabels": []

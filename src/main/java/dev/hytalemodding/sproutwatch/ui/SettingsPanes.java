@@ -63,9 +63,20 @@ final class SettingsPanes {
         events.addEventBinding(CustomUIEventBindingType.Activating, "#SaveYouTubeVideoButton",
             new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SAVE_YOUTUBE_VIDEO.wireName()).append(SettingsEvent.KEY_YOUTUBE_VIDEO, "#YouTubeVideoField.Value"));
         saveOrRemove(commands, events, "YouTubeVideo", !config.getYouTubeVideo().isEmpty(), PageAction.REMOVE_YOUTUBE_VIDEO);
+        commands.set("#YouTubeCheckField.Value", config.getYouTubeCheckSeconds());
+        commands.set("#YouTubeCheckHint.Text", youTubeCheckHint(config.getYouTubeCheckSeconds()));
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#SaveYouTubeCheckButton",
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SAVE_YOUTUBE_CHECK.wireName()).append(SettingsEvent.KEY_YOUTUBE_CHECK, "#YouTubeCheckField.Value"));
 
         events.addEventBinding(CustomUIEventBindingType.Activating, "#BeginButton",
             new EventData().append(SettingsEvent.KEY_ACTION, PageAction.BEGIN.wireName()));
+    }
+
+    /** Under the check field: what the free daily quota covers at that speed. */
+    static String youTubeCheckHint(int checkSeconds) {
+        String estimate = ChatSourceActions.youTubeCheckEstimate(checkSeconds);
+        return Character.toUpperCase(estimate.charAt(0)) + estimate.substring(1)
+            + " on the free quota.";
     }
 
     /** Placeholder of the (always empty) API key field: "API key" when none is saved, else only the masked key. */

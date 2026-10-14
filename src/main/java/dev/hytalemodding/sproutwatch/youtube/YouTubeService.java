@@ -83,7 +83,7 @@ public final class YouTubeService {
                     youTubeApi = clientFactory.apply(key);
                     youTubeApiKey = key;
                 }
-                QuotaPacer pacer = new QuotaPacer(currentConfig.getYouTubeStreamHours(), Clock.systemDefaultZone());
+                QuotaPacer pacer = new QuotaPacer(() -> config.get().getYouTubeCheckSeconds(), Clock.systemDefaultZone());
                 quotaStore.attach(pacer);
                 ChatSource source = new YouTubeChatSource(currentConfig.getYouTubeHandle(), currentConfig.getYouTubeVideo(), youTubeApi,
                     pacer, roster, names, logger);

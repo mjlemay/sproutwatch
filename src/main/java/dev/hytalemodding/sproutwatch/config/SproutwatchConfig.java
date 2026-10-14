@@ -41,7 +41,10 @@ public class SproutwatchConfig {
     static final String DEFAULT_HUD_MESSAGE = "Type !sprout in chat to be added";
     /** The on-screen panel is one short line, so longer messages are cut. */
     static final int HUD_MESSAGE_MAX = 80;
-    private static final double DEFAULT_STREAM_HOURS = 8.0;
+    /** How often YouTube chat is read, in seconds; 20 s makes the free daily quota last about 10.9 h. */
+    public static final int YOUTUBE_CHECK_DEFAULT_SECONDS = 20;
+    public static final int YOUTUBE_CHECK_MIN_SECONDS = 10;
+    public static final int YOUTUBE_CHECK_MAX_SECONDS = 300;
 
     private volatile String twitchChannel = "";
     private volatile boolean autoStartOnBoot = false;
@@ -86,7 +89,7 @@ public class SproutwatchConfig {
     private volatile String youTubeVideo = "";
     /** Secret: never log it or show it unmasked (StatusSnapshot.maskedKey). */
     private volatile String youTubeApiKey = "";
-    private volatile double youTubeStreamHours = DEFAULT_STREAM_HOURS;
+    private volatile int youTubeCheckSeconds = YOUTUBE_CHECK_DEFAULT_SECONDS;
     /** Quota day (ISO date, America/Los_Angeles) that YouTubeQuotaUsed belongs to; written by QuotaStore. */
     private volatile String youTubeQuotaDay = "";
     private volatile int youTubeQuotaUsed = 0;
@@ -162,8 +165,8 @@ public class SproutwatchConfig {
                 (c, v, x) -> c.youTubeVideo = v, (c, x) -> c.youTubeVideo).add()
             .append(new KeyedCodec<>("YouTubeApiKey", Codec.STRING),
                 (c, v, x) -> c.youTubeApiKey = v, (c, x) -> c.youTubeApiKey).add()
-            .append(new KeyedCodec<>("YouTubeStreamHours", Codec.DOUBLE),
-                (c, v, x) -> c.youTubeStreamHours = v, (c, x) -> c.youTubeStreamHours).add()
+            .append(new KeyedCodec<>("YouTubeCheckSeconds", Codec.INTEGER),
+                (c, v, x) -> c.youTubeCheckSeconds = v, (c, x) -> c.youTubeCheckSeconds).add()
             .append(new KeyedCodec<>("YouTubeQuotaDay", Codec.STRING),
                 (c, v, x) -> c.youTubeQuotaDay = v, (c, x) -> c.youTubeQuotaDay).add()
             .append(new KeyedCodec<>("YouTubeQuotaUsed", Codec.INTEGER),
@@ -543,12 +546,14 @@ public class SproutwatchConfig {
     public String getYouTubeApiKey() { return trim(youTubeApiKey); }
     public void setYouTubeApiKey(String v) { youTubeApiKey = v; }
 
-    /** Planned stream length the quota pacer spreads the daily budget over: 1..24 h, 8 when unreadable. */
-    public double getYouTubeStreamHours() {
-        double hours = youTubeStreamHours;
-        return Double.isFinite(hours) ? Math.clamp(hours, 1.0, 24.0) : DEFAULT_STREAM_HOURS;
+    /**
+     * How often the quota pacer reads YouTube chat: 10..300 s. Replaced YouTubeStreamHours (2026-10-14);
+     * an old config's YouTubeStreamHours key is skipped on load and dropped on the next save.
+     */
+    public int getYouTubeCheckSeconds() {
+        return Math.clamp(youTubeCheckSeconds, YOUTUBE_CHECK_MIN_SECONDS, YOUTUBE_CHECK_MAX_SECONDS);
     }
-    public void setYouTubeStreamHours(double v) { youTubeStreamHours = v; }
+    public void setYouTubeCheckSeconds(int v) { youTubeCheckSeconds = v; }
 
     public String getYouTubeQuotaDay() { return trim(youTubeQuotaDay); }
     public int getYouTubeQuotaUsed() { return Math.max(0, youTubeQuotaUsed); }

@@ -6,19 +6,20 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Objects;
+import java.util.function.IntSupplier;
 
 /**
- * Paces YouTube live-chat reads so a whole stream fits in the free daily API quota.
+ * Paces YouTube live-chat reads so a stream fits in the free daily API quota.
  *
- * YouTube suggests polling about every 2 s ({@code pollingIntervalMillis}); at 2 units per read
- * that would spend ~86,000 units a day against a free quota of 10,000. The pacer spreads what is
- * left of today's chat budget over the planned stream time that is left (the configured stream
- * length minus the time since this pacer was created), but never over less than one hour, so a
- * stream that runs past its plan slows down instead of running dry. It never polls faster than
- * YouTube asks or than once a second, and never sleeps past the daily refill.
+ * YouTube suggests polling about every 2 s ({@code pollingIntervalMillis}); at 5 units per read
+ * that would spend over 200,000 units a day against a free quota of 10,000. The streamer picks how
+ * often chat is checked ({@code YouTubeCheckSeconds}, read live from the supplier, so a change takes
+ * effect on the next read without a restart); at the default 20 s the day's chat budget lasts about
+ * 10.9 h. One safety net: when what is left today would not last one more hour at that speed, reads
+ * slow down so it does, so a stream that runs long degrades instead of going dark. It never polls
+ * faster than YouTube asks or than once a second, and never sleeps past the daily refill.
  *
- * - {@link #COST_PER_POLL} = 2: the cost of one chat read, {@link Endpoint#CHAT_MESSAGES} (see
- *       {@link Endpoint} for the measurement).
+ * - {@link #COST_PER_POLL} = 5: the cost of one chat read, {@link Endpoint#CHAT_MESSAGES}.
  * - {@link #RESERVE} = 200: kept back from the chat budget to cover the start-up lookups
  *       (channels / search / videos), so a spent chat budget never blocks finding the stream again.
  * - Google resets the quota at midnight Pacific time, so the "quota day" is a {@link LocalDate}
@@ -37,7 +38,7 @@ public final class QuotaPacer {
     public static final ZoneId QUOTA_ZONE = ZoneId.of("America/Los_Angeles");
 
     public static final long MILLIS_PER_HOUR = 3_600_000L;
-    /** The remaining budget is never spread over less than this, even past the planned length. */
+    /** What is left of today's budget is always stretched over at least this long. */
     public static final long MIN_HORIZON_MILLIS = MILLIS_PER_HOUR;
 
     private static final long MIN_DELAY_MILLIS = 1_000;
@@ -46,20 +47,21 @@ public final class QuotaPacer {
     private final int dailyQuota;
     private final int reserve;
     private final int costPerPoll;
-    private final double streamHours;
+    private final IntSupplier checkSeconds;
     private final Clock clock;
-    private final Instant startedAt;
 
     private LocalDate quotaDay;
     private int used;
     private volatile Runnable usageListener;
 
-    public QuotaPacer(double streamHours, Clock clock) {
-        this(DAILY_QUOTA, RESERVE, COST_PER_POLL, streamHours, clock);
+    /** @param checkSeconds how often to read chat, in seconds (values below 1 count as 1) */
+    public QuotaPacer(IntSupplier checkSeconds, Clock clock) {
+        this(DAILY_QUOTA, RESERVE, COST_PER_POLL, checkSeconds, clock);
     }
 
-    public QuotaPacer(int dailyQuota, int reserve, int costPerPoll, double streamHours, Clock clock) {
+    public QuotaPacer(int dailyQuota, int reserve, int costPerPoll, IntSupplier checkSeconds, Clock clock) {
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.checkSeconds = Objects.requireNonNull(checkSeconds, "checkSeconds");
         if (dailyQuota <= 0) {
             throw new IllegalArgumentException("dailyQuota must be > 0: " + dailyQuota);
         }
@@ -70,31 +72,48 @@ public final class QuotaPacer {
             throw new IllegalArgumentException(
                     "costPerPoll must be in [1, dailyQuota - reserve]: " + costPerPoll);
         }
-        if (!(streamHours > 0) || Double.isInfinite(streamHours)) {
-            throw new IllegalArgumentException("streamHours must be a positive number: " + streamHours);
-        }
         this.dailyQuota = dailyQuota;
         this.reserve = reserve;
         this.costPerPoll = costPerPoll;
-        this.streamHours = streamHours;
-        this.startedAt = clock.instant();
         this.quotaDay = today();
     }
 
     /**
-     * Delay before the next chat read: the larger of YouTube's suggestion (≤ 0 means 5 s), the
-     * budget pace and 1 s, capped so it never sleeps past the daily refill.
+     * Hours of chat a full day's budget covers when checking every {@code checkSeconds} seconds,
+     * at most 24 (the settings page estimate).
+     */
+    public static double hoursPerDay(int checkSeconds) {
+        return Math.min(24.0, readHours(DAILY_QUOTA - RESERVE, COST_PER_POLL, checkSeconds));
+    }
+
+    private static double readHours(int units, int costPerPoll, int checkSeconds) {
+        return (double) (units / costPerPoll) * Math.max(1, checkSeconds) / 3600.0;
+    }
+
+    /**
+     * Delay before the next chat read: the largest of the check interval, YouTube's suggestion
+     * (0 or less means 5 s), the one-hour stretch and 1 s, capped so it never sleeps past the
+     * daily refill.
      */
     public synchronized long nextDelayMillis(long suggestedMillis) {
         rollOver();
         Instant now = clock.instant();
         long suggested = suggestedMillis <= 0 ? DEFAULT_SUGGESTED_MILLIS : suggestedMillis;
-        long elapsed = Math.max(0, Duration.between(startedAt, now).toMillis());
-        double horizon = Math.max(streamHours * MILLIS_PER_HOUR - elapsed, MIN_HORIZON_MILLIS);
-        long budget = (long) Math.ceil(horizon * costPerPoll / Math.max(1, remaining()));
-        long delay = Math.max(Math.max(suggested, budget), MIN_DELAY_MILLIS);
+        long interval = intervalSeconds() * 1000L;
+        long stretch = (long) Math.ceil((double) MIN_HORIZON_MILLIS * costPerPoll / Math.max(1, remaining()));
+        long delay = Math.max(Math.max(interval, suggested), Math.max(stretch, MIN_DELAY_MILLIS));
         long untilReset = Duration.between(now, resetInstant()).toMillis();
         return Math.min(delay, Math.max(MIN_DELAY_MILLIS, untilReset));
+    }
+
+    /** Hours of chat what is left today covers at the current check interval (ignores the stretch). */
+    public synchronized double hoursLeftToday() {
+        rollOver();
+        return readHours(remaining(), costPerPoll, intervalSeconds());
+    }
+
+    private int intervalSeconds() {
+        return Math.max(1, checkSeconds.getAsInt());
     }
 
     /**
@@ -128,6 +147,18 @@ public final class QuotaPacer {
             if (this.quotaDay.equals(quotaDay)) {
                 this.used = Math.max(this.used, Math.clamp(used, 0, dailyQuota)); // never hand back units already spent
             }
+        }
+        fireUsage();
+    }
+
+    /**
+     * Google answered quotaExceeded: today's chat budget is gone whatever the count says (another
+     * world or PC on the same key, or a cost that changed), so count it all as used.
+     */
+    public void markSpent() {
+        synchronized (this) {
+            rollOver();
+            used = Math.max(used, dailyQuota - reserve);
         }
         fireUsage();
     }

@@ -18,13 +18,14 @@ import java.util.Optional;
  * @param quotaUsed  units spent today (Pacific quota day)
  * @param quotaBudget units a day's chat reads may spend (daily quota minus the lookup reserve)
  * @param resetsAt   "HH:MM" of the next quota reset in the server's zone
+ * @param hoursLeft  hours of chat what is left today covers at the current check interval
  */
 public record YouTubeStatus(boolean enabled, boolean configured, String target, String maskedKey, String missing,
-                            int quotaUsed, int quotaBudget, String resetsAt) {
+                            int quotaUsed, int quotaBudget, String resetsAt, double hoursLeft) {
 
     /** For snapshots built without YouTube information. */
     public static final YouTubeStatus OFF = new YouTubeStatus(false, false, "", "not set", null,
-        0, QuotaPacer.DAILY_QUOTA - QuotaPacer.RESERVE, "");
+        0, QuotaPacer.DAILY_QUOTA - QuotaPacer.RESERVE, "", 0);
 
     private static final DateTimeFormatter HOUR_MINUTE_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
@@ -35,12 +36,13 @@ public record YouTubeStatus(boolean enabled, boolean configured, String target, 
     public static YouTubeStatus of(SproutwatchConfig c, QuotaPacer live, Clock clock) {
         QuotaPacer pacer = live;
         if (pacer == null) {
-            pacer = new QuotaPacer(c.getYouTubeStreamHours(), clock);
+            pacer = new QuotaPacer(c::getYouTubeCheckSeconds, clock);
             new QuotaStore(c, () -> {}, () -> 0L).restoreInto(pacer);
         }
         return new YouTubeStatus(c.isYouTubeEnabled(), c.youTubeConfigured(), target(c),
             StatusSnapshot.maskedKey(c.getYouTubeApiKey()), missing(c),
-            pacer.usedToday(), pacer.chatBudget(), HOUR_MINUTE_FORMAT.format(pacer.resetsAt().atZone(clock.getZone())));
+            pacer.usedToday(), pacer.chatBudget(), HOUR_MINUTE_FORMAT.format(pacer.resetsAt().atZone(clock.getZone())),
+            pacer.hoursLeftToday());
     }
 
     /** Same as {@link SproutwatchConfig#youTubeMissing()}. */

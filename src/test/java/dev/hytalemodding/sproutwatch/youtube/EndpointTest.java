@@ -34,11 +34,11 @@ class EndpointTest {
     }
 
     @Test
-    void costsMatchTheMeasuredNumbers() {
+    void costsMatchGooglesQuotaTable() {
         assertEquals(1, Endpoint.CHANNELS.cost());
         assertEquals(1, Endpoint.SEARCH.cost());
         assertEquals(1, Endpoint.VIDEOS.cost());
-        assertEquals(2, Endpoint.CHAT_MESSAGES.cost());
+        assertEquals(5, Endpoint.CHAT_MESSAGES.cost());
     }
 
     @Test

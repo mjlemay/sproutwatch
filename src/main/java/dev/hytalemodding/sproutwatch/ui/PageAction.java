@@ -24,6 +24,7 @@ enum PageAction {
     REMOVE_YOUTUBE_KEY("removeYouTubeKey"),
     SAVE_YOUTUBE_VIDEO("saveYouTubeVideo"),
     REMOVE_YOUTUBE_VIDEO("removeYouTubeVideo"),
+    SAVE_YOUTUBE_CHECK("saveYouTubeCheck"),
     SAVE_MAX("saveMax"),
     SET_FILTER("setFilter"),
     ADD_ALLOW("addAllow"),
