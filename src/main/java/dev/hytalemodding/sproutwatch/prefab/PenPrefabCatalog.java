@@ -25,6 +25,7 @@ public final class PenPrefabCatalog {
         add(DEFAULT, "Default Lawn", PenPrefab.RESOURCE);
         add("kweebec_nursery", "Kweebec Nursery", FOLDER + "kweebec_nursery.prefab.json");
         add("cobble_pasture", "Cobble Pasture", FOLDER + "cobble_pasture.prefab.json");
+        add("goblin_cage", "Goblin Cage", FOLDER + "goblin_cage.prefab.json");
     }
 
     private static void add(String id, String label, String resource) {

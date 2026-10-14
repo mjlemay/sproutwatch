@@ -35,6 +35,8 @@ enum PageAction {
     SET_PERSIST("setPersist"),
     SET_AUTO_START("setAutoStart"),
     SAVE_INTERVAL("saveInterval"),
+    SAVE_HUD_MESSAGE("saveHudMessage"),
+    SET_HUD_ENABLED("setHudEnabled"),
     SELECT_CREATURES("selectCreatures"),
     SELECT_PREFAB("selectPrefab"),
     PLACE("place"),

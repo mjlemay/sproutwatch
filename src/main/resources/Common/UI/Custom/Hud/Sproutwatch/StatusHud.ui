@@ -1,0 +1,28 @@
+$C = "../../Common.ui";
+
+// Top-right panel (same placement and look as Aetherhaven's status panel): the Listener tab's
+// message, and under it a bar that fills until the next pen tick adds a creature.
+Group #SproutwatchHudRoot {
+  LayoutMode: Full;
+  Anchor: (Full: 0);
+  HitTestVisible: false;
+
+  Group #SproutwatchPanel {
+    LayoutMode: Top;
+    Anchor: (Right: 20, Top: 20, Width: 380, Height: 71);
+    Background: #000000(0.45);
+    Padding: (Left: 14, Right: 14, Top: 16, Bottom: 18);
+    HitTestVisible: false;
+
+    Label #HudMessage {
+      Text: "Type !sprout in chat to be added";
+      Anchor: (Bottom: 10);
+      Style: (...$C.@DefaultLabelStyle, FontName: "Secondary", FontSize: 16, LetterSpacing: 0.4, TextColor: #f3e5c5, OutlineColor: #000000(0.9), RenderBold: true, Wrap: true, HorizontalAlignment: Center);
+    }
+
+    $C.@ProgressBar #HudNextBar {
+      @Anchor = (Width: 352);
+      Value: 0;
+    }
+  }
+}

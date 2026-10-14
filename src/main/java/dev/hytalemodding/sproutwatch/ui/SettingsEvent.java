@@ -32,6 +32,8 @@ public final class SettingsEvent {
     /** Read from #YouTubeKeyField only when its Save is pressed; the server never sends the key back. */
     public static final String KEY_YOUTUBE_KEY = "@YouTubeKey";
     public static final String KEY_YOUTUBE_VIDEO = "@YouTubeVideo";
+    public static final String KEY_HUD_MESSAGE = "@HudMessage";
+    public static final String KEY_HUD_ON = "@HudOn";
 
     public static final BuilderCodec<SettingsEvent> CODEC = BuilderCodec.builder(SettingsEvent.class, SettingsEvent::new)
         .append(new KeyedCodec<>(KEY_ACTION, Codec.STRING, false), (e, v) -> e.action = v, e -> e.action).add()
@@ -52,6 +54,8 @@ public final class SettingsEvent {
         .append(new KeyedCodec<>(KEY_YOUTUBE_HANDLE, Codec.STRING, false), (e, v) -> e.youTubeHandle = v, e -> e.youTubeHandle).add()
         .append(new KeyedCodec<>(KEY_YOUTUBE_KEY, Codec.STRING, false), (e, v) -> e.youTubeKey = v, e -> e.youTubeKey).add()
         .append(new KeyedCodec<>(KEY_YOUTUBE_VIDEO, Codec.STRING, false), (e, v) -> e.youTubeVideo = v, e -> e.youTubeVideo).add()
+        .append(new KeyedCodec<>(KEY_HUD_MESSAGE, Codec.STRING, false), (e, v) -> e.hudMessage = v, e -> e.hudMessage).add()
+        .append(new KeyedCodec<>(KEY_HUD_ON, Codec.BOOLEAN, false), (e, v) -> e.hudOn = v, e -> e.hudOn).add()
         .build();
 
     public String action;
@@ -72,4 +76,6 @@ public final class SettingsEvent {
     public String youTubeHandle;
     public String youTubeKey;
     public String youTubeVideo;
+    public String hudMessage;
+    public Boolean hudOn;
 }

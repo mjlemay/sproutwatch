@@ -47,7 +47,7 @@ class PageActionTest {
             "saveYouTubeHandle", "removeYouTubeHandle", "saveYouTubeKey", "removeYouTubeKey",
             "saveYouTubeVideo", "removeYouTubeVideo", "saveMax",
             "setFilter", "addAllow", "removeAllow", "addIgnore", "removeIgnore",
-            "startListener", "stopListener", "setPersist", "setAutoStart", "saveInterval",
+            "startListener", "stopListener", "setPersist", "setAutoStart", "saveInterval", "saveHudMessage", "setHudEnabled",
             "selectCreatures", "selectPrefab", "place", "removePen", "clear");
         Set<String> actual = new HashSet<>();
         for (PageAction action : PageAction.values()) actual.add(action.wireName());

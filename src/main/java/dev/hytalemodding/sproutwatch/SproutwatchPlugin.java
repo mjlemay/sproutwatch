@@ -29,6 +29,7 @@ import dev.hytalemodding.sproutwatch.prefab.PenTerrain;
 import dev.hytalemodding.sproutwatch.prefab.PenTerrainRestorer;
 import dev.hytalemodding.sproutwatch.twitch.TwitchMembershipClient;
 import dev.hytalemodding.sproutwatch.ui.ActionsHost;
+import dev.hytalemodding.sproutwatch.hud.HudService;
 import dev.hytalemodding.sproutwatch.ui.OpenPages;
 import dev.hytalemodding.sproutwatch.ui.SproutwatchActions;
 import dev.hytalemodding.sproutwatch.ui.YouTubeStatus;
@@ -57,6 +58,8 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
     private final PenRegistry registry;
     private final SproutSpawner spawner;
     private final PenTicker ticker;
+    /** The top-right message and next-tick bar shown to every player (Listener tab: Message, Show on screen). */
+    private final HudService hudService;
     private final SeatedPlayers seatedPlayers = new SeatedPlayers();
     private final ChairCameraService cameraService;
     private final SproutwatchActions actions;
@@ -85,6 +88,7 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
         this.spawner = new SproutSpawner(config::get, registry, displayNames, bridgeLogger);
         this.ticker = new PenTicker(config::get, roster, registry, spawner, bridgeLogger);
         ticker.setOnWorldReady(this::bootSweep);
+        this.hudService = new HudService(config::get, ticker, bridgeLogger);
         this.cameraService = new ChairCameraService(config::get, bridgeLogger, seatedPlayers);
         this.actions = new SproutwatchActions(this);
         this.openPages = new OpenPages(bridgeLogger);
@@ -143,6 +147,7 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
         } catch (RuntimeException exception) {
             getLogger().atSevere().withCause(exception).log("Sproutwatch pen guard failed to register");
         }
+        hudService.start();
         // Restart safety: sweep leftover younglings out of the pen if its world is already loaded.
         World world = PenTicker.resolveWorld(config.get());
         if (world != null) runOnWorld(world, () -> bootSweep(world));
@@ -164,6 +169,7 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
             if (exception instanceof InterruptedException) Thread.currentThread().interrupt();
             bridgeLogger.warning("Sproutwatch: final config save did not finish: " + exception.getClass().getSimpleName());
         }
+        hudService.shutdown();
         ticker.shutdown();
         if (bridgeHandler != null) bridgeLogger.removeHandler(bridgeHandler);
     }
@@ -300,10 +306,16 @@ public class SproutwatchPlugin extends JavaPlugin implements ActionsHost {
         }
     }
 
-    /** Restart safety: once per boot, sweep leftover younglings out of the pen. World thread. */
+    /**
+     * Restart safety: once per boot, take back the creatures saved in the pen (so they do not all
+     * vanish on the first tick and trickle back one per tick) and remove the ones that cannot be
+     * traced to a viewer. World thread.
+     */
     private void bootSweep(World world) {
         if (!bootSweepDone.compareAndSet(false, true)) return;
-        PenClearer.clear(world, registry, roleSet(), PenBounds.fromConfig(config.get()), bridgeLogger);
+        SproutwatchConfig current = config.get();
+        PenClearer.adopt(world, registry, current.spawnRoleSet(), roleSet(), PenBounds.fromConfig(current),
+            current.getMaxSprouts(), bridgeLogger);
     }
 
     /**

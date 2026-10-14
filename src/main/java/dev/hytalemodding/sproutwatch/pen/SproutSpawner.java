@@ -87,11 +87,16 @@ public final class SproutSpawner {
                 if (warnedRoles.add(role)) {
                     logger.warning("Sproutwatch role '" + role + "' cannot spawn: " + result + " (check the Roles config)");
                 }
+            } else if (result != SpawnTestResult.FAIL_NO_POSITION && result != SpawnTestResult.FAIL_INVALID_POSITION
+                    && result != SpawnTestResult.FAIL_INTERSECT_ENTITY
+                    && warnedRoles.add(role + "/" + result)) {
+                // Anything but a crowded pen (e.g. FAIL_SPAWN: the engine could not build the entity) is said once per role.
+                logger.warning("Sproutwatch role '" + role + "' did not spawn: " + result + "; retrying next tick");
             } else {
                 logger.fine("Sproutwatch: no validated spot for " + viewerKey + " (" + result + "); retrying next tick");
             }
             return false;
-        } catch (Exception exception) {
+        } catch (Throwable exception) {
             logger.log(Level.WARNING, "Sproutwatch spawn failed for " + viewerKey, exception);
             return false;
         }

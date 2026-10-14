@@ -1,0 +1,23 @@
+{
+  "Type": "Variant",
+  "Reference": "Template_Goblin_Lab_Scrapper",
+  "Modify": {
+    "Appearance": "Sprout_Goblin_Stale",
+    "WeightWork": 1,
+    "WeightDance": 2,
+    "DanceCallRange": 4,
+    "DanceHearRange": 4,
+    "WorkerGroups": [
+      "Sprout_Goblin"
+    ],
+    "NameTranslationKey": {
+      "Compute": "NameTranslationKey"
+    }
+  },
+  "Parameters": {
+    "NameTranslationKey": {
+      "Value": "server.npcRoles.Goblin_Scrapper.name",
+      "Description": "Translation key for NPC name display"
+    }
+  }
+}

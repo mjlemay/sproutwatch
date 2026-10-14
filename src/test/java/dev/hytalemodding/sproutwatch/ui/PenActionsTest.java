@@ -112,8 +112,8 @@ class PenActionsTest {
         FakeHost host = new FakeHost();
         PenActions pen = new PenActions(host);
         List<String> replies = new ArrayList<>();
-        assertEquals("Unknown pen prefab 'castle'. Available: default, kweebec_nursery, cobble_pasture.", pen.selectPrefab("castle", replies::add));
-        assertEquals("Unknown pen prefab ''. Available: default, kweebec_nursery, cobble_pasture.", pen.selectPrefab(null, replies::add));
+        assertEquals("Unknown pen prefab 'castle'. Available: default, kweebec_nursery, cobble_pasture, goblin_cage.", pen.selectPrefab("castle", replies::add));
+        assertEquals("Unknown pen prefab ''. Available: default, kweebec_nursery, cobble_pasture, goblin_cage.", pen.selectPrefab(null, replies::add));
         assertEquals(0, host.saveCalls);
         assertEquals("Pen prefab set to Default Lawn. Place the pen to paste it.", pen.selectPrefab(" Default ", replies::add));
         assertEquals("default", host.config.getPenPrefab());

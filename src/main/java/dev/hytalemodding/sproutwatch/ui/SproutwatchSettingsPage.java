@@ -62,7 +62,7 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
         statusPusher.recordBuilt(state);
         SettingsPanes.connect(commands, events, config, snapshot);
         SettingsPanes.viewers(commands, events, config, snapshot);
-        SettingsPanes.listener(commands, events, snapshot);
+        SettingsPanes.listener(commands, events, snapshot, config);
         SettingsPanes.pen(commands, events, snapshot, config);
         commands.set("#MessageLabel.Text", message);
         // Last, so a build that throws (e.g. a bad .ui) never leaves a phantom entry refreshed every tick.
@@ -139,6 +139,8 @@ public final class SproutwatchSettingsPage extends InteractiveCustomUIPage<Setti
                 case SET_PERSIST -> actions.pen().setPersist(Boolean.TRUE.equals(event.persist));
                 case SET_AUTO_START -> actions.chatSources().setAutoStart(Boolean.TRUE.equals(event.autoStart));
                 case SAVE_INTERVAL -> event.interval == null ? "Enter a number of seconds (min 5)." : actions.pen().setTickSeconds(event.interval);
+                case SAVE_HUD_MESSAGE -> actions.chatSources().setHudMessage(event.hudMessage);
+                case SET_HUD_ENABLED -> actions.chatSources().setHudEnabled(Boolean.TRUE.equals(event.hudOn));
                 case SELECT_PREFAB -> actions.pen().selectPrefab(playerRef, event.prefab);
                 case SELECT_CREATURES -> actions.pen().setCreatures(event.creatures);
                 case PLACE -> actions.pen().place(playerRef);

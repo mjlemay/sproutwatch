@@ -1,0 +1,12 @@
+{
+  "IncludeRoles": [
+    "Sprout_Goblin_Moldy",
+    "Sprout_Goblin_Mossy",
+    "Sprout_Goblin_Muddy",
+    "Sprout_Goblin_Rusty",
+    "Sprout_Goblin_Stale",
+    "Sprout_Goblin_Vapid",
+    "Sprout_Goblin_Muddy_Burned",
+    "Sprout_Goblin_Voidtaken"
+  ]
+}

@@ -28,7 +28,7 @@ class SproutwatchConfigTest {
 
     @Test void defaultsMatchTheShippedJson() throws IOException {
         BsonDocument json = loadShippedJson();
-        assertEquals(39, json.size(), "JSON key count changed; update this test and the getter list together");
+        assertEquals(41, json.size(), "JSON key count changed; update this test and the getter list together");
 
         SproutwatchConfig c = new SproutwatchConfig();
         assertEquals(json.getString("TwitchChannel").getValue(), c.getTwitchChannel());
@@ -43,6 +43,8 @@ class SproutwatchConfigTest {
         assertArrayEquals(toStringArray(json.getArray("IgnoreUsers")), c.ignoredViewers().toArray(new String[0]));
         assertArrayEquals(toStringArray(json.getArray("AllowUsers")), c.allowedViewers().toArray(new String[0]));
         assertEquals(json.getString("QueueCommand").getValue(), c.getQueueCommand());
+        assertEquals(json.getBoolean("HudEnabled").getValue(), c.isHudEnabled());
+        assertEquals(json.getString("HudMessage").getValue(), c.getHudMessage());
         assertEquals(json.getString("PenWorld").getValue(), c.getPenWorld());
         assertEquals(json.getInt32("PenX").getValue(), c.getPenX());
         assertEquals(json.getInt32("PenY").getValue(), c.getPenY());
@@ -77,6 +79,18 @@ class SproutwatchConfigTest {
         assertEquals(8.0, c.getYouTubeStreamHours());
         assertEquals(0, c.getYouTubeQuotaUsed());
         assertFalse(c.isPenSet());
+    }
+
+    @Test void hudMessageTrimsCutsAndFallsBackToTheDefault() {
+        SproutwatchConfig c = new SproutwatchConfig();
+        c.setHudMessage("   ");
+        assertEquals(SproutwatchConfig.DEFAULT_HUD_MESSAGE, c.getHudMessage());
+        c.setHudMessage(null);
+        assertEquals(SproutwatchConfig.DEFAULT_HUD_MESSAGE, c.getHudMessage());
+        c.setHudMessage("  Say !sprout to join  ");
+        assertEquals("Say !sprout to join", c.getHudMessage());
+        c.setHudMessage("x".repeat(200));
+        assertEquals(SproutwatchConfig.HUD_MESSAGE_MAX, c.getHudMessage().length());
     }
 
     @Test void youTubeGettersTrimAndClamp() {

@@ -124,8 +124,8 @@ final class SettingsPanes {
             new EventData().append(SettingsEvent.KEY_ACTION, PageAction.ADD_IGNORE.wireName()).append(SettingsEvent.KEY_IGNORE_INPUT, "#IgnoreField.Value"));
     }
 
-    /** Listener tab: Start / Connecting / Stop buttons (visibility pushed live by the page), persist, auto-start, tick interval. */
-    static void listener(UICommandBuilder commands, UIEventBuilder events, StatusSnapshot snapshot) {
+    /** Listener tab: Start / Connecting / Stop buttons (visibility pushed live by the page), persist, auto-start, message, tick interval. */
+    static void listener(UICommandBuilder commands, UIEventBuilder events, StatusSnapshot snapshot, SproutwatchConfig config) {
         events.addEventBinding(CustomUIEventBindingType.Activating, "#StartButton",
             new EventData().append(SettingsEvent.KEY_ACTION, PageAction.START_LISTENER.wireName()));
         events.addEventBinding(CustomUIEventBindingType.Activating, "#StopButton",
@@ -141,9 +141,22 @@ final class SettingsPanes {
         commands.set("#AutoStartCheckLabel.Text", snapshot.autoStartLabel());
         events.addEventBinding(CustomUIEventBindingType.ValueChanged, "#AutoStartCheck",
             new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SET_AUTO_START.wireName()).append(SettingsEvent.KEY_AUTO_START, "#AutoStartCheck.Value"), false);
+        commands.set("#HudMessageField.Value", config.getHudMessage());
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#SaveHudMessageButton",
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SAVE_HUD_MESSAGE.wireName()).append(SettingsEvent.KEY_HUD_MESSAGE, "#HudMessageField.Value"));
+        commands.set("#HudCheck.Value", config.isHudEnabled());
+        commands.set("#HudCheckLabel.Text", hudLabel(config.isHudEnabled()));
+        events.addEventBinding(CustomUIEventBindingType.ValueChanged, "#HudCheck",
+            new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SET_HUD_ENABLED.wireName()).append(SettingsEvent.KEY_HUD_ON, "#HudCheck.Value"), false);
         commands.set("#IntervalField.Value", snapshot.tickSeconds());
         events.addEventBinding(CustomUIEventBindingType.Activating, "#SaveIntervalButton",
             new EventData().append(SettingsEvent.KEY_ACTION, PageAction.SAVE_INTERVAL.wireName()).append(SettingsEvent.KEY_INTERVAL, "#IntervalField.Value"));
+    }
+
+    static String hudLabel(boolean on) {
+        return on
+            ? "Shown top right, with a bar that fills until the next creature can join."
+            : "Hidden. Tick to show the message and next-creature bar on screen.";
     }
 
     /** Pen tab: creatures dropdown, prefab dropdown, Place, Clear, max sprouts. */

@@ -11,6 +11,8 @@
   "ViewerFilter": "ignore",
   "Creatures": "kweebecs",
   "QueueCommand": "!sprout",
+  "HudEnabled": true,
+  "HudMessage": "Type !sprout in chat to be added",
   "PenWorld": "",
   "PenX": 0,
   "PenY": 0,

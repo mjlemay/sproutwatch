@@ -14,6 +14,30 @@
     },
     {
       "x": -1,
+      "y": 1,
+      "z": 5,
+      "name": "Empty"
+    },
+    {
+      "x": -1,
+      "y": 2,
+      "z": 5,
+      "name": "Empty"
+    },
+    {
+      "x": -1,
+      "y": 3,
+      "z": 5,
+      "name": "Empty"
+    },
+    {
+      "x": -1,
+      "y": 4,
+      "z": 5,
+      "name": "Empty"
+    },
+    {
+      "x": -1,
       "y": 0,
       "z": 6,
       "name": "Soil_Gravel_Mossy",
@@ -25,6 +49,24 @@
       "z": 6,
       "name": "Furniture_Ancient_Bench",
       "rotation": 1
+    },
+    {
+      "x": -1,
+      "y": 2,
+      "z": 6,
+      "name": "Empty"
+    },
+    {
+      "x": -1,
+      "y": 3,
+      "z": 6,
+      "name": "Empty"
+    },
+    {
+      "x": -1,
+      "y": 4,
+      "z": 6,
+      "name": "Empty"
     },
     {
       "x": -1,
@@ -40,6 +82,24 @@
       "name": "Furniture_Ancient_Bench",
       "filler": 32,
       "rotation": 1
+    },
+    {
+      "x": -1,
+      "y": 2,
+      "z": 7,
+      "name": "Empty"
+    },
+    {
+      "x": -1,
+      "y": 3,
+      "z": 7,
+      "name": "Empty"
+    },
+    {
+      "x": -1,
+      "y": 4,
+      "z": 7,
+      "name": "Empty"
     },
     {
       "x": -1,
@@ -62,6 +122,18 @@
       "filler": 1024
     },
     {
+      "x": -1,
+      "y": 3,
+      "z": 8,
+      "name": "Empty"
+    },
+    {
+      "x": -1,
+      "y": 4,
+      "z": 8,
+      "name": "Empty"
+    },
+    {
       "x": 0,
       "y": 0,
       "z": 0,
@@ -83,6 +155,12 @@
     },
     {
       "x": 0,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
+    },
+    {
+      "x": 0,
       "y": 0,
       "z": 1,
       "name": "Soil_Gravel_Mossy",
@@ -94,6 +172,12 @@
       "z": 1,
       "name": "Rock_Basalt_Cobble_Wall",
       "rotation": 1
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "z": 1,
+      "name": "Barrier"
     },
     {
       "x": 0,
@@ -111,6 +195,12 @@
     },
     {
       "x": 0,
+      "y": 3,
+      "z": 2,
+      "name": "Barrier"
+    },
+    {
+      "x": 0,
       "y": 0,
       "z": 3,
       "name": "Soil_Gravel_Mossy",
@@ -122,6 +212,12 @@
       "z": 3,
       "name": "Rock_Basalt_Cobble_Wall",
       "rotation": 1
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "z": 3,
+      "name": "Barrier"
     },
     {
       "x": 0,
@@ -139,6 +235,12 @@
     },
     {
       "x": 0,
+      "y": 3,
+      "z": 4,
+      "name": "Barrier"
+    },
+    {
+      "x": 0,
       "y": 0,
       "z": 5,
       "name": "Soil_Gravel_Mossy",
@@ -150,6 +252,12 @@
       "z": 5,
       "name": "Rock_Basalt_Cobble_Wall",
       "rotation": 1
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "z": 5,
+      "name": "Barrier"
     },
     {
       "x": 0,
@@ -167,6 +275,12 @@
     },
     {
       "x": 0,
+      "y": 3,
+      "z": 6,
+      "name": "Barrier"
+    },
+    {
+      "x": 0,
       "y": 0,
       "z": 7,
       "name": "Soil_Gravel_Mossy",
@@ -178,6 +292,12 @@
       "z": 7,
       "name": "Rock_Basalt_Cobble_Wall",
       "rotation": 1
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "z": 7,
+      "name": "Barrier"
     },
     {
       "x": 0,
@@ -195,6 +315,12 @@
     },
     {
       "x": 0,
+      "y": 3,
+      "z": 8,
+      "name": "Barrier"
+    },
+    {
+      "x": 0,
       "y": 0,
       "z": 9,
       "name": "Soil_Gravel_Mossy",
@@ -206,6 +332,12 @@
       "z": 9,
       "name": "Rock_Basalt_Cobble_Wall",
       "rotation": 1
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "z": 9,
+      "name": "Barrier"
     },
     {
       "x": 0,
@@ -223,6 +355,12 @@
     },
     {
       "x": 0,
+      "y": 3,
+      "z": 10,
+      "name": "Barrier"
+    },
+    {
+      "x": 0,
       "y": 0,
       "z": 11,
       "name": "Soil_Gravel_Mossy",
@@ -237,6 +375,12 @@
     },
     {
       "x": 0,
+      "y": 3,
+      "z": 11,
+      "name": "Barrier"
+    },
+    {
+      "x": 0,
       "y": 0,
       "z": 12,
       "name": "Soil_Gravel_Mossy",
@@ -248,6 +392,12 @@
       "z": 12,
       "name": "Rock_Basalt_Cobble_Wall",
       "rotation": 1
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "z": 12,
+      "name": "Barrier"
     },
     {
       "x": 0,
@@ -270,6 +420,12 @@
       "rotation": 2
     },
     {
+      "x": 0,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
       "x": 1,
       "y": 0,
       "z": 0,
@@ -281,6 +437,12 @@
       "y": 1,
       "z": 0,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 1,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
     },
     {
       "x": 1,
@@ -656,6 +818,12 @@
       "name": "Rock_Basalt_Cobble_Wall"
     },
     {
+      "x": 1,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
       "x": 2,
       "y": 0,
       "z": 0,
@@ -667,6 +835,12 @@
       "y": 1,
       "z": 0,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 2,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
     },
     {
       "x": 2,
@@ -1042,6 +1216,12 @@
       "name": "Rock_Basalt_Cobble_Wall"
     },
     {
+      "x": 2,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
       "x": 3,
       "y": 0,
       "z": 0,
@@ -1053,6 +1233,12 @@
       "y": 1,
       "z": 0,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 3,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
     },
     {
       "x": 3,
@@ -1428,6 +1614,12 @@
       "name": "Rock_Basalt_Cobble_Wall"
     },
     {
+      "x": 3,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
       "x": 4,
       "y": 0,
       "z": 0,
@@ -1439,6 +1631,12 @@
       "y": 1,
       "z": 0,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 4,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
     },
     {
       "x": 4,
@@ -1814,6 +2012,12 @@
       "name": "Rock_Basalt_Cobble_Wall"
     },
     {
+      "x": 4,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
       "x": 5,
       "y": 0,
       "z": 0,
@@ -1825,6 +2029,12 @@
       "y": 1,
       "z": 0,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 5,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
     },
     {
       "x": 5,
@@ -2198,6 +2408,18 @@
       "y": 1,
       "z": 13,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 5,
+      "y": 2,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
+      "x": 5,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
     },
     {
       "x": 6,
@@ -2218,6 +2440,12 @@
       "z": 0,
       "name": "Furniture_Human_Ruins_Torch",
       "rotation": 2
+    },
+    {
+      "x": 6,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
     },
     {
       "x": 6,
@@ -2599,6 +2827,12 @@
       "name": "Furniture_Human_Ruins_Torch"
     },
     {
+      "x": 6,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
       "x": 7,
       "y": 0,
       "z": -1,
@@ -2607,6 +2841,30 @@
     },
     {
       "x": 7,
+      "y": 1,
+      "z": -1,
+      "name": "Plant_Hay_Bundle"
+    },
+    {
+      "x": 7,
+      "y": 2,
+      "z": -1,
+      "name": "Empty"
+    },
+    {
+      "x": 7,
+      "y": 3,
+      "z": -1,
+      "name": "Empty"
+    },
+    {
+      "x": 7,
+      "y": 4,
+      "z": -1,
+      "name": "Empty"
+    },
+    {
+      "x": 7,
       "y": 0,
       "z": 0,
       "name": "Soil_Gravel_Mossy",
@@ -2617,6 +2875,12 @@
       "y": 1,
       "z": 0,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 7,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
     },
     {
       "x": 7,
@@ -2990,6 +3254,12 @@
       "y": 1,
       "z": 13,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 7,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
     },
     {
       "x": 7,
@@ -2997,6 +3267,30 @@
       "z": 14,
       "name": "Soil_Gravel_Mossy",
       "support": 15
+    },
+    {
+      "x": 7,
+      "y": 1,
+      "z": 14,
+      "name": "Empty"
+    },
+    {
+      "x": 7,
+      "y": 2,
+      "z": 14,
+      "name": "Empty"
+    },
+    {
+      "x": 7,
+      "y": 3,
+      "z": 14,
+      "name": "Empty"
+    },
+    {
+      "x": 7,
+      "y": 4,
+      "z": 14,
+      "name": "Empty"
     },
     {
       "x": 8,
@@ -3045,6 +3339,18 @@
     },
     {
       "x": 8,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
+    },
+    {
+      "x": 8,
+      "y": 4,
+      "z": 0,
+      "name": "Barrier"
+    },
+    {
+      "x": 8,
       "y": 0,
       "z": 1,
       "name": "Soil_Grass_Burnt"
@@ -3415,6 +3721,12 @@
       "y": 1,
       "z": 13,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 8,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
     },
     {
       "x": 8,
@@ -3431,6 +3743,24 @@
       "rotation": 2
     },
     {
+      "x": 8,
+      "y": 2,
+      "z": 14,
+      "name": "Empty"
+    },
+    {
+      "x": 8,
+      "y": 3,
+      "z": 14,
+      "name": "Empty"
+    },
+    {
+      "x": 8,
+      "y": 4,
+      "z": 14,
+      "name": "Empty"
+    },
+    {
       "x": 9,
       "y": 0,
       "z": -1,
@@ -3445,6 +3775,24 @@
     },
     {
       "x": 9,
+      "y": 2,
+      "z": -1,
+      "name": "Empty"
+    },
+    {
+      "x": 9,
+      "y": 3,
+      "z": -1,
+      "name": "Empty"
+    },
+    {
+      "x": 9,
+      "y": 4,
+      "z": -1,
+      "name": "Empty"
+    },
+    {
+      "x": 9,
       "y": 0,
       "z": 0,
       "name": "Soil_Gravel_Mossy",
@@ -3455,6 +3803,18 @@
       "y": 1,
       "z": 0,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 9,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
+    },
+    {
+      "x": 9,
+      "y": 4,
+      "z": 0,
+      "name": "Barrier"
     },
     {
       "x": 9,
@@ -3828,6 +4188,18 @@
       "y": 1,
       "z": 13,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 9,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
+      "x": 9,
+      "y": 4,
+      "z": 13,
+      "name": "Barrier"
     },
     {
       "x": 9,
@@ -3845,6 +4217,24 @@
       "rotation": 2
     },
     {
+      "x": 9,
+      "y": 2,
+      "z": 14,
+      "name": "Empty"
+    },
+    {
+      "x": 9,
+      "y": 3,
+      "z": 14,
+      "name": "Empty"
+    },
+    {
+      "x": 9,
+      "y": 4,
+      "z": 14,
+      "name": "Empty"
+    },
+    {
       "x": 10,
       "y": 0,
       "z": -1,
@@ -3853,6 +4243,30 @@
     },
     {
       "x": 10,
+      "y": 1,
+      "z": -1,
+      "name": "Empty"
+    },
+    {
+      "x": 10,
+      "y": 2,
+      "z": -1,
+      "name": "Empty"
+    },
+    {
+      "x": 10,
+      "y": 3,
+      "z": -1,
+      "name": "Empty"
+    },
+    {
+      "x": 10,
+      "y": 4,
+      "z": -1,
+      "name": "Empty"
+    },
+    {
+      "x": 10,
       "y": 0,
       "z": 0,
       "name": "Soil_Gravel_Mossy",
@@ -3863,6 +4277,18 @@
       "y": 1,
       "z": 0,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 10,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
+    },
+    {
+      "x": 10,
+      "y": 4,
+      "z": 0,
+      "name": "Barrier"
     },
     {
       "x": 10,
@@ -4236,6 +4662,12 @@
       "y": 1,
       "z": 13,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 10,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
     },
     {
       "x": 10,
@@ -4245,6 +4677,30 @@
       "support": 15
     },
     {
+      "x": 10,
+      "y": 1,
+      "z": 14,
+      "name": "Plant_Hay_Bundle"
+    },
+    {
+      "x": 10,
+      "y": 2,
+      "z": 14,
+      "name": "Empty"
+    },
+    {
+      "x": 10,
+      "y": 3,
+      "z": 14,
+      "name": "Empty"
+    },
+    {
+      "x": 10,
+      "y": 4,
+      "z": 14,
+      "name": "Empty"
+    },
+    {
       "x": 11,
       "y": 0,
       "z": 0,
@@ -4263,6 +4719,12 @@
       "z": 0,
       "name": "Furniture_Human_Ruins_Torch",
       "rotation": 2
+    },
+    {
+      "x": 11,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
     },
     {
       "x": 11,
@@ -4644,6 +5106,18 @@
       "name": "Furniture_Human_Ruins_Torch"
     },
     {
+      "x": 11,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
+      "x": 11,
+      "y": 4,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
       "x": 12,
       "y": 0,
       "z": 0,
@@ -4655,6 +5129,12 @@
       "y": 1,
       "z": 0,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 12,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
     },
     {
       "x": 12,
@@ -5030,6 +5510,24 @@
       "name": "Rock_Basalt_Cobble_Wall"
     },
     {
+      "x": 12,
+      "y": 2,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
+      "x": 12,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
+      "x": 12,
+      "y": 4,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
       "x": 13,
       "y": 0,
       "z": 0,
@@ -5041,6 +5539,12 @@
       "y": 1,
       "z": 0,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 13,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
     },
     {
       "x": 13,
@@ -5416,6 +5920,12 @@
       "name": "Rock_Basalt_Cobble_Wall"
     },
     {
+      "x": 13,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
       "x": 14,
       "y": 0,
       "z": 0,
@@ -5427,6 +5937,12 @@
       "y": 1,
       "z": 0,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 14,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
     },
     {
       "x": 14,
@@ -5802,6 +6318,18 @@
       "name": "Rock_Basalt_Cobble_Wall"
     },
     {
+      "x": 14,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
+      "x": 14,
+      "y": 4,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
       "x": 15,
       "y": 0,
       "z": 0,
@@ -5813,6 +6341,12 @@
       "y": 1,
       "z": 0,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 15,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
     },
     {
       "x": 15,
@@ -6182,6 +6716,12 @@
       "name": "Rock_Basalt_Cobble_Wall"
     },
     {
+      "x": 15,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
+    },
+    {
       "x": 16,
       "y": 0,
       "z": 0,
@@ -6193,6 +6733,12 @@
       "y": 1,
       "z": 0,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 16,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
     },
     {
       "x": 16,
@@ -6566,6 +7112,12 @@
       "y": 1,
       "z": 13,
       "name": "Rock_Basalt_Cobble_Wall"
+    },
+    {
+      "x": 16,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
     },
     {
       "x": 17,
@@ -6589,6 +7141,12 @@
     },
     {
       "x": 17,
+      "y": 3,
+      "z": 0,
+      "name": "Barrier"
+    },
+    {
+      "x": 17,
       "y": 0,
       "z": 1,
       "name": "Soil_Gravel_Mossy",
@@ -6600,6 +7158,12 @@
       "z": 1,
       "name": "Rock_Basalt_Cobble_Wall",
       "rotation": 1
+    },
+    {
+      "x": 17,
+      "y": 3,
+      "z": 1,
+      "name": "Barrier"
     },
     {
       "x": 17,
@@ -6617,6 +7181,12 @@
     },
     {
       "x": 17,
+      "y": 3,
+      "z": 2,
+      "name": "Barrier"
+    },
+    {
+      "x": 17,
       "y": 0,
       "z": 3,
       "name": "Soil_Gravel_Mossy",
@@ -6628,6 +7198,12 @@
       "z": 3,
       "name": "Rock_Basalt_Cobble_Wall",
       "rotation": 1
+    },
+    {
+      "x": 17,
+      "y": 3,
+      "z": 3,
+      "name": "Barrier"
     },
     {
       "x": 17,
@@ -6645,6 +7221,12 @@
     },
     {
       "x": 17,
+      "y": 3,
+      "z": 4,
+      "name": "Barrier"
+    },
+    {
+      "x": 17,
       "y": 0,
       "z": 5,
       "name": "Soil_Gravel_Mossy",
@@ -6656,6 +7238,12 @@
       "z": 5,
       "name": "Rock_Basalt_Cobble_Wall",
       "rotation": 1
+    },
+    {
+      "x": 17,
+      "y": 3,
+      "z": 5,
+      "name": "Barrier"
     },
     {
       "x": 17,
@@ -6673,6 +7261,12 @@
     },
     {
       "x": 17,
+      "y": 3,
+      "z": 6,
+      "name": "Barrier"
+    },
+    {
+      "x": 17,
       "y": 0,
       "z": 7,
       "name": "Soil_Gravel_Mossy",
@@ -6684,6 +7278,12 @@
       "z": 7,
       "name": "Rock_Basalt_Cobble_Wall",
       "rotation": 1
+    },
+    {
+      "x": 17,
+      "y": 3,
+      "z": 7,
+      "name": "Barrier"
     },
     {
       "x": 17,
@@ -6701,6 +7301,12 @@
     },
     {
       "x": 17,
+      "y": 3,
+      "z": 8,
+      "name": "Barrier"
+    },
+    {
+      "x": 17,
       "y": 0,
       "z": 9,
       "name": "Soil_Gravel_Mossy",
@@ -6712,6 +7318,12 @@
       "z": 9,
       "name": "Rock_Basalt_Cobble_Wall",
       "rotation": 1
+    },
+    {
+      "x": 17,
+      "y": 3,
+      "z": 9,
+      "name": "Barrier"
     },
     {
       "x": 17,
@@ -6729,6 +7341,12 @@
     },
     {
       "x": 17,
+      "y": 3,
+      "z": 10,
+      "name": "Barrier"
+    },
+    {
+      "x": 17,
       "y": 0,
       "z": 11,
       "name": "Soil_Gravel_Mossy",
@@ -6743,6 +7361,12 @@
     },
     {
       "x": 17,
+      "y": 3,
+      "z": 11,
+      "name": "Barrier"
+    },
+    {
+      "x": 17,
       "y": 0,
       "z": 12,
       "name": "Soil_Gravel_Mossy",
@@ -6754,6 +7378,18 @@
       "z": 12,
       "name": "Rock_Basalt_Cobble_Wall",
       "rotation": 1
+    },
+    {
+      "x": 17,
+      "y": 2,
+      "z": 12,
+      "name": "Barrier"
+    },
+    {
+      "x": 17,
+      "y": 3,
+      "z": 12,
+      "name": "Barrier"
     },
     {
       "x": 17,
@@ -6773,6 +7409,12 @@
       "y": 2,
       "z": 13,
       "name": "Furniture_Human_Ruins_Torch"
+    },
+    {
+      "x": 17,
+      "y": 3,
+      "z": 13,
+      "name": "Barrier"
     },
     {
       "x": 18,
@@ -6796,6 +7438,18 @@
     },
     {
       "x": 18,
+      "y": 3,
+      "z": 5,
+      "name": "Empty"
+    },
+    {
+      "x": 18,
+      "y": 4,
+      "z": 5,
+      "name": "Empty"
+    },
+    {
+      "x": 18,
       "y": 0,
       "z": 6,
       "name": "Soil_Gravel_Mossy",
@@ -6811,6 +7465,24 @@
     },
     {
       "x": 18,
+      "y": 2,
+      "z": 6,
+      "name": "Empty"
+    },
+    {
+      "x": 18,
+      "y": 3,
+      "z": 6,
+      "name": "Empty"
+    },
+    {
+      "x": 18,
+      "y": 4,
+      "z": 6,
+      "name": "Empty"
+    },
+    {
+      "x": 18,
       "y": 0,
       "z": 7,
       "name": "Soil_Gravel_Mossy",
@@ -6825,10 +7497,52 @@
     },
     {
       "x": 18,
+      "y": 2,
+      "z": 7,
+      "name": "Empty"
+    },
+    {
+      "x": 18,
+      "y": 3,
+      "z": 7,
+      "name": "Empty"
+    },
+    {
+      "x": 18,
+      "y": 4,
+      "z": 7,
+      "name": "Empty"
+    },
+    {
+      "x": 18,
       "y": 0,
       "z": 8,
       "name": "Soil_Gravel_Mossy",
       "support": 15
+    },
+    {
+      "x": 18,
+      "y": 1,
+      "z": 8,
+      "name": "Empty"
+    },
+    {
+      "x": 18,
+      "y": 2,
+      "z": 8,
+      "name": "Empty"
+    },
+    {
+      "x": 18,
+      "y": 3,
+      "z": 8,
+      "name": "Empty"
+    },
+    {
+      "x": 18,
+      "y": 4,
+      "z": 8,
+      "name": "Empty"
     }
   ]
 }

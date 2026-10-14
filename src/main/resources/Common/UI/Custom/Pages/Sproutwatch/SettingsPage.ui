@@ -637,6 +637,42 @@ $C.@PageOverlay {
         }
 
         $C.@Subtitle {
+          @Text = "Message";
+        }
+
+        // The top-right panel's text; the bar under it fills until the next tick adds a creature.
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 8);
+
+          $C.@TextField #HudMessageField {
+            @Anchor = (Width: 300, Right: 8);
+            PlaceholderText: "Type !sprout in chat to be added";
+          }
+
+          $C.@TextButton #SaveHudMessageButton {
+            @Text = "Update";
+            @Anchor = (Width: 120);
+          }
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Bottom: 16);
+
+          $C.@CheckBox #HudCheck {
+            Anchor: (Width: 26, Height: 26);
+          }
+
+          Label #HudCheckLabel {
+            Text: "";
+            Anchor: (Left: 11);
+            FlexWeight: 1;
+            Style: (...$C.@DefaultLabelStyle, FontSize: 15, VerticalAlignment: Center, Wrap: true);
+          }
+        }
+
+        $C.@Subtitle {
           @Text = "Tick interval (seconds, min 5)";
         }
 
@@ -650,7 +686,7 @@ $C.@PageOverlay {
           }
 
           $C.@TextButton #SaveIntervalButton {
-            @Text = "Save";
+            @Text = "Update";
             @Anchor = (Width: 120);
           }
         }

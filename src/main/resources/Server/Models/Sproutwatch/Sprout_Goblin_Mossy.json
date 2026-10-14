@@ -1,0 +1,345 @@
+{
+  "Parent": "Goblin_Lab_Scrapper",
+  "Texture": "NPC/Intelligent/Goblin/Models/Model_Textures/Mossy.png",
+  "MinScale": 0.6,
+  "MaxScale": 0.7,
+  "RandomAttachmentSets": {
+    "Head": {
+      "None": {
+        "Weight": 2
+      },
+      "Short_Black": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair_Textures/Black.png",
+        "Weight": 0.3
+      },
+      "Short_Blond": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair_Textures/Blond.png",
+        "Weight": 0.3
+      },
+      "Short_Brown": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair_Textures/Brown.png",
+        "Weight": 0.3
+      },
+      "Short_BrownDark": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair_Textures/BrownDark.png",
+        "Weight": 0.3
+      },
+      "Short_BrownLight": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair_Textures/BrownLight.png",
+        "Weight": 0.3
+      },
+      "Short_Bubblegum": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair_Textures/Bubblegum.png",
+        "Weight": 0.3
+      },
+      "Short_Green": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair_Textures/Green.png",
+        "Weight": 0.3
+      },
+      "Short_Grey": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair_Textures/Grey.png",
+        "Weight": 0.3
+      },
+      "Short_MoldyWhite": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair_Textures/MoldyWhite.png",
+        "Weight": 0.3
+      },
+      "Short_RedDark": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair_Textures/RedDark.png",
+        "Weight": 0.3
+      },
+      "Short_White": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Hair_Textures/White.png",
+        "Weight": 0.3
+      },
+      "Mohawk_Black": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk_Textures/Black.png",
+        "Weight": 0.2
+      },
+      "Mohawk_Blond": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk_Textures/Blond.png",
+        "Weight": 0.2
+      },
+      "Mohawk_Brown": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk_Textures/Brown.png",
+        "Weight": 0.2
+      },
+      "Mohawk_BrownDark": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk_Textures/BrownDark.png",
+        "Weight": 0.2
+      },
+      "Mohawk_BrownLight": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk_Textures/BrownLight.png",
+        "Weight": 0.2
+      },
+      "Mohawk_Bubblegum": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk_Textures/Bubblegum.png",
+        "Weight": 0.2
+      },
+      "Mohawk_Green": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk_Textures/Green.png",
+        "Weight": 0.2
+      },
+      "Mohawk_Grey": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk_Textures/Grey.png",
+        "Weight": 0.2
+      },
+      "Mohawk_MoldyWhite": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk_Textures/MoldyWhite.png",
+        "Weight": 0.2
+      },
+      "Mohawk_RedDark": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk_Textures/RedDark.png",
+        "Weight": 0.2
+      },
+      "Mohawk_White": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Mohawk_Textures/White.png",
+        "Weight": 0.2
+      },
+      "Messy": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Messy.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Messy_Textures/MoldyWhite.png",
+        "Weight": 1
+      },
+      "Pigtails": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Pigtails.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Pigtails_Textures/MoldyWhite.png",
+        "Weight": 1
+      },
+      "Spiky": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Spiky.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Spiky_Textures/MoldyWhite.png",
+        "Weight": 1
+      },
+      "TopKnot": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_TopKnot.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_TopKnot_Textures/MoldyWhite.png",
+        "Weight": 1
+      },
+      "Windswept": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Windswept.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_Windswept_Textures/MoldyWhite.png",
+        "Weight": 1
+      },
+      "Mossy": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_MossyHair.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_MossyHair_Moss.png",
+        "Weight": 0.5
+      },
+      "BurntWick": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_BurntWick.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Hair/Goblin_BurntWick.png",
+        "Weight": 0.3
+      }
+    },
+    "Beard": {
+      "None": {
+        "Weight": 0.96
+      },
+      "Bushy_Brown": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Beard.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Beard_Textures/Bushy_Brown.png",
+        "Weight": 0.008
+      },
+      "Bushy_BrownDark": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Beard.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Beard_Textures/Bushy_BrownDark.png",
+        "Weight": 0.008
+      },
+      "Bushy_MoldyWhite": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Beard.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Beard_Textures/Bushy_MoldyWhite.png",
+        "Weight": 0.008
+      },
+      "Bushy_RedDark": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Beard.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Beard_Textures/Bushy_RedDark.png",
+        "Weight": 0.008
+      },
+      "Bushy_White": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Beard.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Beard_Textures/Bushy_White.png",
+        "Weight": 0.008
+      }
+    },
+    "Mustache": {
+      "None": {
+        "Weight": 0.97
+      },
+      "Neat": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Mustache.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Mustache_Textures/Neat_MoldyWhite.png",
+        "Weight": 0.03
+      }
+    },
+    "Eyebrows": {
+      "None": {
+        "Weight": 0.2
+      },
+      "Bushy": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Eyebrows.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Eyebrows_Textures/Bushy_MoldyWhite.png",
+        "Weight": 0.4
+      },
+      "Thin": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Eyebrows.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Eyebrows_Textures/Thin_MoldyWhite.png",
+        "Weight": 1
+      },
+      "Thick": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Eyebrows.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Eyebrows_Textures/Thick_MoldyWhite.png",
+        "Weight": 0.6
+      },
+      "Neat": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Eyebrows.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Eyebrows_Textures/Neat_MoldyWhite.png",
+        "Weight": 0.4
+      }
+    },
+    "Eyelashes": {
+      "None": {
+        "Weight": 1
+      },
+      "CatShort": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Eyelashes.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Eyelashes_Textures/CatShort_MoldyWhite.png",
+        "Weight": 0.25
+      },
+      "Natural": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Eyelashes.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Head/Goblin_Eyelashes_Textures/Natural_MoldyWhite.png",
+        "Weight": 0.25
+      }
+    },
+    "Chest": {
+      "None": {
+        "Weight": 2
+      },
+      "Rag_Brown": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Chest.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Chest_Textures/Rag_Chest_Brown.png",
+        "Weight": 1
+      },
+      "Rag_NoSleeves_Brown": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Chest.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Chest_Textures/Rag_Chest_NoSleeves_Brown.png",
+        "Weight": 1
+      },
+      "Rag_Black": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Chest.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Chest_Textures/Rag_Chest_Black.png",
+        "Weight": 1
+      },
+      "Rag_NoSleeves_Black": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Chest.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Chest_Textures/Rag_Chest_NoSleeves_Black.png",
+        "Weight": 1
+      },
+      "Dress_Brown": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Dress.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Dress_Textures/Rag_Dress_Brown.png",
+        "Weight": 0.6
+      },
+      "Dress_Black": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Dress.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Dress_Textures/Rag_Dress_Black.png",
+        "Weight": 0.6
+      },
+      "Dress_Grey": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Dress.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Dress_Textures/Rag_Dress_Grey.png",
+        "Weight": 0.6
+      }
+    },
+    "Pelvis": {
+      "Brown": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Pelvis.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Pelvis_Textures/Brown.png",
+        "Weight": 1
+      },
+      "Black": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Pelvis.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Pelvis_Textures/Black.png",
+        "Weight": 1
+      },
+      "DarkBrown": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Pelvis.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Pelvis_Textures/DarkBrown.png",
+        "Weight": 1
+      },
+      "Red": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Pelvis.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Rag/Rag_Pelvis_Textures/Red.png",
+        "Weight": 1
+      }
+    },
+    "Arms": {
+      "None": {
+        "Weight": 3
+      },
+      "Forearm_Strap": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Arms/Arms_Strap.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Arms/Arms_Strap_Textures/Forearm_FabricStrap.png",
+        "Weight": 1
+      },
+      "Leather_Straps": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Arms/Arms_Strap.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Arms/Arms_Strap_Textures/Arm_LeatherStrap.png",
+        "Weight": 1
+      },
+      "Leather_Bracelet": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Arms/ForearmR_Bracelet.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Arms/ForearmR_Bracelet_Textures/LeatherBracelet.png",
+        "Weight": 1
+      },
+      "Mittens": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Arms/Gloves.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Arms/Gloves_Textures/MittensFabric.png",
+        "Weight": 1
+      }
+    },
+    "Legs": {
+      "None": {
+        "Weight": 3
+      },
+      "Socks_Long": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Legs/Socks_Long.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Legs/Socks_Long.png",
+        "Weight": 1
+      },
+      "Calf_Strap": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Legs/Calf_Strap.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Legs/Calf_Strap.png",
+        "Weight": 1
+      },
+      "Boots_Open": {
+        "Model": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Legs/Boots_Open.blockymodel",
+        "Texture": "NPC/Intelligent/Goblin/Models/Attachments/Cosmetics/Legs/Boots_Open.png",
+        "Weight": 1
+      }
+    }
+  }
+}

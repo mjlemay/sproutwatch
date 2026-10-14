@@ -77,4 +77,23 @@ class ChatSourceActionsTest {
         assertFalse(host.config.isAutoStartOnBoot());
         assertEquals(2, host.saveCalls);
     }
+
+    @Test void hudMessageSavesAndBlankRestoresTheDefault() {
+        FakeHost host = new FakeHost();
+        ChatSourceActions chatSources = new ChatSourceActions(host);
+        assertEquals("Message set to \"Say !sprout to join\".", chatSources.setHudMessage("  Say !sprout to join "));
+        assertEquals("Say !sprout to join", host.config.getHudMessage());
+        assertEquals("Message set to \"Type !sprout in chat to be added\".", chatSources.setHudMessage(""));
+        assertEquals(2, host.saveCalls);
+    }
+
+    @Test void hudMessageWhileHiddenSaysHowToShowIt() {
+        FakeHost host = new FakeHost();
+        ChatSourceActions chatSources = new ChatSourceActions(host);
+        chatSources.setHudEnabled(false);
+        assertFalse(host.config.isHudEnabled());
+        assertTrue(chatSources.setHudMessage("hi").endsWith("It is hidden; tick the box below to show it."));
+        assertEquals("The message and next-creature bar are now on screen.", chatSources.setHudEnabled(true));
+        assertTrue(host.config.isHudEnabled());
+    }
 }

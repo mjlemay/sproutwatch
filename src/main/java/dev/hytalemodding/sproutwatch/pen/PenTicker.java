@@ -37,6 +37,7 @@ public final class PenTicker {
     private final ChatRoster roster;
     private final PenRegistry registry;
     private final SproutSpawner spawner;
+    private final GoblinPopper popper;
     private final Logger logger;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread thread = new Thread(r, "sproutwatch-tick");
@@ -54,6 +55,7 @@ public final class PenTicker {
         this.roster = roster;
         this.registry = registry;
         this.spawner = spawner;
+        this.popper = new GoblinPopper(registry, logger);
         this.logger = logger;
     }
 
@@ -84,6 +86,12 @@ public final class PenTicker {
 
     public synchronized boolean isRunning() {
         return future != null && !future.isDone();
+    }
+
+    /** Milliseconds until the next scheduled tick (0 when it is due), or -1 when the ticker is stopped. */
+    public synchronized long millisToNextTick() {
+        if (future == null || future.isDone()) return -1;
+        return Math.max(0, future.getDelay(TimeUnit.MILLISECONDS));
     }
 
     /** Plugin shutdown: releases the scheduler thread. */
@@ -156,6 +164,8 @@ public final class PenTicker {
             PenPlan plan = reconcile(eligible, currentConfig, persist, now);
             applyDespawns(plan, persist);
             boolean spawned = spawnNext(world, plan);
+            // Goblins at the cap: a 1 in 3 chance per tick that one random goblin goes boom.
+            popper.popIfFull(world, currentConfig);
             outcome = new TickOutcome(plan.spawn(), spawned);
             runAfterTick();
         } catch (Exception exception) {

@@ -183,6 +183,21 @@ public final class ChatSourceActions {
     }
 
     /** Whether the listener starts by itself when the world loads; it sits with start and stop. */
+    /** Listener tab Message: the top-right panel's text (blank restores the default). */
+    public String setHudMessage(String raw) {
+        host.config().setHudMessage(raw == null ? "" : raw.strip());
+        host.saveConfig();
+        String shown = host.config().getHudMessage();
+        return "Message set to \"" + shown + "\"."
+            + (host.config().isHudEnabled() ? "" : " It is hidden; tick the box below to show it.");
+    }
+
+    public String setHudEnabled(boolean on) {
+        host.config().setHudEnabled(on);
+        host.saveConfig();
+        return on ? "The message and next-creature bar are now on screen." : "The message and next-creature bar are now hidden.";
+    }
+
     public String setAutoStart(boolean on) {
         host.config().setAutoStartOnBoot(on);
         host.saveConfig();

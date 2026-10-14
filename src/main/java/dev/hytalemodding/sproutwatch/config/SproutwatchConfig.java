@@ -38,6 +38,9 @@ public class SproutwatchConfig {
     private static final String[] LEGACY_DEFAULT_ROLES = {"Kweebec_Seedling", "Kweebec_Sproutling", "Kweebec_Sapling"};
     private static final String[] DEFAULT_IGNORE = {"nightbot", "streamelements", "streamlabs"};
     private static final String DEFAULT_QUEUE_COMMAND = "!sprout";
+    static final String DEFAULT_HUD_MESSAGE = "Type !sprout in chat to be added";
+    /** The on-screen panel is one short line, so longer messages are cut. */
+    static final int HUD_MESSAGE_MAX = 80;
     private static final double DEFAULT_STREAM_HOURS = 8.0;
 
     private volatile String twitchChannel = "";
@@ -52,9 +55,12 @@ public class SproutwatchConfig {
     private volatile String[] allowUsers = new String[0];
     /** "ignore" (everyone except IgnoreUsers) or "allow" (only AllowUsers; IgnoreUsers still wins). */
     private volatile String viewerFilter = "ignore";
-    /** CreaturePreset id: kweebecs (default), pigs, chickens, farm. */
+    /** CreaturePreset id: kweebecs (default), pigs, chickens, farm, goblins. */
     private volatile String creatures = "kweebecs";
     private volatile String queueCommand = DEFAULT_QUEUE_COMMAND;
+    /** The top-right panel: a message with the next-tick progress bar under it. */
+    private volatile boolean hudEnabled = true;
+    private volatile String hudMessage = DEFAULT_HUD_MESSAGE;
     private volatile String penWorld = "";
     private volatile int penX = 0;
     private volatile int penY = 0;
@@ -116,6 +122,10 @@ public class SproutwatchConfig {
                 (c, v, x) -> c.creatures = v, (c, x) -> c.creatures).add()
             .append(new KeyedCodec<>("QueueCommand", Codec.STRING),
                 (c, v, x) -> c.queueCommand = v, (c, x) -> c.queueCommand).add()
+            .append(new KeyedCodec<>("HudEnabled", Codec.BOOLEAN),
+                (c, v, x) -> c.hudEnabled = v, (c, x) -> c.hudEnabled).add()
+            .append(new KeyedCodec<>("HudMessage", Codec.STRING),
+                (c, v, x) -> c.hudMessage = v, (c, x) -> c.hudMessage).add()
             .append(new KeyedCodec<>("PenWorld", Codec.STRING),
                 (c, v, x) -> c.penWorld = v, (c, x) -> c.penWorld).add()
             .append(new KeyedCodec<>("PenX", Codec.INTEGER), (c, v, x) -> c.penX = v, (c, x) -> c.penX).add()
@@ -203,7 +213,7 @@ public class SproutwatchConfig {
         return splitRoles(getRoles());
     }
 
-    private static Set<String> splitRoles(String[] entries) {
+    static Set<String> splitRoles(String[] entries) {
         Set<String> all = new LinkedHashSet<>();
         for (String entry : entries) {
             for (String part : entry.split("\\|")) {
@@ -232,6 +242,11 @@ public class SproutwatchConfig {
     /** What the spawner picks from: the selected creature preset (Kweebecs = the Roles list). */
     public String[] spawnRoles() {
         return CreaturePreset.parse(creatures).roles(getRoles());
+    }
+
+    /** Every role the selected creature set can spawn ("|" groups split). */
+    public Set<String> spawnRoleSet() {
+        return splitRoles(spawnRoles());
     }
 
     /** @return true if Roles still held the pre-clothing default and was replaced by the current one. */
@@ -295,6 +310,17 @@ public class SproutwatchConfig {
     }
 
     /** Chat text that queues a viewer for the next sprout; trimmed, default "!sprout" when blank. */
+    public boolean isHudEnabled() { return hudEnabled; }
+    public void setHudEnabled(boolean v) { hudEnabled = v; }
+
+    /** The panel's message: trimmed and cut to HUD_MESSAGE_MAX; blank falls back to the default. */
+    public String getHudMessage() {
+        String m = hudMessage == null ? "" : hudMessage.strip();
+        if (m.isEmpty()) return DEFAULT_HUD_MESSAGE;
+        return m.length() > HUD_MESSAGE_MAX ? m.substring(0, HUD_MESSAGE_MAX) : m;
+    }
+    public void setHudMessage(String v) { hudMessage = v; }
+
     public String getQueueCommand() {
         String q = queueCommand == null ? "" : queueCommand.trim();
         return q.isEmpty() ? DEFAULT_QUEUE_COMMAND : q;

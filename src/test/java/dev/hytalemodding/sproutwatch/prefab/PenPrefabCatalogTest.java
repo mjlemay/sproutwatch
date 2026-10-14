@@ -11,7 +11,7 @@ class PenPrefabCatalogTest {
     @Test void namesListsDefaultFirst() {
         List<String> names = PenPrefabCatalog.names();
         assertEquals("default", names.get(0));
-        assertEquals(List.of("default", "kweebec_nursery", "cobble_pasture"), names);
+        assertEquals(List.of("default", "kweebec_nursery", "cobble_pasture", "goblin_cage"), names);
         assertThrows(UnsupportedOperationException.class, () -> names.add("x"));
     }
 
@@ -35,11 +35,12 @@ class PenPrefabCatalogTest {
         assertEquals("Default Lawn", PenPrefabCatalog.labelFor("default"));
         assertEquals("Kweebec Nursery", PenPrefabCatalog.labelFor("Kweebec_Nursery"));
         assertEquals("Cobble Pasture", PenPrefabCatalog.labelFor("cobble_pasture"));
+        assertEquals("Goblin Cage", PenPrefabCatalog.labelFor("goblin_cage"));
         assertEquals("Default Lawn", PenPrefabCatalog.labelFor("castle"));
     }
 
     @Test void eachPrefabHasItsOwnFile() {
-        assertEquals(3, PenPrefabCatalog.names().stream().map(PenPrefabCatalog::resourceFor).distinct().count());
+        assertEquals(4, PenPrefabCatalog.names().stream().map(PenPrefabCatalog::resourceFor).distinct().count());
     }
 
     @Test void everyCatalogEntryIsBundledAndParses() throws Exception {
