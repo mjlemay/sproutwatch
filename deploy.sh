@@ -7,7 +7,7 @@ echo "Checking .ui documents..."
 python3 scripts/check_ui.py
 
 echo "Building Sproutwatch..."
-./gradlew build
+./gradlew updatePluginManifest build
 
 VERSION=$(grep '^version' gradle.properties | sed 's/version *= *//' | tr -d ' ')
 JAR="build/libs/sproutwatch-${VERSION}.jar"
