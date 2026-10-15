@@ -1,7 +1,7 @@
 {
     "Group": "Mertie",
     "Name": "sproutwatch",
-    "Version": "0.2.0",
+    "Version": "0.2.1",
     "Description": "Twitch and YouTube chatters become baby Kweebecs in a pen with a fixed 4:3 landscape camera",
     "Authors": [
         {
